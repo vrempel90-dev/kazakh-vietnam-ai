@@ -15,7 +15,8 @@
     "build": "tsc && vite build && node scripts/prepare-sites-build.mjs",
     "lint": "oxlint src/Prototype.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "node tests/flight-app.test.mjs"
+    "test": "node tests/flight-app.test.mjs",
+    "sync:flights": "node scripts/sync-public-flights.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",
