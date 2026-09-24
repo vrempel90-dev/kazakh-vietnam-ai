@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node tests/flight-app.test.mjs",
     "sync:flights": "node scripts/sync-all-sources.mjs",
-    "sync:public-telegram": "node scripts/sync-public-flights.mjs"
+    "sync:public-telegram": "node scripts/sync-public-flights.mjs",
+    "start": "node scripts/serve-dist.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",
