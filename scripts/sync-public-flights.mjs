@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const SOURCES = [
@@ -237,6 +237,20 @@ if (!flights.length) {
   throw new Error("No live flight offers parsed; refusing to overwrite the previous feed");
 }
 
+const outputPath = resolve("public/flights.json");
+let existingFlights = null;
+try {
+  const existing = JSON.parse(await readFile(outputPath, "utf8"));
+  existingFlights = Array.isArray(existing?.flights) ? existing.flights : null;
+} catch {
+  // First sync or invalid previous file: write a fresh feed.
+}
+
+if (existingFlights && JSON.stringify(existingFlights) === JSON.stringify(flights)) {
+  console.log("No flight changes; keeping existing feed timestamp");
+  process.exit(0);
+}
+
 const payload = {
   generatedAt: new Date().toISOString(),
   mode: "public-sale-price",
@@ -246,5 +260,5 @@ const payload = {
 };
 
 await mkdir(resolve("public"), { recursive: true });
-await writeFile(resolve("public/flights.json"), JSON.stringify(payload, null, 2) + "\n", "utf8");
+await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
 console.log("Synced", flights.length, "offers", sourceStatus);
