@@ -444,6 +444,47 @@ function dedupeFlights(flights) {
   return [...map.values()].sort((a, b) => a.offset - b.offset || a.price - b.price).slice(0, 300);
 }
 
+function offerTtlHours() {
+  const configured = envNumber("OFFER_TTL_HOURS");
+  return configured != null && configured >= 1 ? configured : 24;
+}
+
+function hasMaterialChange(previous, current) {
+  if (!previous) return true;
+  return previous.price !== current.price
+    || previous.seats !== current.seats
+    || previous.airline !== current.airline
+    || previous.departureDate !== current.departureDate
+    || previous.returnDate !== current.returnDate
+    || previous.trip !== current.trip;
+}
+
+function reconcileLifecycle(flights, existing, now) {
+  const existingById = new Map(
+    Array.isArray(existing?.flights) ? existing.flights.map(flight => [flight.id, flight]) : []
+  );
+  const ttlMs = offerTtlHours() * 60 * 60 * 1000;
+  const nowIso = now.toISOString();
+
+  return flights.map(flight => {
+    const previous = existingById.get(flight.id);
+    const changed = hasMaterialChange(previous, flight);
+    const previousPublishedAt = previous?.publishedAt || previous?.updatedAt;
+    const publishedAt = changed || !previousPublishedAt ? nowIso : previousPublishedAt;
+    const expiresAt = changed || !previous?.expiresAt
+      ? new Date(new Date(publishedAt).getTime() + ttlMs).toISOString()
+      : previous.expiresAt;
+    const updatedAt = changed ? nowIso : (previous?.updatedAt || publishedAt);
+
+    return {
+      ...flight,
+      publishedAt,
+      updatedAt,
+      expiresAt
+    };
+  });
+}
+
 function comparablePayload(payload) {
   return JSON.stringify({ mode: payload.mode, note: payload.note, rates: payload.rates, flights: payload.flights });
 }
@@ -472,7 +513,7 @@ for (const source of enabledSources()) {
   await sleep(250);
 }
 
-const flights = dedupeFlights(collected);
+const freshFlights = dedupeFlights(collected);
 const outputPath = resolve("public/flights.json");
 let existing = null;
 try {
@@ -480,6 +521,7 @@ try {
 } catch {
   // A missing previous feed is allowed on first run.
 }
+const flights = reconcileLifecycle(freshFlights, existing, now);
 
 if (!flights.length) {
   console.error("Source status:", JSON.stringify(statuses, null, 2));
