@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-24T20:32:54.261Z",
+  "generatedAt": "2026-09-24T21:37:53.949Z",
   "mode": "live-sale-price",
   "note": "Only customer-facing sale prices are persisted. Supplier cost prices and credentials are never written to the public feed.",
   "rates": {
     "USD_KZT": 449,
     "EUR_KZT": 511,
-    "updatedAt": "2026-09-24T20:32:36.893Z"
+    "updatedAt": "2026-09-24T21:37:38.843Z"
   },
   "flights": [
     {
