@@ -36,7 +36,9 @@ try {
 
   await cards.first().click();
   await page.locator(".detail-sheet").waitFor();
-  assert.ok(await page.getByRole("button", { name: /Написать менеджеру/ }).count());
+  assert.ok(await page.getByRole("button", { name: /Написать в агентство/ }).count());
+  assert.ok(await page.getByText("Опубликовано", { exact: true }).count());
+  assert.ok(await page.getByText("Уйдёт из ленты", { exact: true }).count());
   assert.ok(await page.getByRole("button", { name: /Следить за направлением/ }).count());
   await page.getByRole("button", { name: /Следить за направлением/ }).click();
 
@@ -57,7 +59,7 @@ try {
     assert.ok(await page.locator(".deal-card").first().isVisible());
   }
 
-  console.log("Charter list, filters, details, alerts, profile, currencies, and responsive widths: passed");
+  console.log("Charter list, filters, offer lifetime, manager handoff, alerts, profile, currencies, and responsive widths: passed");
 } finally {
   await browser.close();
   await server.close();
