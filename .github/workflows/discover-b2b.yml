@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/all-charter-sources]
     paths:
-      - "scripts/diagnose-b2b.mjs"
+      - "scripts/diagnose-public-search.mjs"
       - ".github/workflows/discover-b2b.yml"
 
 permissions:
@@ -22,4 +22,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: node scripts/diagnose-b2b.mjs
+      - run: node scripts/diagnose-public-search.mjs
