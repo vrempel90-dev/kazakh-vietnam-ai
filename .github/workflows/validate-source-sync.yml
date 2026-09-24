@@ -1,0 +1,36 @@
+name: Validate all-source sync
+
+on:
+  push:
+    branches: [feature/all-charter-sources]
+    paths:
+      - "scripts/sync-all-sources.mjs"
+      - "scripts/source-registry.mjs"
+      - ".github/workflows/validate-source-sync.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run sync:flights
+      - name: Validate public feed does not expose cost fields
+        run: |
+          node - <<'NODE'
+          const feed = require('./public/flights.json');
+          const raw = JSON.stringify(feed);
+          for (const forbidden of ['sourcePrice','supplierCost','costPrice','password','username']) {
+            if (raw.includes(forbidden)) throw new Error('Public feed contains forbidden field: '+forbidden);
+          }
+          if (!Array.isArray(feed.flights) || feed.flights.length === 0) throw new Error('No flights in feed');
+          console.log('Public feed safe:', feed.flights.length, 'offers');
+          NODE
