@@ -231,6 +231,30 @@ async function fetchText(url, timeoutMs = 20000) {
   return { text: await response.text(), finalUrl: response.url, contentType: response.headers.get("content-type") || "" };
 }
 
+async function fetchDisplayRates() {
+  try {
+    const { text } = await fetchText("https://online.sanat.kz:9000/TourSearchOwin/CurrencyRates", 12000);
+    const rows = JSON.parse(text);
+    if (!Array.isArray(rows)) throw new Error("Unexpected currency response");
+    const usd = rows.find(row => Number(row?.CurrencyId) === 1);
+    const eur = rows.find(row => Number(row?.CurrencyId) === 2);
+    const USD_KZT = Number(usd?.Rate);
+    const EUR_KZT = Number(eur?.Rate);
+    if (!Number.isFinite(USD_KZT) || USD_KZT <= 0 || !Number.isFinite(EUR_KZT) || EUR_KZT <= 0) {
+      throw new Error("USD/EUR rates missing");
+    }
+    return {
+      USD_KZT,
+      EUR_KZT,
+      updatedAt: new Date().toISOString(),
+      source: "SANAT public currency rates"
+    };
+  } catch (error) {
+    console.warn("Display currency rates unavailable:", error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
 function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -421,12 +445,13 @@ function dedupeFlights(flights) {
 }
 
 function comparablePayload(payload) {
-  return JSON.stringify({ mode: payload.mode, note: payload.note, flights: payload.flights });
+  return JSON.stringify({ mode: payload.mode, note: payload.note, rates: payload.rates, flights: payload.flights });
 }
 
 const now = new Date();
 const collected = [];
 const statuses = [];
+const displayRates = await fetchDisplayRates();
 
 for (const source of enabledSources()) {
   try {
@@ -469,6 +494,11 @@ const payload = {
   generatedAt: new Date().toISOString(),
   mode: "live-sale-price",
   note: "Only customer-facing sale prices are persisted. Supplier cost prices and credentials are never written to the public feed.",
+  rates: displayRates ? {
+    USD_KZT: displayRates.USD_KZT,
+    EUR_KZT: displayRates.EUR_KZT,
+    updatedAt: displayRates.updatedAt
+  } : undefined,
   flights
 };
 
