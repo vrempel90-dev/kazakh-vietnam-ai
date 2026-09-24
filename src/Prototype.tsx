@@ -37,7 +37,9 @@ type Flight = {
   airline?: string;
   departureDate?: string;
   returnDate?: string;
+  publishedAt?: string;
   updatedAt?: string;
+  expiresAt?: string;
 };
 
 type FlightFeed = {
@@ -112,6 +114,47 @@ const daysUntil = (flight: Flight) => {
   return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
 };
 
+const offerPublishedAt = (flight: Flight) => flight.publishedAt || flight.updatedAt;
+
+const offerExpiresAt = (flight: Flight) => {
+  if (flight.expiresAt) return flight.expiresAt;
+  const base = offerPublishedAt(flight);
+  if (!base) return undefined;
+  const date = new Date(base);
+  if (Number.isNaN(date.getTime())) return undefined;
+  date.setHours(date.getHours() + 24);
+  return date.toISOString();
+};
+
+const isOfferActive = (flight: Flight, nowMs: number) => {
+  const expiresAt = offerExpiresAt(flight);
+  if (!expiresAt) return true;
+  const expiry = new Date(expiresAt).getTime();
+  return Number.isNaN(expiry) || expiry > nowMs;
+};
+
+const publishedLabel = (flight: Flight) => {
+  const value = offerPublishedAt(flight);
+  if (!value) return "при синхронизации";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "при синхронизации";
+  return date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+};
+
+const expiryLabel = (flight: Flight, nowMs: number) => {
+  const value = offerExpiresAt(flight);
+  if (!value) return "по актуальности источника";
+  const diff = new Date(value).getTime() - nowMs;
+  if (!Number.isFinite(diff)) return "по актуальности источника";
+  if (diff <= 0) return "истекло";
+  const minutes = Math.ceil(diff / 60000);
+  if (minutes < 60) return "через " + minutes + " мин";
+  const hours = Math.ceil(minutes / 60);
+  if (hours < 24) return "через " + hours + " ч";
+  const days = Math.ceil(hours / 24);
+  return "через " + days + (days === 1 ? " день" : days < 5 ? " дня" : " дней");
+};
+
 const readList = (key: string): string[] => {
   try {
     return JSON.parse(localStorage.getItem(key) || "[]") as string[];
@@ -136,6 +179,7 @@ export default function Prototype() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [rates, setRates] = useState<{ USD_KZT?: number; EUR_KZT?: number; updatedAt?: string }>({});
   const [toast, setToast] = useState("");
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   const refreshFlights = useCallback(async () => {
     try {
@@ -162,6 +206,18 @@ export default function Prototype() {
     return () => window.clearInterval(timer);
   }, [refreshFlights]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (selected && !isOfferActive(selected, nowTick)) {
+      setSelected(null);
+      setToast("Предложение уже ушло из ленты");
+    }
+  }, [selected, nowTick]);
+
   useEffect(() => localStorage.setItem("charter-favorites", JSON.stringify(favorites)), [favorites]);
   useEffect(() => localStorage.setItem("charter-route-alerts", JSON.stringify(alerts)), [alerts]);
   useEffect(() => {
@@ -185,11 +241,12 @@ export default function Prototype() {
   const filtered = useMemo(() => {
     const mine = new Set(favorites);
     return flights
+      .filter(flight => isOfferActive(flight, nowTick))
       .filter(flight => tab === "all" || mine.has(flight.id))
       .filter(flight => city === "Все" || flight.from === city)
       .filter(flight => country === "Все" || countryFor(flight.to).name === country)
       .sort((a, b) => a.offset - b.offset || a.price - b.price);
-  }, [flights, favorites, tab, city, country]);
+  }, [flights, favorites, tab, city, country, nowTick]);
 
   const currencyAvailable = (value: Currency) =>
     value === "KZT" || (value === "USD" && Boolean(rates.USD_KZT)) || (value === "EUR" && Boolean(rates.EUR_KZT));
@@ -216,16 +273,15 @@ export default function Prototype() {
     }
   };
 
-  const managerMessage = (flight: Flight) =>
-    [
-      "Здравствуйте! Хочу оформить чартерный билет.",
-      "",
-      "Маршрут: " + flight.from + " → " + flight.to,
-      "Дата: " + flightDate(flight),
-      "Тип: " + (flight.trip === "OW" ? "в одну сторону" : "туда и обратно"),
-      "Авиакомпания: " + (flight.airline || "уточняется"),
-      "Цена: " + new Intl.NumberFormat("ru-RU").format(flight.price) + " ₸",
-    ].join("\n");
+  const managerMessage = (flight: Flight) => {
+    const airline = flight.airline ? ", " + flight.airline : "";
+    const returnDate = flight.trip === "RT" && flight.returnDate
+      ? " — " + new Date(flight.returnDate + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
+      : "";
+    return "Здравствуйте! Интересует рейс " + flight.from + " → " + flight.to
+      + ", вылет " + new Date(flightIso(flight) + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
+      + returnDate + airline + ". Места ещё есть?";
+  };
 
   const openManager = (flight: Flight) => {
     const phone = String(import.meta.env.VITE_MANAGER_WHATSAPP || "").replace(/\D/g, "");
@@ -237,7 +293,7 @@ export default function Prototype() {
   };
 
   const shareFlight = async (flight: Flight) => {
-    const text = managerMessage(flight).replace("Здравствуйте! Хочу оформить чартерный билет.\n\n", "");
+    const text = managerMessage(flight);
     try {
       if (navigator.share) await navigator.share({ title: "Чартерные авиабилеты", text });
       else {
@@ -395,7 +451,7 @@ export default function Prototype() {
             <div className="profile-stats">
               <div><strong>{favorites.length}</strong><span>избранных</span></div>
               <div><strong>{alerts.length}</strong><span>уведомлений</span></div>
-              <div><strong>{flights.length}</strong><span>рейсов</span></div>
+              <div><strong>{flights.filter(flight => isOfferActive(flight, nowTick)).length}</strong><span>рейсов</span></div>
             </div>
             <button className="profile-action" onClick={() => setScreen("flights")}><HomeIcon /><span>Вернуться к рейсам</span></button>
             <button className="profile-action" onClick={() => { setFavorites([]); setAlerts([]); setToast("Сохранённые данные очищены"); }}><Cross2Icon /><span>Очистить сохранённое</span></button>
@@ -442,9 +498,10 @@ export default function Prototype() {
               <div><span>Авиакомпания</span><strong>{selected.airline || "Уточняется"}</strong></div>
               <div><span>Багаж / места</span><strong>{selected.seats || "Уточняется"}</strong></div>
               <div className="price-row"><span>Цена</span><strong>{displayPrice(selected.price)}<small> на человека</small></strong></div>
-              <div><span>Обновлено</span><strong>{selected.updatedAt ? new Date(selected.updatedAt).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "при последней синхронизации"}</strong></div>
+              <div><span>Опубликовано</span><strong>{publishedLabel(selected)}</strong></div>
+              <div className="expiry-row"><span>Уйдёт из ленты</span><strong>{expiryLabel(selected, nowTick)}</strong></div>
             </div>
-            <button className="manager-btn" onClick={() => openManager(selected)}><PaperPlaneIcon /> Написать менеджеру</button>
+            <button className="manager-btn" onClick={() => openManager(selected)}><PaperPlaneIcon /> Написать в агентство</button>
             <div className="detail-actions">
               <button onClick={() => toggleAlert(selected)}><BellIcon />{alerts.includes(routeKey(selected)) ? "Убрать уведомление" : "Следить за направлением"}</button>
               <button onClick={() => void shareFlight(selected)}><Share1Icon /> Поделиться</button>
