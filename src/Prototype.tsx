@@ -5,6 +5,7 @@ import {
   CalendarIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   Cross2Icon,
   GlobeIcon,
   HeartIcon,
@@ -93,6 +94,9 @@ const knownCountries: Country[] = [
 
 const countryFor = (destination: string): Country =>
   cityCountries.find(([pattern]) => pattern.test(destination))?.[1] || { name: "Другое", flag: "🌍" };
+
+const DEFAULT_MANAGER_WHATSAPP = "77007772414";
+const MANAGER_PHONE_DISPLAY = "+7 700 777 24 14";
 
 const isoAt = (offset: number) => {
   const date = new Date();
@@ -288,11 +292,7 @@ export default function Prototype() {
   };
 
   const openManager = (flight: Flight) => {
-    const phone = String(import.meta.env.VITE_MANAGER_WHATSAPP || "").replace(/\D/g, "");
-    if (!phone) {
-      setToast("Добавьте VITE_MANAGER_WHATSAPP для перехода к менеджеру");
-      return;
-    }
+    const phone = String(import.meta.env.VITE_MANAGER_WHATSAPP || DEFAULT_MANAGER_WHATSAPP).replace(/\D/g, "");
     window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(managerMessage(flight)), "_blank", "noopener,noreferrer");
   };
 
@@ -505,7 +505,11 @@ export default function Prototype() {
               <div><span>Опубликовано</span><strong>{publishedLabel(selected)}</strong></div>
               <div className="expiry-row"><span>Уйдёт из ленты</span><strong>{expiryLabel(selected, nowTick)}</strong></div>
             </div>
-            <button className="manager-btn" onClick={() => openManager(selected)}><PaperPlaneIcon /> Написать в агентство</button>
+            <button className="manager-btn" onClick={() => openManager(selected)}>
+              <span className="manager-brand"><PaperPlaneIcon /></span>
+              <span className="manager-copy"><strong>Написать в WhatsApp</strong><small>{MANAGER_PHONE_DISPLAY} · менеджер компании</small></span>
+              <ChevronRightIcon />
+            </button>
             <div className="detail-actions">
               <button onClick={() => toggleAlert(selected)}><BellIcon />{alerts.includes(routeKey(selected)) ? "Убрать уведомление" : "Следить за направлением"}</button>
               <button onClick={() => void shareFlight(selected)}><Share1Icon /> Поделиться</button>
