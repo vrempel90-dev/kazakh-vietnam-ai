@@ -43,7 +43,7 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://online.kazunion.com/tickets",
     enabled: true,
-    auth: "optional_or_required_by_results",
+    auth: "public_search",
     usernameEnv: "KAZUNION_USERNAME",
     passwordEnv: "KAZUNION_PASSWORD"
   },
@@ -65,7 +65,7 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://agent.anextour.kz/search/avia",
     enabled: true,
-    auth: "unknown",
+    auth: "required",
     usernameEnv: "ANEX_USERNAME",
     passwordEnv: "ANEX_PASSWORD"
   },
@@ -109,7 +109,7 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://booking-kz.crystalbay.com/tickets",
     enabled: true,
-    auth: "optional_or_required_by_results",
+    auth: "public_search",
     usernameEnv: "CRYSTAL_BAY_USERNAME",
     passwordEnv: "CRYSTAL_BAY_PASSWORD"
   },
@@ -120,7 +120,7 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://b2b.abktourism.kz/tickets",
     enabled: true,
-    auth: "optional_or_required_by_results",
+    auth: "public_search",
     usernameEnv: "ABK_USERNAME",
     passwordEnv: "ABK_PASSWORD"
   },
