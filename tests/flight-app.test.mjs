@@ -36,7 +36,20 @@ try {
 
   await cards.first().click();
   await page.locator(".detail-sheet").waitFor();
-  assert.ok(await page.getByRole("button", { name: /Написать в агентство/ }).count());
+  const whatsappButton = page.getByRole("button", { name: /Написать в WhatsApp/ });
+  assert.ok(await whatsappButton.count());
+  assert.ok(await page.getByText("+7 700 777 24 14", { exact: false }).count());
+  await page.evaluate(() => {
+    window.__openedUrl = "";
+    window.open = (url) => {
+      window.__openedUrl = String(url || "");
+      return null;
+    };
+  });
+  await whatsappButton.click();
+  const openedUrl = await page.evaluate(() => window.__openedUrl || "");
+  assert.ok(openedUrl.includes("https://wa.me/77007772414"), "Company WhatsApp number must be used");
+  assert.ok(decodeURIComponent(openedUrl).includes("Места ещё есть?"), "Prefilled manager message must be present");
   assert.ok(await page.getByText("Опубликовано", { exact: true }).count());
   assert.ok(await page.getByText("Уйдёт из ленты", { exact: true }).count());
   assert.ok(await page.getByRole("button", { name: /Следить за направлением/ }).count());
