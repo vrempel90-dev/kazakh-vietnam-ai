@@ -271,7 +271,13 @@ export default function Prototype() {
   const FlightCard = ({ flight }: { flight: Flight }) => {
     const destination = countryFor(flight.to);
     return (
-      <button className="deal-card" onClick={() => setSelected(flight)}>
+      <article
+        className="deal-card"
+        role="button"
+        tabIndex={0}
+        onClick={() => setSelected(flight)}
+        onKeyDown={event => { if (event.key === "Enter" || event.key === " ") setSelected(flight); }}
+      >
         <div className="deal-main">
           <span className="country-flag" aria-hidden="true">{destination.flag}</span>
           <div className="deal-copy">
@@ -296,7 +302,7 @@ export default function Prototype() {
           <span className={"urgency" + (flight.hot ? " hot" : "")}>{urgency(flight)}</span>
           <span className="price"><strong>{displayPrice(flight.price)}</strong><small>на человека</small></span>
         </div>
-      </button>
+      </article>
     );
   };
 
