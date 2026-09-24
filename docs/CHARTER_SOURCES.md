@@ -62,3 +62,19 @@ if a confirmed supplier cost is 100,000 KZT and markup is 7%, the customer price
 - Mini App feed refresh while open: every 60 seconds.
 - If a source fails, the previous customer feed is kept instead of being erased.
 - Duplicate customer offers are collapsed by route/date/trip/airline and the lowest sale price is kept.
+
+
+## Verified integration status (2026-09-25)
+
+A browser/network discovery pass was run against every supplied source.
+
+- **Forever Travel Telegram / charterkaz Telegram:** live parsing works. These are treated as SALE-price feeds.
+- **NEOS Google Sheet:** live table access and parsing work. 60 data rows were readable and 54 future priced rows were parseable at the time of verification. Publishing is intentionally blocked until the sheet currency and markup are configured.
+- **KAZUNION:** the ticket search is publicly accessible. The page uses SAMO-Soft dynamic requests (`samo_action=PRICES`). Public fare extraction is technically possible without agency credentials, but the production route/date enumerator still needs to be implemented before this source can publish offers.
+- **Crystal Bay:** public SAMO-Soft ticket search is accessible and exposes `samo_action=PRICES`; production fare extraction still needs the route/date enumerator.
+- **ABK Tourism:** public SAMO-Soft ticket search is accessible and exposes `samo_action=PRICES`; production fare extraction still needs the route/date enumerator.
+- **SANAT:** its public JavaScript client exposes a reachable backend at `/TourSearchOwin/`; currency and departure-city endpoints were verified. The fare-search request contract still needs to be mapped before publishing offers.
+- **KOMPAS, ANEX, SELFIE, JOINUP, PEGAS Touristik, SPACE / Travel Luxe, VIETRA:** the supplied ticket flows require agency authentication before fare data can be extracted. Put credentials in repository/deployment secrets only.
+- **FUN&SUN:** the supplied B2B page returned a Forbidden response from the GitHub-hosted runner during verification. No anti-bot or CAPTCHA bypass will be implemented; use an allowed partner access method or a runner/network accepted by the partner.
+
+A source being registered or reachable does **not** mean customer fares are already being published from it. The synchronizer only publishes a source after its fare parser and pricing rules have been validated.
