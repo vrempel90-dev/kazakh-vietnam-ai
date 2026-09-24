@@ -226,13 +226,18 @@ export default function Prototype() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  const activeFlights = useMemo(
+    () => flights.filter(flight => isOfferActive(flight, nowTick)),
+    [flights, nowTick],
+  );
+
   const departureCities = useMemo(
-    () => ["Все", ...Array.from(new Set(flights.map(flight => flight.from))).sort((a, b) => a.localeCompare(b, "ru"))],
-    [flights],
+    () => ["Все", ...Array.from(new Set(activeFlights.map(flight => flight.from))).sort((a, b) => a.localeCompare(b, "ru"))],
+    [activeFlights],
   );
 
   const availableCountries = useMemo(() => {
-    const names = new Set(flights.map(flight => countryFor(flight.to).name));
+    const names = new Set(activeFlights.map(flight => countryFor(flight.to).name));
     const dynamic = knownCountries.filter(item => names.has(item.name));
     if (names.has("Другое")) dynamic.push({ name: "Другое", flag: "🌍" });
     return [{ name: "Все", flag: "✓" }, ...dynamic];
@@ -240,13 +245,12 @@ export default function Prototype() {
 
   const filtered = useMemo(() => {
     const mine = new Set(favorites);
-    return flights
-      .filter(flight => isOfferActive(flight, nowTick))
+    return activeFlights
       .filter(flight => tab === "all" || mine.has(flight.id))
       .filter(flight => city === "Все" || flight.from === city)
       .filter(flight => country === "Все" || countryFor(flight.to).name === country)
       .sort((a, b) => a.offset - b.offset || a.price - b.price);
-  }, [flights, favorites, tab, city, country, nowTick]);
+  }, [activeFlights, favorites, tab, city, country]);
 
   const currencyAvailable = (value: Currency) =>
     value === "KZT" || (value === "USD" && Boolean(rates.USD_KZT)) || (value === "EUR" && Boolean(rates.EUR_KZT));
@@ -451,7 +455,7 @@ export default function Prototype() {
             <div className="profile-stats">
               <div><strong>{favorites.length}</strong><span>избранных</span></div>
               <div><strong>{alerts.length}</strong><span>уведомлений</span></div>
-              <div><strong>{flights.filter(flight => isOfferActive(flight, nowTick)).length}</strong><span>рейсов</span></div>
+              <div><strong>{activeFlights.length}</strong><span>рейсов</span></div>
             </div>
             <button className="profile-action" onClick={() => setScreen("flights")}><HomeIcon /><span>Вернуться к рейсам</span></button>
             <button className="profile-action" onClick={() => { setFavorites([]); setAlerts([]); setToast("Сохранённые данные очищены"); }}><Cross2Icon /><span>Очистить сохранённое</span></button>
