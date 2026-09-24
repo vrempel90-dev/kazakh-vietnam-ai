@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/all-charter-sources]
     paths:
-      - "scripts/diagnose-public-search.mjs"
+      - "scripts/diagnose-samo-get.mjs"
       - ".github/workflows/discover-b2b.yml"
 
 permissions:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,5 +21,4 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: node scripts/diagnose-public-search.mjs
+      - run: node scripts/diagnose-samo-get.mjs
