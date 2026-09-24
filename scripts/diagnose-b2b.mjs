@@ -45,3 +45,5 @@ for (const [id, url] of sources) {
   }
 }
 await browser.close();
+
+// trigger discovery
