@@ -343,9 +343,12 @@ function parseNeosCsv(csv, source, now) {
 
 function classifyB2BPage(html, finalUrl) {
   const text = decodeHtml(html).slice(0, 12000);
+  const publicSearch = /name=["']TOWNFROMINC["']/i.test(html)
+    && /name=["']TOWNTOINC["']/i.test(html)
+    && /name=["']CHECKIN["']/i.test(html);
   const login = /(?:\bвход\b|авторизац|log\s*on|sign\s*in|пароль|password)/iu.test(text) || /\/Account\/Login/i.test(finalUrl);
   const needsJs = /(?:включить javascript|turn on ["']?javascript|doesn.?t work properly without JavaScript)/iu.test(text);
-  return { login, needsJs };
+  return { publicSearch, login, needsJs };
 }
 
 async function syncTelegram(source, now) {
@@ -388,7 +391,10 @@ async function probeB2B(source) {
     const credentialsConfigured = Boolean(source.usernameEnv && source.passwordEnv && process.env[source.usernameEnv] && process.env[source.passwordEnv]);
     let status = "reachable";
     let reason = "Public landing page is reachable; fare extraction adapter still requires validated browser/network flow.";
-    if (page.login && !credentialsConfigured) {
+    if (page.publicSearch) {
+      status = "public_search_accessible";
+      reason = "Public ticket-search controls are available; fare-result extraction is being handled without agency credentials.";
+    } else if (page.login && !credentialsConfigured) {
       status = "credentials_required";
       reason = "Partner login is required before fare extraction.";
     } else if (page.login && credentialsConfigured) {
