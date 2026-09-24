@@ -7,7 +7,7 @@ type Screen = "home" | "search" | "favorites" | "notifications" | "profile" | "d
 type Trip = "all" | "RT" | "OW";
 type Origin = "all" | "Алматы" | "Астана";
 type Flight = { id: string; from: string; to: string; offset: number; price: number; trip: Exclude<Trip,"all">; hot: boolean; seats: string; airline?: string; source?: string; departureDate?: string; returnDate?: string; updatedAt?: string };
-type FlightFeed = { generatedAt?: string; flights?: Flight[] };
+type FlightFeed = { generatedAt?: string; mode?: string; flights?: Flight[] };
 type Section = { id: string; icon: string; title: string; subtitle: string; tone: string };
 const sections: Section[] = [
   { id: "all", icon: "✈️", title: "Все рейсы", subtitle: "Посмотреть актуальные предложения", tone: "blue" },
@@ -62,7 +62,7 @@ export default function Prototype() {
       const next = Array.isArray(payload.flights) ? payload.flights.filter((item): item is Flight => Boolean(item && item.id && item.from && item.to && Number.isFinite(item.price) && (item.trip === "OW" || item.trip === "RT"))) : [];
       if (!next.length) throw new Error("Flight feed is empty");
       setFlights(next);
-      setFeedMode("live");
+      setFeedMode(payload.mode === "demo" ? "demo" : "live");
       const generated = payload.generatedAt ? new Date(payload.generatedAt) : new Date();
       setLastUpdated(Number.isNaN(generated.getTime()) ? new Date() : generated);
     } catch {
