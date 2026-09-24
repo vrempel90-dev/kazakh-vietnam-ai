@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-09-25T00:00:00.000Z",
+  "mode": "demo",
+  "note": "Seed fallback only. Scheduled sync replaces this with public source data after merge.",
+  "sources": [],
+  "flights": [
+    {
+      "id": "ala-pqc",
+      "from": "Алматы",
+      "to": "Фукуок",
+      "offset": 8,
+      "price": 238000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Прямой рейс"
+    },
+    {
+      "id": "nqz-bkk",
+      "from": "Астана",
+      "to": "Бангкок",
+      "offset": 12,
+      "price": 249000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Чартер"
+    },
+    {
+      "id": "ala-nha",
+      "from": "Алматы",
+      "to": "Нячанг",
+      "offset": 17,
+      "price": 295000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "Туда и обратно"
+    },
+    {
+      "id": "nqz-pqc",
+      "from": "Астана",
+      "to": "Фукуок",
+      "offset": 24,
+      "price": 319000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "Туда и обратно"
+    },
+    {
+      "id": "ala-dad",
+      "from": "Алматы",
+      "to": "Дананг",
+      "offset": 29,
+      "price": 274000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "Чартер"
+    }
+  ]
+}
