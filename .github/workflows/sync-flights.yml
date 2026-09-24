@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "*/15 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/sync-all-sources.mjs"
+      - "scripts/source-registry.mjs"
+      - ".github/workflows/sync-flights.yml"
 
 permissions:
   contents: write
@@ -16,6 +22,37 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      NEOS_SOURCE_CURRENCY: ${{ vars.NEOS_SOURCE_CURRENCY }}
+      MARKUP_PERCENT_DEFAULT: ${{ vars.MARKUP_PERCENT_DEFAULT }}
+      MARKUP_NEOS_PERCENT: ${{ vars.MARKUP_NEOS_PERCENT }}
+      FX_USD_KZT: ${{ vars.FX_USD_KZT }}
+      FX_EUR_KZT: ${{ vars.FX_EUR_KZT }}
+      SALE_PRICE_ROUNDING: ${{ vars.SALE_PRICE_ROUNDING }}
+      FUN_SUN_USERNAME: ${{ secrets.FUN_SUN_USERNAME }}
+      FUN_SUN_PASSWORD: ${{ secrets.FUN_SUN_PASSWORD }}
+      KAZUNION_USERNAME: ${{ secrets.KAZUNION_USERNAME }}
+      KAZUNION_PASSWORD: ${{ secrets.KAZUNION_PASSWORD }}
+      KOMPAS_USERNAME: ${{ secrets.KOMPAS_USERNAME }}
+      KOMPAS_PASSWORD: ${{ secrets.KOMPAS_PASSWORD }}
+      ANEX_USERNAME: ${{ secrets.ANEX_USERNAME }}
+      ANEX_PASSWORD: ${{ secrets.ANEX_PASSWORD }}
+      SELFIE_USERNAME: ${{ secrets.SELFIE_USERNAME }}
+      SELFIE_PASSWORD: ${{ secrets.SELFIE_PASSWORD }}
+      JOINUP_USERNAME: ${{ secrets.JOINUP_USERNAME }}
+      JOINUP_PASSWORD: ${{ secrets.JOINUP_PASSWORD }}
+      PEGAS_USERNAME: ${{ secrets.PEGAS_USERNAME }}
+      PEGAS_PASSWORD: ${{ secrets.PEGAS_PASSWORD }}
+      CRYSTAL_BAY_USERNAME: ${{ secrets.CRYSTAL_BAY_USERNAME }}
+      CRYSTAL_BAY_PASSWORD: ${{ secrets.CRYSTAL_BAY_PASSWORD }}
+      ABK_USERNAME: ${{ secrets.ABK_USERNAME }}
+      ABK_PASSWORD: ${{ secrets.ABK_PASSWORD }}
+      SPACE_USERNAME: ${{ secrets.SPACE_USERNAME }}
+      SPACE_PASSWORD: ${{ secrets.SPACE_PASSWORD }}
+      VIETRA_USERNAME: ${{ secrets.VIETRA_USERNAME }}
+      VIETRA_PASSWORD: ${{ secrets.VIETRA_PASSWORD }}
+      SANAT_USERNAME: ${{ secrets.SANAT_USERNAME }}
+      SANAT_PASSWORD: ${{ secrets.SANAT_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,14 +62,14 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Sync public flight sources
+      - name: Sync charter sources
         run: npm run sync:flights
 
-      - name: Commit updated feed
+      - name: Commit updated customer feed
         shell: bash
         run: |
           if git diff --quiet -- public/flights.json; then
-            echo "No flight changes"
+            echo "No customer-visible flight changes"
             exit 0
           fi
           git config user.name "charter-flight-sync"
