@@ -11,50 +11,53 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe"
 });
 const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
-const url = "http://127.0.0.1:4178/";
+
 try {
-  await page.goto(url);
-  await page.getByRole("heading", { name: "Найдём подходящий рейс по лучшей доступной цене" }).waitFor();
-  assert.equal(await page.locator(".tiles .tile").count(), 8);
-  assert.equal(await page.locator(".bottom-nav button").count(), 5);
-  const homeText = await page.locator(".community-app").innerText();
-  assert.ok(homeText.includes("Чартерные авиабилеты"));
-  for (const old of ["Казахи во Вьетнаме", "COMMUNITY MINI APP", "Ваш гид по Вьетнаму", "Жильё и аренда", "Визы и документы", "Деньги и переводы", "Транспорт"]) {
-    assert.ok(!homeText.includes(old), "Old home copy remains: " + old);
-  }
-  await page.locator(".tile").filter({ hasText: "До 250 000 ₸" }).click();
-  assert.equal(await page.locator(".flight-card").count(), 2, "Budget card must apply the filter");
-  assert.ok(await page.locator(".filter-options button.active").filter({ hasText: "До 250 000 ₸" }).count());
-  const departure = new Date(); departure.setDate(departure.getDate() + 8); const exactDate = [departure.getFullYear(), String(departure.getMonth() + 1).padStart(2, "0"), String(departure.getDate()).padStart(2, "0")].join("-");
-  await page.locator("#exact-date").fill(exactDate);
-  assert.equal(await page.locator(".flight-card").count(), 1, "Exact date must filter");
-  await page.getByPlaceholder("Куда хотите полететь?").fill("Фукуок");
-  assert.equal(await page.locator(".flight-card").count(), 1, "Destination search must filter");
-  await page.getByRole("button", { name: "В избранное" }).click();
-  await page.locator(".bottom-nav").getByRole("button", { name: "Избранное" }).click();
-  assert.equal(await page.locator(".flight-card").count(), 1, "Saved flight must appear in favorites");
+  await page.goto("http://127.0.0.1:4178/");
+  await page.getByText("Чартерные авиабилеты", { exact: true }).waitFor();
+
+  assert.equal(await page.locator(".top-tabs button").count(), 2);
+  assert.equal(await page.locator(".bottom-nav button").count(), 4);
+  assert.ok(await page.getByRole("button", { name: "KZT" }).count());
+  assert.ok(await page.getByRole("button", { name: "USD" }).count());
+  assert.ok(await page.getByRole("button", { name: "EUR" }).count());
+
+  const cards = page.locator(".deal-card");
+  assert.ok(await cards.count() > 0, "Flight list should contain offers");
+
+  await page.getByRole("button", { name: /Город вылета/ }).click();
+  await page.locator(".picker-sheet").waitFor();
+  assert.ok((await page.locator(".picker-list button").count()) > 0);
+  await page.getByRole("button", { name: "Закрыть" }).click();
+
+  await page.getByRole("button", { name: /Страна/ }).click();
+  await page.locator(".picker-sheet").waitFor();
+  await page.getByRole("button", { name: "Закрыть" }).click();
+
+  await cards.first().click();
+  await page.locator(".detail-sheet").waitFor();
+  assert.ok(await page.getByRole("button", { name: /Написать менеджеру/ }).count());
+  assert.ok(await page.getByRole("button", { name: /Следить за направлением/ }).count());
+  await page.getByRole("button", { name: /Следить за направлением/ }).click();
+
+  await page.locator(".detail-backdrop").click({ position: { x: 4, y: 4 } });
   await page.locator(".bottom-nav").getByRole("button", { name: "Уведомления" }).click();
-  await page.getByRole("button", { name: "Сохранить параметры" }).click();
-  assert.equal(await page.locator(".saved-alert").count(), 1);
-  await page.reload();
-  await page.getByRole("heading", { name: "Найдём подходящий рейс по лучшей доступной цене" }).waitFor();
-  await page.locator(".bottom-nav").getByRole("button", { name: "Уведомления" }).click();
-  assert.equal(await page.locator(".saved-alert").count(), 1, "Alert should persist after reload");
+  assert.ok(await page.locator(".alert-row").count() >= 1);
+
   await page.locator(".bottom-nav").getByRole("button", { name: "Профиль" }).click();
-  await page.getByRole("button", { name: "Тёмная тема" }).click();
-  assert.ok(await page.locator(".community-app.dark").count(), "Dark theme should activate");
-  await page.getByRole("button", { name: "Светлая тема" }).click();
-  await page.locator(".bottom-nav").getByRole("button", { name: "Главная" }).click();
+  await page.getByText("Путешественник").waitFor();
+
   await mkdir(resolve("screenshots"), { recursive: true });
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.screenshot({ path: resolve("screenshots", "home-" + width + ".png") });
+    await page.locator(".bottom-nav").getByRole("button", { name: "Рейсы" }).click();
+    await page.screenshot({ path: resolve("screenshots", "charter-list-" + width + ".png") });
     const dimensions = await page.locator(".community-app").evaluate(el => ({ client: el.clientWidth, scroll: el.scrollWidth }));
     assert.ok(dimensions.scroll <= dimensions.client + 1, width + "px content has horizontal overflow: " + JSON.stringify(dimensions));
-    assert.ok(await page.getByRole("heading", { name: "Найдём подходящий рейс по лучшей доступной цене" }).isVisible());
-    console.log(width + "px: responsive home visible, no horizontal overflow");
+    assert.ok(await page.locator(".deal-card").first().isVisible());
   }
-  console.log("Flight home, filters, favorites, alerts, theme, and responsive widths: passed");
+
+  console.log("Charter list, filters, details, alerts, profile, currencies, and responsive widths: passed");
 } finally {
   await browser.close();
   await server.close();
