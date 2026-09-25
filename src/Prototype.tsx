@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   BellIcon,
   BookmarkIcon,
@@ -277,6 +277,13 @@ export default function Prototype() {
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingSaving, setPricingSaving] = useState(false);
   const [adminSyncRunning, setAdminSyncRunning] = useState(false);
+  const previewMode = new URLSearchParams(window.location.search).get("preview") === "1";
+
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle("charter-live-runtime", !previewMode);
+    return () => document.documentElement.classList.remove("charter-live-runtime");
+  }, [previewMode]);
+
 
   const refreshFlights = useCallback(async () => {
     try {
@@ -571,7 +578,7 @@ export default function Prototype() {
   };
 
   return (
-    <div className="community-app charter-app">
+    <div className={"community-app charter-app" + (previewMode ? " preview-mode" : " live-mode")}>
       <header className="charter-header">
         <div className="brand-logo"><PaperPlaneIcon /></div>
         <div className="brand-title">
