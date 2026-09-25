@@ -418,7 +418,7 @@ export default function Prototype() {
     const dynamic = knownCountries.filter(item => names.has(item.name));
     if (names.has("Другое")) dynamic.push({ name: "Другое", flag: "🌍" });
     return [{ name: "Все", flag: "✓" }, ...dynamic];
-  }, [flights]);
+  }, [activeFlights]);
 
   const filtered = useMemo(() => {
     const mine = new Set(favorites);
