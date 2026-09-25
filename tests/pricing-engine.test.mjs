@@ -1,5 +1,36 @@
 import assert from "node:assert/strict";
-import { calculateSalePrice, normalizePricingConfig, selectPricingRule } from "../scripts/pricing-engine.mjs";
+import { DEFAULT_PRICING_CONFIG, calculateSalePrice, normalizePricingConfig, selectPricingRule } from "../scripts/pricing-engine.mjs";
+
+assert.equal(DEFAULT_PRICING_CONFIG.rules.find(rule => rule.scope.trip === "OW")?.enabled, true);
+assert.equal(DEFAULT_PRICING_CONFIG.rules.find(rule => rule.scope.trip === "RT")?.enabled, true);
+assert.equal(
+  calculateSalePrice({
+    sourcePrice: 100000,
+    currency: "KZT",
+    sourceId: "supplier",
+    from: "Алматы",
+    to: "Нячанг",
+    trip: "OW",
+    config: DEFAULT_PRICING_CONFIG,
+    rates: {},
+    roundingStep: 1000
+  })?.salePrice,
+  110000
+);
+assert.equal(
+  calculateSalePrice({
+    sourcePrice: 100000,
+    currency: "KZT",
+    sourceId: "supplier",
+    from: "Алматы",
+    to: "Нячанг",
+    trip: "RT",
+    config: DEFAULT_PRICING_CONFIG,
+    rates: {},
+    roundingStep: 1000
+  })?.salePrice,
+  120000
+);
 
 const config = normalizePricingConfig({
   rules: [
