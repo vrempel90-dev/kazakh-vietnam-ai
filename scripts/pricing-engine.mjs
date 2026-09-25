@@ -8,7 +8,7 @@ export const DEFAULT_PRICING_CONFIG = {
     {
       id: "template-ow",
       name: "OW +10 000 ₸",
-      enabled: false,
+      enabled: true,
       priority: 0,
       scope: { trip: "OW" },
       calculation: { type: "fixed_kzt", value: 10000 }
@@ -16,7 +16,7 @@ export const DEFAULT_PRICING_CONFIG = {
     {
       id: "template-rt",
       name: "RT +20 000 ₸",
-      enabled: false,
+      enabled: true,
       priority: 0,
       scope: { trip: "RT" },
       calculation: { type: "fixed_kzt", value: 20000 }
