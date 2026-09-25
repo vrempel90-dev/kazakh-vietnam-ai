@@ -34,6 +34,9 @@ jobs:
       - name: Telegram integration tests
         run: npm run test:telegram
 
+      - name: Admin authentication tests
+        run: npm run test:admin-auth
+
       - name: Typecheck
         run: npm run typecheck
 
