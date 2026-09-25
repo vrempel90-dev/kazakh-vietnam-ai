@@ -26,6 +26,27 @@ type Currency = "KZT" | "USD" | "EUR";
 type Picker = "city" | "country" | null;
 type Trip = "OW" | "RT";
 
+type TelegramWebApp = {
+  ready?: () => void;
+  expand?: () => void;
+  setHeaderColor?: (color: string) => void;
+  setBackgroundColor?: (color: string) => void;
+  disableVerticalSwipes?: () => void;
+  initDataUnsafe?: {
+    user?: {
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    };
+  };
+};
+
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: TelegramWebApp };
+  }
+}
+
 type Flight = {
   id: string;
   from: string;
@@ -281,6 +302,16 @@ export default function Prototype() {
     const timer = window.setInterval(() => void refreshFlights(), 60_000);
     return () => window.clearInterval(timer);
   }, [refreshFlights]);
+
+  useEffect(() => {
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) return;
+    webApp.ready?.();
+    webApp.expand?.();
+    webApp.setHeaderColor?.("#1372d4");
+    webApp.setBackgroundColor?.("#eef5fb");
+    webApp.disableVerticalSwipes?.();
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick(Date.now()), 60_000);

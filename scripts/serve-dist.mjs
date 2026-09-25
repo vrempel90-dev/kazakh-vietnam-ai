@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { timingSafeEqual } from "node:crypto";
 import { loadPricingConfig, savePricingConfig } from "./pricing-engine.mjs";
+import { createTelegramRuntime } from "./telegram-bot.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
@@ -13,6 +14,20 @@ const port = Number(process.env.PORT || 3000);
 const pricingPath = process.env.PRICING_RULES_PATH || "/data/pricing-rules.json";
 const adminToken = String(process.env.ADMIN_PRICING_TOKEN || "");
 const syncIntervalMinutes = Math.max(5, Number(process.env.SYNC_INTERVAL_MINUTES || 15));
+
+const publicAppUrl = String(
+  process.env.PUBLIC_APP_URL
+  || process.env.RAILWAY_SERVICE_CHARTER_APP_URL
+  || process.env.RAILWAY_PUBLIC_DOMAIN
+  || ""
+).trim();
+
+const telegram = createTelegramRuntime({
+  token: process.env.TELEGRAM_BOT_TOKEN,
+  publicAppUrl,
+  webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
+  managerPhone: process.env.VITE_MANAGER_WHATSAPP || "77007772414"
+});
 
 const syncState = {
   running: false,
@@ -123,7 +138,35 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
 
   if (url.pathname === "/health") {
-    sendJson(res, 200, { ok: true, sync: syncState });
+    sendJson(res, 200, {
+      ok: true,
+      sync: syncState,
+      telegram: {
+        enabled: telegram.status.enabled,
+        configured: telegram.status.configured,
+        username: telegram.status.username,
+        lastConfiguredAt: telegram.status.lastConfiguredAt,
+        lastError: telegram.status.lastError
+      }
+    });
+    return;
+  }
+
+  if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
+    const secretHeader = req.headers["x-telegram-bot-api-secret-token"];
+    if (!telegram.isWebhookAuthorized(secretHeader)) {
+      sendJson(res, 401, { error: "unauthorized" });
+      return;
+    }
+    try {
+      const update = await readJsonBody(req);
+      sendJson(res, 200, { ok: true });
+      void telegram.handleUpdate(update).catch(error => {
+        console.error("Telegram update failed:", error instanceof Error ? error.message : String(error));
+      });
+    } catch (error) {
+      sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
     return;
   }
 
@@ -181,6 +224,17 @@ const server = createServer(async (req, res) => {
 server.listen(port, "0.0.0.0", () => {
   console.log(`Charter app listening on 0.0.0.0:${port}`);
   if (!adminToken) console.warn("ADMIN_PRICING_TOKEN is not configured; pricing admin API is disabled.");
+
+  if (telegram.status.enabled) {
+    setTimeout(() => {
+      void telegram.configure()
+        .then(status => console.log("Telegram configured", { username: status.username }))
+        .catch(error => console.error("Telegram configuration failed:", error instanceof Error ? error.message : String(error)));
+    }, 1500);
+  } else {
+    console.warn("Telegram bot is not configured yet; set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET.");
+  }
+
   setTimeout(() => runFlightSync("startup"), 2500);
   setInterval(() => runFlightSync("scheduled"), syncIntervalMinutes * 60 * 1000);
 });

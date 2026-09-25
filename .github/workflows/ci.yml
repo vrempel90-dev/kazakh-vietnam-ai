@@ -31,6 +31,9 @@ jobs:
       - name: Pricing engine tests
         run: npm run test:pricing
 
+      - name: Telegram integration tests
+        run: npm run test:telegram
+
       - name: Typecheck
         run: npm run typecheck
 
