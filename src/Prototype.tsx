@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
+  ArrowLeftIcon,
   BellIcon,
   BookmarkIcon,
   CalendarIcon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   Cross2Icon,
+  DotsVerticalIcon,
   GlobeIcon,
   HeartIcon,
   HomeIcon,
@@ -14,13 +15,13 @@ import {
   MixerHorizontalIcon,
   PaperPlaneIcon,
   PersonIcon,
-  SewingPinIcon,
   Share1Icon,
 } from "@radix-ui/react-icons";
 import { MobileScroll } from "./mobile";
 import "./prototype.css";
+import "./reference-ui.css";
 
-type Screen = "flights" | "notifications" | "profile" | "admin";
+type Screen = "flights" | "notifications" | "booking" | "profile" | "admin";
 type Tab = "all" | "mine";
 type Currency = "KZT" | "USD" | "EUR";
 type Picker = "city" | "country" | null;
@@ -254,6 +255,20 @@ const readList = (key: string): string[] => {
   }
 };
 
+function CharterScroll({ preview, children, screen }: { preview: boolean; children: ReactNode; screen: Screen }) {
+  return preview
+    ? <MobileScroll key={screen} className="charter-scroll">{children}</MobileScroll>
+    : <div key={screen} className="charter-scroll">{children}</div>;
+}
+
+const flightNights = (flight: Flight) => {
+  if (flight.trip !== "RT" || !flight.returnDate) return flight.trip === "OW" ? "В одну сторону" : "Туда и обратно";
+  const days = Math.round((new Date(flight.returnDate + "T12:00:00").getTime() - new Date(flightIso(flight) + "T12:00:00").getTime()) / 86400000);
+  return days > 0 ? `${days} ночей` : "Туда и обратно";
+};
+
+const flightRoute = (flight: Flight) => `${flight.from} → ${flight.to}${flight.trip === "RT" ? ` → ${flight.from}` : ""}`;
+
 export default function Prototype() {
   const [screen, setScreen] = useState<Screen>(() => new URLSearchParams(window.location.search).get("admin") === "1" ? "admin" : "flights");
   const [tab, setTab] = useState<Tab>("all");
@@ -263,6 +278,13 @@ export default function Prototype() {
   const [country, setCountry] = useState("Все");
   const [pickerQuery, setPickerQuery] = useState("");
   const [selected, setSelected] = useState<Flight | null>(null);
+  const [visibleCount, setVisibleCount] = useState(3);
+  const [passengers, setPassengers] = useState(2);
+  const [adults, setAdults] = useState(2);
+  const [children, setChildren] = useState(0);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [applicationPrepared, setApplicationPrepared] = useState(false);
   const [flights, setFlights] = useState<Flight[]>(fallbackFlights);
   const [favorites, setFavorites] = useState<string[]>(() => readList("charter-favorites"));
   const [alerts, setAlerts] = useState<string[]>(() => readList("charter-route-alerts"));
@@ -278,12 +300,6 @@ export default function Prototype() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [adminSyncRunning, setAdminSyncRunning] = useState(false);
   const previewMode = new URLSearchParams(window.location.search).get("preview") === "1";
-
-  useLayoutEffect(() => {
-    document.documentElement.classList.toggle("charter-live-runtime", !previewMode);
-    return () => document.documentElement.classList.remove("charter-live-runtime");
-  }, [previewMode]);
-
 
   const refreshFlights = useCallback(async () => {
     try {
@@ -315,7 +331,7 @@ export default function Prototype() {
     if (!webApp) return;
     webApp.ready?.();
     webApp.expand?.();
-    webApp.setHeaderColor?.("#1372d4");
+    webApp.setHeaderColor?.("#3381b8");
     webApp.setBackgroundColor?.("#eef5fb");
     webApp.disableVerticalSwipes?.();
   }, []);
@@ -328,9 +344,10 @@ export default function Prototype() {
   useEffect(() => {
     if (selected && !isOfferActive(selected, nowTick)) {
       setSelected(null);
+      if (screen === "booking") setScreen("flights");
       setToast("Предложение уже ушло из ленты");
     }
-  }, [selected, nowTick]);
+  }, [selected, nowTick, screen]);
 
   useEffect(() => localStorage.setItem("charter-favorites", JSON.stringify(favorites)), [favorites]);
   useEffect(() => localStorage.setItem("charter-route-alerts", JSON.stringify(alerts)), [alerts]);
@@ -502,9 +519,39 @@ export default function Prototype() {
       + returnDate + airline + ". Места ещё есть?";
   };
 
-  const openManager = (flight: Flight) => {
+  const openManager = (flight: Flight, message = managerMessage(flight)) => {
     const phone = String(import.meta.env.VITE_MANAGER_WHATSAPP || DEFAULT_MANAGER_WHATSAPP).replace(/\D/g, "");
-    window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(managerMessage(flight)), "_blank", "noopener,noreferrer");
+    window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank", "noopener,noreferrer");
+  };
+
+  const chooseFlight = (flight: Flight) => {
+    setSelected(flight);
+    setApplicationPrepared(false);
+    setScreen("booking");
+  };
+
+  const submitApplication = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selected || !customerName.trim() || !/^\+?\d{10,15}$/.test(customerPhone.replace(/[\s()-]/g, ""))) {
+      setToast("Проверьте имя и номер телефона");
+      return;
+    }
+    const message = [
+      "Новая заявка ✈️",
+      "",
+      "Направление: " + flightRoute(selected),
+      "Дата: " + flightDate(selected),
+      "Ночей: " + flightNights(selected),
+      "Авиакомпания: " + (selected.airline || "Уточняется"),
+      "Цена: " + new Intl.NumberFormat("ru-RU").format(selected.price) + " ₸",
+      "Пассажиры: " + passengers,
+      "Взрослые: " + adults,
+      "Дети: " + children,
+      "Имя: " + customerName.trim(),
+      "Телефон: " + customerPhone.trim(),
+    ].join("\n");
+    openManager(selected, message);
+    setApplicationPrepared(true);
   };
 
   const shareFlight = async (flight: Flight) => {
@@ -542,63 +589,68 @@ export default function Prototype() {
   const FlightCard = ({ flight }: { flight: Flight }) => {
     const destination = countryFor(flight.to);
     return (
-      <article
-        className="deal-card"
-        role="button"
-        tabIndex={0}
-        onClick={() => setSelected(flight)}
-        onKeyDown={event => { if (event.key === "Enter" || event.key === " ") setSelected(flight); }}
-      >
-        <div className="deal-main">
-          <span className="country-flag" aria-hidden="true">{destination.flag}</span>
-          <div className="deal-copy">
-            <strong>{flight.from} → {flight.to}</strong>
-            <small>{destination.name}</small>
-            <span><CalendarIcon /> {flightDate(flight)}</span>
-            <span><PaperPlaneIcon /> {flight.trip === "OW" ? "В одну сторону" : "Туда и обратно"}</span>
+      <article className="deal-card">
+        {destination.name === "Вьетнам"
+          ? <img className="deal-photo" src="/assets/destinations/vietnam-beach.webp" alt="Побережье Вьетнама" />
+          : <span className="deal-photo destination-placeholder" aria-hidden="true">{destination.flag}</span>}
+        <div className="deal-copy">
+          <strong>{flightRoute(flight)}</strong>
+          <span><PaperPlaneIcon /> {flight.airline || "Авиакомпания уточняется"}</span>
+          <span><CalendarIcon /> {flightDate(flight)} | {flightNights(flight)}</span>
+          <div className="deal-bottom">
+            <strong className="price">{displayPrice(flight.price)}</strong>
+            <button className="select-flight" onClick={() => chooseFlight(flight)}>Выбрать</button>
           </div>
-          <button
-            type="button"
-            className={"favorite" + (favorites.includes(flight.id) ? " active" : "")}
-            aria-label={favorites.includes(flight.id) ? "Убрать из избранного" : "В избранное"}
-            onClick={event => {
-              event.stopPropagation();
-              toggleFavorite(flight.id);
-            }}
-          >
-            <HeartIcon />
-          </button>
         </div>
-        <div className="deal-bottom">
-          <span className={"urgency" + (flight.hot ? " hot" : "")}>{urgency(flight)}</span>
-          <span className="price"><strong>{displayPrice(flight.price)}</strong><small>на человека</small></span>
-        </div>
+        <button
+          type="button"
+          className={"favorite" + (favorites.includes(flight.id) ? " active" : "")}
+          aria-label={favorites.includes(flight.id) ? "Убрать из избранного" : "В избранное"}
+          onClick={() => toggleFavorite(flight.id)}
+        ><HeartIcon /></button>
       </article>
     );
   };
 
+  const notificationFlight = activeFlights.find(flight => alerts.includes(routeKey(flight)));
+  const suggestedFlight = notificationFlight || filtered[0] || activeFlights[0];
+
   return (
-    <div className={"community-app charter-app" + (previewMode ? " preview-mode" : " live-mode")}>
+    <div className={"community-app charter-app" + (previewMode ? " preview-mode" : " live-mode") + (screen === "admin" ? " admin-view" : "")}>
       <header className="charter-header">
-        <div className="brand-logo"><PaperPlaneIcon /></div>
-        <div className="brand-title">
-          <strong>Чартерные авиабилеты</strong>
-          <small>{feedMode === "live" ? "актуальные предложения" : "поиск лучших рейсов"}</small>
-        </div>
-        <button className="header-profile" aria-label="Профиль" onClick={() => setScreen("profile")}><PersonIcon /></button>
+        {screen === "admin" ? <>
+          <div className="brand-logo"><PaperPlaneIcon /></div>
+          <div className="brand-title"><strong>Чартерные авиабилеты</strong><small>{feedMode === "live" ? "актуальные предложения" : "поиск лучших рейсов"}</small></div>
+          <button className="header-profile" aria-label="Профиль" onClick={() => setScreen("profile")}><PersonIcon /></button>
+        </> : <>
+          <button className="header-back" aria-label="Назад" onClick={() => {
+            if (screen === "booking") { setSelected(null); setScreen("flights"); }
+            else if (screen !== "flights") setScreen("flights");
+            else if (window.history.length > 1) window.history.back();
+          }}><ArrowLeftIcon /></button>
+          <div className="brand-logo"><PaperPlaneIcon /></div>
+          <div className="brand-title"><strong>Чартерные авиабилеты</strong><small>бот</small></div>
+          <button className="header-profile" aria-label="Профиль" onClick={() => setScreen("profile")}><DotsVerticalIcon /></button>
+        </>}
       </header>
 
-      <MobileScroll key={screen} className="charter-scroll">
+      <CharterScroll key={screen} screen={screen} preview={previewMode}>
         {screen === "flights" && (
           <main className="charter-page">
-            <div className="top-tabs" role="tablist">
-              <button className={tab === "all" ? "active" : ""} onClick={() => setTab("all")}>Все вылеты</button>
-              <button className={tab === "mine" ? "active" : ""} onClick={() => setTab("mine")}><HeartIcon /> Мои направления</button>
+            <section className="chat-message welcome-message">
+              <strong>Привет! 👋</strong>
+              <span>Я помогу найти лучшие<br />чартерные авиабилеты.</span>
+              <span>Куда вы хотите полететь?</span>
+            </section>
+            <div className="search-bubble">
+              <span>{country === "Все" ? "Хочу найти чартерные рейсы" : "Хочу в " + country}</span>
+              <span>{city === "Все" ? "из любого города" : "из " + city}</span>
+              <span>с актуальными ценами</span>
             </div>
 
-            <div className="toolbar">
+            <div className="toolbar search-toolbar">
               <button className={city !== "Все" ? "filter active" : "filter"} onClick={() => setPicker("city")}>
-                <PaperPlaneIcon /><span>{city === "Все" ? "Город вылета" : city}</span><ChevronDownIcon />
+                <PaperPlaneIcon /><span>{city === "Все" ? "Город" : city}</span><ChevronDownIcon />
               </button>
               <button className={country !== "Все" ? "filter active" : "filter"} onClick={() => setPicker("country")}>
                 <GlobeIcon /><span>{country === "Все" ? "Страна" : country}</span><ChevronDownIcon />
@@ -624,8 +676,13 @@ export default function Prototype() {
               {lastUpdated && <small>{lastUpdated.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</small>}
             </div>
 
+            <div className="chat-message found-message"><span>Найдено {filtered.length} подходящих вариантов</span><span aria-hidden="true">✈️</span></div>
+
             {filtered.length ? (
-              <div className="deal-list">{filtered.map(flight => <FlightCard key={flight.id} flight={flight} />)}</div>
+              <>
+                <div className="deal-list">{filtered.slice(0, visibleCount).map(flight => <FlightCard key={flight.id} flight={flight} />)}</div>
+                {visibleCount < filtered.length && <button className="show-more" onClick={() => setVisibleCount(count => count + 5)}>Показать ещё варианты</button>}
+              </>
             ) : (
               <section className="empty-state">
                 <MagnifyingGlassIcon />
@@ -645,15 +702,70 @@ export default function Prototype() {
         )}
 
         {screen === "notifications" && (
-          <main className="charter-page">
-            <section className="screen-heading">
-              <span className="heading-icon"><BellIcon /></span>
-              <div><strong>Уведомления</strong><p>Следим за выбранными направлениями и новыми рейсами.</p></div>
+          <main className="charter-page notifications-page">
+            <section className="chat-message notice-message">
+              <strong>🔔 {notificationFlight ? "Есть подходящий вариант по вашему запросу!" : "Персональные уведомления"}</strong>
+              {!notificationFlight && <span>Выберите направление, чтобы следить за новыми рейсами.</span>}
             </section>
-            {alerts.length ? alerts.map(item => {
+            {suggestedFlight && <article className="notice-offer">
+              <div className="notice-image">
+                {countryFor(suggestedFlight.to).name === "Вьетнам"
+                  ? <img src="/assets/destinations/vietnam-beach.webp" alt="Побережье Вьетнама" />
+                  : <span aria-hidden="true">{countryFor(suggestedFlight.to).flag}</span>}
+                <span className="notice-label">{notificationFlight ? "Подходит вам" : "Предложение"}</span>
+              </div>
+              <div className="notice-body">
+                <strong>{flightRoute(suggestedFlight)}</strong>
+                <span><PaperPlaneIcon /> {suggestedFlight.airline || "Авиакомпания уточняется"}</span>
+                <span><CalendarIcon /> {flightDate(suggestedFlight)} | {flightNights(suggestedFlight)}</span>
+                <b>{displayPrice(suggestedFlight.price)}</b>
+                <button className="green-button" onClick={() => chooseFlight(suggestedFlight)}>Посмотреть</button>
+                {notificationFlight && <div className="notice-matches">
+                  <strong>☑ Соответствует вашим параметрам:</strong>
+                  <span><CheckIcon /> Вылет из {suggestedFlight.from}</span>
+                  <span><CheckIcon /> Дата: {flightDate(suggestedFlight)}</span>
+                  <span><CheckIcon /> Цена: {displayPrice(suggestedFlight.price)}</span>
+                </div>}
+              </div>
+            </article>}
+            <section className="chat-message subscription-message">
+              <span>Хотите получать такие уведомления автоматически?</span>
+              {suggestedFlight && <button onClick={() => toggleAlert(suggestedFlight)}>{alerts.includes(routeKey(suggestedFlight)) ? "Отключить подписку" : "Настроить подписку"}</button>}
+            </section>
+            {alerts.length > 0 && <h2 className="subscription-heading">Отслеживаемые направления</h2>}
+            {alerts.map(item => {
               const [from, to] = item.split("→");
               return <div className="alert-row" key={item}><BellIcon /><div><strong>{from} → {to}</strong><small>Новые предложения по направлению</small></div><button onClick={() => setAlerts(current => current.filter(value => value !== item))}>×</button></div>;
-            }) : <section className="empty-state"><BellIcon /><strong>Уведомлений пока нет</strong><p>Откройте рейс и включите слежение за направлением.</p><button onClick={() => setScreen("flights")}>Выбрать рейс</button></section>}
+            })}
+          </main>
+        )}
+
+        {screen === "booking" && selected && (
+          <main className="charter-page booking-page">
+            <article className="booking-flight">
+              {countryFor(selected.to).name === "Вьетнам"
+                ? <img src="/assets/destinations/vietnam-beach.webp" alt="Побережье Вьетнама" />
+                : <span className="destination-placeholder" aria-hidden="true">{countryFor(selected.to).flag}</span>}
+              <div><strong>{flightRoute(selected)}</strong><span><PaperPlaneIcon /> {selected.airline || "Авиакомпания уточняется"}</span><span><CalendarIcon /> {flightDate(selected)} | {flightNights(selected)}</span><b>{displayPrice(selected.price)}</b></div>
+            </article>
+            <div className="booking-offer-meta">Опубликовано {publishedLabel(selected)} · {urgency(selected)} · доступно ещё {expiryLabel(selected, nowTick)}</div>
+            <section className="chat-message booking-intro"><strong>Отличный выбор! ✈️</strong><span>Заполните, пожалуйста, данные<br />для оформления заявки.</span></section>
+            <form className="booking-form" onSubmit={submitApplication}>
+              <label><span><PersonIcon />Количество пассажиров</span><select value={passengers} onChange={event => { const total = Number(event.target.value); const nextAdults = Math.min(adults, total); setPassengers(total); setAdults(nextAdults); setChildren(total - nextAdults); }}>{Array.from({ length: 8 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></label>
+              <label><span><PersonIcon />Взрослые</span><select value={adults} onChange={event => { const count = Number(event.target.value); setAdults(count); setChildren(passengers - count); }}>{Array.from({ length: passengers }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></label>
+              <label><span><PersonIcon />Дети</span><select value={children} onChange={event => { const count = Number(event.target.value); setChildren(count); setAdults(passengers - count); }}>{Array.from({ length: passengers }, (_, index) => <option key={index} value={index}>{index}</option>)}</select></label>
+              <label><span><PersonIcon />Ваше имя</span><input required autoComplete="name" value={customerName} onChange={event => setCustomerName(event.target.value)} placeholder="Как к вам обращаться" /></label>
+              <label><span>☎ Номер телефона</span><input required type="tel" autoComplete="tel" inputMode="tel" value={customerPhone} onChange={event => setCustomerPhone(event.target.value)} placeholder="+7 777 123 45 67" /></label>
+              <button className="green-button submit-button" type="submit">Отправить заявку</button>
+            </form>
+            {applicationPrepared && <div className="application-success"><strong>✅ Заявка подготовлена!</strong><span>Подтвердите отправку сообщения в WhatsApp. После этого менеджер свяжется с вами.</span></div>}
+            <div className="booking-actions">
+              <button onClick={() => toggleAlert(selected)}><BellIcon />{alerts.includes(routeKey(selected)) ? "Убрать уведомление" : "Следить за направлением"}</button>
+              <button onClick={() => toggleFavorite(selected.id)}><HeartIcon />{favorites.includes(selected.id) ? "В избранном" : "В избранное"}</button>
+              <button onClick={() => void shareFlight(selected)}><Share1Icon />Поделиться</button>
+            </div>
+            <p className="manager-contact">Менеджер компании: {MANAGER_PHONE_DISPLAY}</p>
+            <p className="revalidate-note">Перед оформлением менеджер повторно подтвердит цену и наличие.</p>
           </main>
         )}
 
@@ -779,10 +891,10 @@ export default function Prototype() {
             )}
           </main>
         )}
-      </MobileScroll>
+      </CharterScroll>
 
       {screen !== "admin" && <nav className="bottom-nav">
-        <button className={screen === "flights" ? "active" : ""} onClick={() => setScreen("flights")}><MixerHorizontalIcon /><span>Рейсы</span></button>
+        <button className={screen === "flights" && tab === "all" ? "active" : ""} onClick={() => { setTab("all"); setScreen("flights"); }}><MixerHorizontalIcon /><span>Рейсы</span></button>
         <button onClick={() => { setScreen("flights"); setTab("mine"); }} className={screen === "flights" && tab === "mine" ? "active" : ""}><BookmarkIcon /><span>Избранное</span></button>
         <button className={screen === "notifications" ? "active" : ""} onClick={() => setScreen("notifications")}><BellIcon /><span>Уведомления</span></button>
         <button className={screen === "profile" ? "active" : ""} onClick={() => setScreen("profile")}><PersonIcon /><span>Профиль</span></button>
@@ -802,37 +914,6 @@ export default function Prototype() {
                 return <button key={value} onClick={() => selectPickerItem(value)}><span>{flag}</span><strong>{value}</strong>{current && <CheckIcon />}</button>;
               })}
             </div>
-          </section>
-        </div>
-      )}
-
-      {selected && (
-        <div className="detail-backdrop" onClick={() => setSelected(null)}>
-          <section className="detail-sheet" onClick={event => event.stopPropagation()}>
-            <div className="sheet-handle" />
-            <div className="detail-head">
-              <div><small>{countryFor(selected.to).flag} {countryFor(selected.to).name}</small><h2>{selected.from} → {selected.to}</h2></div>
-              <button className="favorite large" aria-label="В избранное" onClick={() => toggleFavorite(selected.id)}><HeartIcon /></button>
-            </div>
-            <div className="detail-grid">
-              <div><span>Дата вылета</span><strong>{flightDate(selected)}, {urgency(selected)}</strong></div>
-              <div><span>Тип рейса</span><strong>{selected.trip === "OW" ? "В одну сторону" : "Туда и обратно"}</strong></div>
-              <div><span>Авиакомпания</span><strong>{selected.airline || "Уточняется"}</strong></div>
-              <div><span>Багаж / места</span><strong>{selected.seats || "Уточняется"}</strong></div>
-              <div className="price-row"><span>Цена</span><strong>{displayPrice(selected.price)}<small> на человека</small></strong></div>
-              <div><span>Опубликовано</span><strong>{publishedLabel(selected)}</strong></div>
-              <div className="expiry-row"><span>Уйдёт из ленты</span><strong>{expiryLabel(selected, nowTick)}</strong></div>
-            </div>
-            <button className="manager-btn" onClick={() => openManager(selected)}>
-              <span className="manager-brand"><PaperPlaneIcon /></span>
-              <span className="manager-copy"><strong>Написать в WhatsApp</strong><small>{MANAGER_PHONE_DISPLAY} · менеджер компании</small></span>
-              <ChevronRightIcon />
-            </button>
-            <div className="detail-actions">
-              <button onClick={() => toggleAlert(selected)}><BellIcon />{alerts.includes(routeKey(selected)) ? "Убрать уведомление" : "Следить за направлением"}</button>
-              <button onClick={() => void shareFlight(selected)}><Share1Icon /> Поделиться</button>
-            </div>
-            <p className="revalidate-note">Перед оформлением менеджер повторно подтвердит цену и наличие.</p>
           </section>
         </div>
       )}
