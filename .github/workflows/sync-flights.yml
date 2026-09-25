@@ -2,14 +2,6 @@ name: Sync charter flights
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/15 * * * *"
-  push:
-    branches: [main]
-    paths:
-      - "scripts/sync-all-sources.mjs"
-      - "scripts/source-registry.mjs"
-      - ".github/workflows/sync-flights.yml"
 
 permissions:
   contents: write
@@ -24,8 +16,6 @@ jobs:
     timeout-minutes: 10
     env:
       NEOS_SOURCE_CURRENCY: ${{ vars.NEOS_SOURCE_CURRENCY }}
-      MARKUP_PERCENT_DEFAULT: ${{ vars.MARKUP_PERCENT_DEFAULT }}
-      MARKUP_NEOS_PERCENT: ${{ vars.MARKUP_NEOS_PERCENT }}
       FX_USD_KZT: ${{ vars.FX_USD_KZT }}
       FX_EUR_KZT: ${{ vars.FX_EUR_KZT }}
       SALE_PRICE_ROUNDING: ${{ vars.SALE_PRICE_ROUNDING }}
