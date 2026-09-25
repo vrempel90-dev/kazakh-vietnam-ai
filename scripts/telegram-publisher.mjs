@@ -20,6 +20,13 @@ export function shouldSkipParsedTelegramMessage(text) {
   return String(text || "").includes(AUTO_MARKER);
 }
 
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function fmtDate(value) {
   if (!value) return "дата уточняется";
   const date = new Date(value + "T12:00:00");
@@ -42,17 +49,18 @@ function cleanCity(value) {
 function flightRoute(flight) {
   const from = cleanCity(flight.from);
   const to = cleanCity(flight.to);
-  return flight.trip === "RT" ? from + " → " + to + " → " + from : from + " → " + to;
+  const route = flight.trip === "RT" ? from + " → " + to + " → " + from : from + " → " + to;
+  return esc(route);
 }
 
 function flightBlock(flight) {
   const rows = [
     (flight.hot ? "🔥 " : "✈️ ") + flightRoute(flight),
-    flight.airline ? "✈️ " + flight.airline : null,
+    flight.airline ? "✈️ " + esc(flight.airline) : null,
     "📅 " + fmtDate(flight.departureDate)
       + (flight.returnDate ? " — " + fmtDate(flight.returnDate) : "")
       + " · " + (flight.trip === "RT" ? "туда-обратно" : "в одну сторону"),
-    flight.seats && flight.seats !== "Наличие уточняется" ? "💺 " + flight.seats : null,
+    flight.seats && flight.seats !== "Наличие уточняется" ? "💺 " + esc(flight.seats) : null,
     "💰 " + fmtPrice(flight.price)
   ];
   return rows.filter(Boolean).join("\n");
