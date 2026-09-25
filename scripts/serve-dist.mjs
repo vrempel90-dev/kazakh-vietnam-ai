@@ -143,7 +143,8 @@ function runFlightSync(reason = "scheduled") {
     env: {
       ...process.env,
       FLIGHT_FEED_OUTPUT: join(root, "flights.json"),
-      PRICING_RULES_PATH: pricingPath
+      PRICING_RULES_PATH: pricingPath,
+      SYNC_REASON: reason
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
