@@ -20,7 +20,8 @@
     "sync:public-telegram": "node scripts/sync-public-flights.mjs",
     "start": "node scripts/serve-dist.mjs",
     "test:pricing": "node tests/pricing-engine.test.mjs",
-    "test:telegram": "node tests/telegram-bot.test.mjs"
+    "test:telegram": "node tests/telegram-bot.test.mjs",
+    "test:admin-auth": "node tests/telegram-admin-auth.test.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",

@@ -117,6 +117,13 @@
 .admin-heading p{font-size:9.5px;line-height:1.4;color:#deefff;max-width:260px}
 .admin-heading button{border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:8px 10px;font-size:9px}
 
+.admin-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}
+.admin-kpis>div{min-width:0;background:#fff;border:1px solid #dce7f0;border-radius:13px;padding:10px 9px;box-shadow:0 4px 12px rgba(23,65,98,.05);display:flex;flex-direction:column;gap:3px}
+.admin-kpis span{font-size:8px;color:#74869a;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-kpis strong{font-size:19px;line-height:1;color:#1673c9}
+.admin-kpis small{font-size:7.5px;color:#93a1af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-telegram-check{width:100%;min-height:42px;border-radius:11px;background:#eef7ff;border:1px solid #cde5fb;color:#39719f;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:9px;text-align:center}
+
 .pricing-priority{background:#eef7ff;border:1px solid #cfe7fb;border-radius:14px;padding:12px 13px;margin-bottom:10px}
 .pricing-priority strong{font-size:11px;color:#155e9f}
 .pricing-priority p{font-size:9px;color:#5f7c96;line-height:1.45;margin-top:4px}
