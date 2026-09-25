@@ -1,7 +1,7 @@
 const AUTO_MARKER = "🤖 Автообновление";
 
 export function parsePublishTargets(value) {
-  const raw = String(value || "@charterkaz,@charter_forever_travel");
+  const raw = String(value || "-1002106608923,-1002285584868");
   return raw
     .split(",")
     .map(item => item.trim())
