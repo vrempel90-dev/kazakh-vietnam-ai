@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-25T03:29:01.409Z",
+  "generatedAt": "2026-09-25T09:00:23.382Z",
   "mode": "live-sale-price",
   "note": "Only customer-facing sale prices are persisted. Supplier cost prices and credentials are never written to the public feed.",
   "rates": {
     "USD_KZT": 449,
-    "EUR_KZT": 511,
-    "updatedAt": "2026-09-25T03:28:43.943Z"
+    "EUR_KZT": 510,
+    "updatedAt": "2026-09-25T09:00:04.808Z"
   },
   "flights": [
     {
@@ -50,6 +50,34 @@
       "updatedAt": "2026-09-24T20:25:30.760Z",
       "publishedAt": "2026-09-24T20:25:30.760Z",
       "expiresAt": "2026-09-25T20:25:30.760Z"
+    },
+    {
+      "id": "1b99240a0c1abe28",
+      "from": "Алматы",
+      "to": "Нячанг",
+      "offset": 0,
+      "price": 90000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "3 мест",
+      "departureDate": "2026-09-25",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
+      "id": "3015fd2b955c7adc",
+      "from": "Алматы",
+      "to": "Камрань",
+      "offset": 0,
+      "price": 92000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "4 мест",
+      "departureDate": "2026-09-25",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
     },
     {
       "id": "d2dca1c3150b564f",
@@ -110,20 +138,6 @@
       "expiresAt": "2026-09-25T20:25:30.763Z"
     },
     {
-      "id": "ffebaaef83581d5f",
-      "from": "Астана",
-      "to": "Нячанг",
-      "offset": 0,
-      "price": 174500,
-      "trip": "OW",
-      "hot": true,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-09-25",
-      "updatedAt": "2026-09-24T20:25:30.761Z",
-      "publishedAt": "2026-09-24T20:25:30.761Z",
-      "expiresAt": "2026-09-25T20:25:30.761Z"
-    },
-    {
       "id": "5f97fa65b20b5592",
       "from": "Алматы",
       "to": "Санья",
@@ -138,6 +152,20 @@
       "updatedAt": "2026-09-24T20:25:31.445Z",
       "publishedAt": "2026-09-24T20:25:31.445Z",
       "expiresAt": "2026-09-25T20:25:31.445Z"
+    },
+    {
+      "id": "ffebaaef83581d5f",
+      "from": "Астана",
+      "to": "Нячанг",
+      "offset": 0,
+      "price": 174500,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-09-25",
+      "updatedAt": "2026-09-24T20:25:30.761Z",
+      "publishedAt": "2026-09-24T20:25:30.761Z",
+      "expiresAt": "2026-09-25T20:25:30.761Z"
     },
     {
       "id": "cac160912e4bcc62",
@@ -168,6 +196,36 @@
       "updatedAt": "2026-09-24T20:25:31.443Z",
       "publishedAt": "2026-09-24T20:25:31.443Z",
       "expiresAt": "2026-09-25T20:25:31.443Z"
+    },
+    {
+      "id": "b42d53e9933e9f44",
+      "from": "Алматы",
+      "to": "Нячанг",
+      "offset": 0,
+      "price": 192000,
+      "trip": "RT",
+      "hot": true,
+      "seats": "3 мест",
+      "departureDate": "2026-09-25",
+      "returnDate": "2026-09-30",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
+      "id": "c91094d960f0a5de",
+      "from": "Алматы",
+      "to": "Нячанг",
+      "offset": 0,
+      "price": 192000,
+      "trip": "RT",
+      "hot": true,
+      "seats": "1 мест",
+      "departureDate": "2026-09-25",
+      "returnDate": "2026-10-02",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
     },
     {
       "id": "fded8eecd750c36f",
@@ -245,6 +303,20 @@
       "expiresAt": "2026-09-25T20:25:31.444Z"
     },
     {
+      "id": "d13d0e549d39bb52",
+      "from": "Ташкент",
+      "to": "Камрань",
+      "offset": 1,
+      "price": 31000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-09-26",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
       "id": "c003218cae6a49c3",
       "from": "Rt Ташкент",
       "to": "Камрань",
@@ -259,18 +331,32 @@
       "expiresAt": "2026-09-25T20:25:31.444Z"
     },
     {
-      "id": "b4f81e70bf968e3a",
-      "from": "Алматы",
-      "to": "Дананг",
+      "id": "917c0ce9ec3814da",
+      "from": "Астана",
+      "to": "Нячанг",
       "offset": 1,
-      "price": 71000,
+      "price": 62000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-09-26",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
+      "id": "8ae2e9318310425d",
+      "from": "Астана",
+      "to": "Камрань",
+      "offset": 1,
+      "price": 62000,
       "trip": "OW",
       "hot": false,
       "seats": "Наличие уточняется",
       "departureDate": "2026-09-26",
-      "updatedAt": "2026-09-24T20:25:31.442Z",
-      "publishedAt": "2026-09-24T20:25:31.442Z",
-      "expiresAt": "2026-09-25T20:25:31.442Z"
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
     },
     {
       "id": "010d35b7c60ad863",
@@ -285,20 +371,6 @@
       "updatedAt": "2026-09-24T20:25:30.762Z",
       "publishedAt": "2026-09-24T20:25:30.762Z",
       "expiresAt": "2026-09-25T20:25:30.762Z"
-    },
-    {
-      "id": "9c66ec2fd7715ae2",
-      "from": "Астана",
-      "to": "Дананг",
-      "offset": 1,
-      "price": 78000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-09-26",
-      "updatedAt": "2026-09-24T20:25:31.442Z",
-      "publishedAt": "2026-09-24T20:25:31.442Z",
-      "expiresAt": "2026-09-25T20:25:31.442Z"
     },
     {
       "id": "409d514062c5db7a",
@@ -330,20 +402,6 @@
       "expiresAt": "2026-09-25T20:25:31.445Z"
     },
     {
-      "id": "917c0ce9ec3814da",
-      "from": "Астана",
-      "to": "Нячанг",
-      "offset": 1,
-      "price": 178000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "7 мест",
-      "departureDate": "2026-09-26",
-      "updatedAt": "2026-09-24T20:25:31.443Z",
-      "publishedAt": "2026-09-24T20:25:31.443Z",
-      "expiresAt": "2026-09-25T20:25:31.443Z"
-    },
-    {
       "id": "a39ecc92c0565dcf",
       "from": "Ow Камрань",
       "to": "Астана Scat",
@@ -372,6 +430,51 @@
       "updatedAt": "2026-09-24T20:25:30.764Z",
       "publishedAt": "2026-09-24T20:25:30.764Z",
       "expiresAt": "2026-09-25T20:25:30.764Z"
+    },
+    {
+      "id": "41e48344343f58e1",
+      "from": "Астана",
+      "to": "Нячанг",
+      "offset": 1,
+      "price": 192000,
+      "trip": "RT",
+      "hot": true,
+      "seats": "6 мест",
+      "departureDate": "2026-09-26",
+      "returnDate": "2026-10-03",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
+      "id": "b10fe23832543f90",
+      "from": "Астана",
+      "to": "Нячанг",
+      "offset": 1,
+      "price": 201000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "6 мест",
+      "departureDate": "2026-09-26",
+      "returnDate": "2026-10-01",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
+      "id": "b52713a7b852effd",
+      "from": "Астана",
+      "to": "Нячанг",
+      "offset": 1,
+      "price": 201000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "1 мест",
+      "departureDate": "2026-09-26",
+      "returnDate": "2026-10-06",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
     },
     {
       "id": "91e57ce799673946",
@@ -563,6 +666,20 @@
       "expiresAt": "2026-09-25T20:25:30.762Z"
     },
     {
+      "id": "64269c4d968ebe72",
+      "from": "Нячанг",
+      "to": "Шымкент",
+      "offset": 3,
+      "price": 144000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "1 мест",
+      "departureDate": "2026-09-28",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
       "id": "509c3d48ec1bce59",
       "from": "Санья",
       "to": "Астана",
@@ -597,14 +714,14 @@
       "from": "Астана",
       "to": "Нячанг",
       "offset": 3,
-      "price": 178000,
+      "price": 166000,
       "trip": "OW",
       "hot": false,
-      "seats": "2 мест",
+      "seats": "Наличие уточняется",
       "departureDate": "2026-09-28",
-      "updatedAt": "2026-09-24T20:25:31.443Z",
-      "publishedAt": "2026-09-24T20:25:31.443Z",
-      "expiresAt": "2026-09-25T20:25:31.443Z"
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
     },
     {
       "id": "47febf3f16c86b29",
@@ -708,6 +825,20 @@
       "expiresAt": "2026-09-25T20:25:31.445Z"
     },
     {
+      "id": "057b8f338eee04c9",
+      "from": "Нячанг",
+      "to": "Алматы",
+      "offset": 4,
+      "price": 153000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "5 мест",
+      "departureDate": "2026-09-29",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
+    },
+    {
       "id": "4e980a45b0cfe688",
       "from": "Шымкент",
       "to": "Нячанг",
@@ -808,6 +939,20 @@
       "updatedAt": "2026-09-24T20:25:30.762Z",
       "publishedAt": "2026-09-24T20:25:30.762Z",
       "expiresAt": "2026-09-25T20:25:30.762Z"
+    },
+    {
+      "id": "2d2cc27fc4161eb6",
+      "from": "Нячанг",
+      "to": "Алматы",
+      "offset": 5,
+      "price": 166000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "4 мест",
+      "departureDate": "2026-09-30",
+      "updatedAt": "2026-09-25T09:00:02.799Z",
+      "publishedAt": "2026-09-25T09:00:02.799Z",
+      "expiresAt": "2026-09-26T09:00:02.799Z"
     },
     {
       "id": "04fafd8157743d77",
@@ -1327,34 +1472,6 @@
       "updatedAt": "2026-09-24T20:25:30.761Z",
       "publishedAt": "2026-09-24T20:25:30.761Z",
       "expiresAt": "2026-09-25T20:25:30.761Z"
-    },
-    {
-      "id": "c7575dfbb9071204",
-      "from": "Астана",
-      "to": "Нячанг",
-      "offset": 41,
-      "price": 99000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-11-05",
-      "updatedAt": "2026-09-24T20:25:31.443Z",
-      "publishedAt": "2026-09-24T20:25:31.443Z",
-      "expiresAt": "2026-09-25T20:25:31.443Z"
-    },
-    {
-      "id": "e1da24a14f68be2a",
-      "from": "Астана",
-      "to": "Нячанг",
-      "offset": 43,
-      "price": 124000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-11-07",
-      "updatedAt": "2026-09-24T20:25:31.443Z",
-      "publishedAt": "2026-09-24T20:25:31.443Z",
-      "expiresAt": "2026-09-25T20:25:31.443Z"
     },
     {
       "id": "f1c0cd7afa870b2c",
