@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { enabledSources } from "./source-registry.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
+import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -339,17 +340,20 @@ function parseNeosCsv(csv, source, now, pricingConfig, pricingRates) {
       roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
     });
     if (!priced) continue;
-    parsed.push(publicFlight({
-      from: route.from,
-      to: route.to,
-      offset,
-      price: priced.salePrice,
-      trip: "OW",
-      hot: false,
-      seats: "Наличие уточняется",
-      airline: "Neos Air",
-      departureDate
-    }));
+    parsed.push({
+      ...publicFlight({
+        from: route.from,
+        to: route.to,
+        offset,
+        price: priced.salePrice,
+        trip: "OW",
+        hot: false,
+        seats: "Наличие уточняется",
+        airline: "Neos Air",
+        departureDate
+      }),
+      sourceIds: [source.id]
+    });
   }
   return {
     flights: parsed,
@@ -373,8 +377,21 @@ function classifyB2BPage(html, finalUrl) {
 async function syncTelegram(source, now) {
   const { text } = await fetchText(source.url);
   const messages = extractMessages(text);
-  const flights = messages.flatMap(message => parseTelegramMessage(message, now));
-  return { flights, status: { id: source.id, kind: source.kind, status: "ok", messages: messages.length, offers: flights.length } };
+  const sourceMessages = messages.filter(message => !shouldSkipParsedTelegramMessage(message));
+  const flights = sourceMessages
+    .flatMap(message => parseTelegramMessage(message, now))
+    .map(flight => ({ ...flight, sourceIds: [source.id] }));
+  return {
+    flights,
+    status: {
+      id: source.id,
+      kind: source.kind,
+      status: "ok",
+      messages: sourceMessages.length,
+      ignoredAutoPosts: messages.length - sourceMessages.length,
+      offers: flights.length
+    }
+  };
 }
 
 async function syncNeos(source, now, pricingConfig, pricingRates) {
@@ -434,7 +451,17 @@ function dedupeFlights(flights) {
   for (const flight of flights) {
     const key = [normalizeCity(flight.from), normalizeCity(flight.to), flight.departureDate, flight.returnDate || "", flight.trip, flight.airline || ""].join("|");
     const current = map.get(key);
-    if (!current || flight.price < current.price) map.set(key, flight);
+    if (!current || flight.price < current.price) {
+      map.set(key, {
+        ...flight,
+        sourceIds: Array.isArray(flight.sourceIds) ? [...new Set(flight.sourceIds)] : []
+      });
+    } else if (flight.price === current.price) {
+      map.set(key, {
+        ...current,
+        sourceIds: [...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])]
+      });
+    }
   }
   return [...map.values()].sort((a, b) => a.offset - b.offset || a.price - b.price).slice(0, 300);
 }
@@ -522,6 +549,12 @@ try {
   // A missing previous feed is allowed on first run.
 }
 const flights = reconcileLifecycle(freshFlights, existing, now);
+const existingByIdForPublish = new Map(
+  Array.isArray(existing?.flights) ? existing.flights.map(flight => [flight.id, flight]) : []
+);
+const changedFlightsForPublish = Array.isArray(existing?.flights) && existing.flights.length
+  ? flights.filter(flight => hasMaterialChange(existingByIdForPublish.get(flight.id), flight))
+  : [];
 
 if (!flights.length) {
   console.error("Source status:", JSON.stringify(statuses, null, 2));
@@ -553,4 +586,24 @@ if (existing && comparablePayload(existing) === comparablePayload(payload)) {
 await mkdir(resolve("public"), { recursive: true });
 await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
 console.log("Published", flights.length, "customer-visible offers");
+
+if (changedFlightsForPublish.length && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
+  try {
+    const publishResult = await publishFreshFlights({
+      token: process.env.TELEGRAM_BOT_TOKEN,
+      targets: process.env.TELEGRAM_PUBLISH_CHATS,
+      flights: changedFlightsForPublish,
+      publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+    });
+    console.log("Telegram fresh-flight publishing:", JSON.stringify({
+      changedFlights: changedFlightsForPublish.length,
+      ...publishResult
+    }, null, 2));
+  } catch (error) {
+    console.error("Telegram fresh-flight publishing failed:", error instanceof Error ? error.message : String(error));
+  }
+} else {
+  console.log("No fresh flight changes to publish to Telegram channels.");
+}
+
 console.log("Source status:", JSON.stringify(statuses, null, 2));
