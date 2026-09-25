@@ -5,28 +5,17 @@ import { PhoneFrame } from "./PhoneFrame";
 import { HomeIndicator, StatusBar } from "./components";
 
 export function MobileRuntime({ children }: PropsWithChildren) {
-  const preview = typeof window !== "undefined"
-    && new URLSearchParams(window.location.search).get("preview") === "1";
-
   return (
     <MobileDeviceProvider>
-      {preview ? (
-        <PhoneFrame>
-          <KeyboardProvider>
-            <KeyboardPreview />
-            <StatusBar />
-            <MobileAppViewport>{children}</MobileAppViewport>
-            <HomeIndicator />
-            <KeyboardDock />
-          </KeyboardProvider>
-        </PhoneFrame>
-      ) : (
+      <PhoneFrame>
         <KeyboardProvider>
-          <div className="mobile-live-runtime">
-            <MobileAppViewport>{children}</MobileAppViewport>
-          </div>
+          <KeyboardPreview />
+          <StatusBar />
+          <MobileAppViewport>{children}</MobileAppViewport>
+          <HomeIndicator />
+          <KeyboardDock />
         </KeyboardProvider>
-      )}
+      </PhoneFrame>
     </MobileDeviceProvider>
   );
 }
