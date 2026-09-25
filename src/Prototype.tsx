@@ -20,7 +20,7 @@ import {
 import { MobileScroll } from "./mobile";
 import "./prototype.css";
 
-type Screen = "flights" | "notifications" | "profile";
+type Screen = "flights" | "notifications" | "profile" | "admin";
 type Tab = "all" | "mine";
 type Currency = "KZT" | "USD" | "EUR";
 type Picker = "city" | "country" | null;
@@ -58,6 +58,29 @@ type Country = {
   name: string;
   flag: string;
 };
+
+type PricingCalculationType = "fixed_kzt" | "percent" | "sale_price_kzt";
+type PricingScope = {
+  offerId?: string;
+  sourceId?: string;
+  from?: string;
+  to?: string;
+  trip?: Trip;
+};
+type PricingRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  scope: PricingScope;
+  calculation: { type: PricingCalculationType; value: number };
+};
+type PricingConfig = {
+  version: number;
+  updatedAt: string | null;
+  rules: PricingRule[];
+};
+type ScopeMode = "global" | "trip" | "route" | "route_trip" | "source" | "source_trip" | "offer";
 
 const fallbackFlights: Flight[] = [
   { id: "nqz-dad", from: "Астана", to: "Дананг", offset: 3, price: 77000, trip: "OW", hot: true, seats: "Наличие уточняется", airline: "VietJet" },
@@ -97,6 +120,49 @@ const countryFor = (destination: string): Country =>
 
 const DEFAULT_MANAGER_WHATSAPP = "77007772414";
 const MANAGER_PHONE_DISPLAY = "+7 700 777 24 14";
+
+const PRICING_SOURCES = [
+  ["neos", "NEOS"],
+  ["fun_sun", "FUN&SUN"],
+  ["kazunion", "KAZUNION"],
+  ["kompas", "KOMPAS"],
+  ["anex", "ANEX"],
+  ["selfie", "SELFIE"],
+  ["joinup", "JOINUP"],
+  ["pegas", "PEGAS"],
+  ["crystal_bay", "Crystal Bay"],
+  ["abk", "ABK Tourism"],
+  ["space", "SPACE / Travel Luxe"],
+  ["vietra", "VIETRA"],
+  ["sanat", "SANAT"],
+] as const;
+
+const scopeMode = (scope: PricingScope): ScopeMode => {
+  if (scope.offerId) return "offer";
+  if (scope.from && scope.to && scope.trip) return "route_trip";
+  if (scope.from && scope.to) return "route";
+  if (scope.sourceId && scope.trip) return "source_trip";
+  if (scope.sourceId) return "source";
+  if (scope.trip) return "trip";
+  return "global";
+};
+
+const scopeLabel = (scope: PricingScope) => {
+  const mode = scopeMode(scope);
+  if (mode === "offer") return "Конкретный рейс";
+  if (mode === "route_trip") return `${scope.from} → ${scope.to} · ${scope.trip}`;
+  if (mode === "route") return `${scope.from} → ${scope.to}`;
+  if (mode === "source_trip") return `${scope.sourceId} · ${scope.trip}`;
+  if (mode === "source") return scope.sourceId || "Поставщик";
+  if (mode === "trip") return scope.trip === "RT" ? "Все RT" : "Все OW";
+  return "Общее правило";
+};
+
+const calculationLabel = (rule: PricingRule) => {
+  if (rule.calculation.type === "percent") return "+" + rule.calculation.value + "%";
+  if (rule.calculation.type === "sale_price_kzt") return "Продажа " + new Intl.NumberFormat("ru-RU").format(rule.calculation.value) + " ₸";
+  return "+" + new Intl.NumberFormat("ru-RU").format(rule.calculation.value) + " ₸";
+};
 
 const isoAt = (offset: number) => {
   const date = new Date();
@@ -168,7 +234,7 @@ const readList = (key: string): string[] => {
 };
 
 export default function Prototype() {
-  const [screen, setScreen] = useState<Screen>("flights");
+  const [screen, setScreen] = useState<Screen>(() => new URLSearchParams(window.location.search).get("admin") === "1" ? "admin" : "flights");
   const [tab, setTab] = useState<Tab>("all");
   const [currency, setCurrency] = useState<Currency>("KZT");
   const [picker, setPicker] = useState<Picker>(null);
@@ -184,6 +250,12 @@ export default function Prototype() {
   const [rates, setRates] = useState<{ USD_KZT?: number; EUR_KZT?: number; updatedAt?: string }>({});
   const [toast, setToast] = useState("");
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [adminCode, setAdminCode] = useState(() => sessionStorage.getItem("charter-admin-code") || "");
+  const [adminAuthorized, setAdminAuthorized] = useState(false);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [adminSyncRunning, setAdminSyncRunning] = useState(false);
 
   const refreshFlights = useCallback(async () => {
     try {
@@ -229,6 +301,107 @@ export default function Prototype() {
     const timer = window.setTimeout(() => setToast(""), 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  const adminRequest = useCallback(async (path: string, options: RequestInit = {}, code = adminCode) => {
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + code,
+        ...(options.headers || {})
+      }
+    });
+    if (response.status === 401) throw new Error("Неверный код администратора");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      throw new Error(payload.error || "Ошибка сервера");
+    }
+    return response.json();
+  }, [adminCode]);
+
+  const loadPricing = useCallback(async (code = adminCode) => {
+    if (!code) return;
+    setPricingLoading(true);
+    try {
+      const payload = await adminRequest("/api/admin/pricing", {}, code) as { config: PricingConfig; sync?: { running?: boolean } };
+      setPricingConfig(payload.config);
+      setAdminAuthorized(true);
+      setAdminSyncRunning(Boolean(payload.sync?.running));
+      sessionStorage.setItem("charter-admin-code", code);
+    } catch (error) {
+      setAdminAuthorized(false);
+      setPricingConfig(null);
+      sessionStorage.removeItem("charter-admin-code");
+      setToast(error instanceof Error ? error.message : "Не удалось открыть панель");
+    } finally {
+      setPricingLoading(false);
+    }
+  }, [adminCode, adminRequest]);
+
+  useEffect(() => {
+    if (screen === "admin" && adminCode && !adminAuthorized && !pricingLoading) void loadPricing(adminCode);
+  }, [screen, adminCode, adminAuthorized, pricingLoading, loadPricing]);
+
+  const savePricing = async () => {
+    if (!pricingConfig) return;
+    setPricingSaving(true);
+    try {
+      const payload = await adminRequest("/api/admin/pricing", {
+        method: "PUT",
+        body: JSON.stringify({ config: pricingConfig })
+      }) as { config: PricingConfig; syncStarted?: boolean };
+      setPricingConfig(payload.config);
+      setAdminSyncRunning(Boolean(payload.syncStarted));
+      setToast("Наценки сохранены. Пересчёт рейсов запущен.");
+      window.setTimeout(() => { void refreshFlights(); setAdminSyncRunning(false); }, 8000);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Не удалось сохранить наценки");
+    } finally {
+      setPricingSaving(false);
+    }
+  };
+
+  const runAdminSync = async () => {
+    try {
+      const payload = await adminRequest("/api/admin/sync", { method: "POST", body: "{}" }) as { syncStarted?: boolean };
+      setAdminSyncRunning(Boolean(payload.syncStarted));
+      setToast(payload.syncStarted ? "Пересчёт рейсов запущен" : "Синхронизация уже выполняется");
+      window.setTimeout(() => { void refreshFlights(); setAdminSyncRunning(false); }, 8000);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Не удалось запустить синхронизацию");
+    }
+  };
+
+  const updateRule = (id: string, patch: (rule: PricingRule) => PricingRule) => {
+    setPricingConfig(current => current ? { ...current, rules: current.rules.map(rule => rule.id === id ? patch(rule) : rule) } : current);
+  };
+
+  const addPricingRule = () => {
+    const id = "rule-" + Date.now();
+    setPricingConfig(current => current ? {
+      ...current,
+      rules: [...current.rules, {
+        id,
+        name: "Новое правило",
+        enabled: true,
+        priority: 0,
+        scope: { trip: "OW" },
+        calculation: { type: "fixed_kzt", value: 10000 }
+      }]
+    } : current);
+  };
+
+  const setRuleScopeMode = (rule: PricingRule, mode: ScopeMode): PricingRule => {
+    const current = rule.scope;
+    const defaultSource = current.sourceId || "neos";
+    if (mode === "global") return { ...rule, scope: {} };
+    if (mode === "trip") return { ...rule, scope: { trip: current.trip || "OW" } };
+    if (mode === "route") return { ...rule, scope: { from: current.from || "Алматы", to: current.to || "Нячанг" } };
+    if (mode === "route_trip") return { ...rule, scope: { from: current.from || "Алматы", to: current.to || "Нячанг", trip: current.trip || "OW" } };
+    if (mode === "source") return { ...rule, scope: { sourceId: defaultSource } };
+    if (mode === "source_trip") return { ...rule, scope: { sourceId: defaultSource, trip: current.trip || "OW" } };
+    return { ...rule, scope: { offerId: current.offerId || "" } };
+  };
 
   const activeFlights = useMemo(
     () => flights.filter(flight => isOfferActive(flight, nowTick)),
@@ -459,16 +632,123 @@ export default function Prototype() {
             </div>
             <button className="profile-action" onClick={() => setScreen("flights")}><HomeIcon /><span>Вернуться к рейсам</span></button>
             <button className="profile-action" onClick={() => { setFavorites([]); setAlerts([]); setToast("Сохранённые данные очищены"); }}><Cross2Icon /><span>Очистить сохранённое</span></button>
+            <a className="agency-link" href="?admin=1">Для агентства · управление наценками</a>
+          </main>
+        )}
+
+        {screen === "admin" && (
+          <main className="charter-page admin-page">
+            {!adminAuthorized ? (
+              <section className="admin-login">
+                <span className="heading-icon"><MixerHorizontalIcon /></span>
+                <h2>Панель агентства</h2>
+                <p>Управление автоматическими наценками. Доступ защищён кодом администратора.</p>
+                <label>Код администратора<input type="password" value={adminCode} onChange={event => setAdminCode(event.target.value)} placeholder="Введите код" /></label>
+                <button disabled={!adminCode || pricingLoading} onClick={() => void loadPricing(adminCode)}>{pricingLoading ? "Проверяю…" : "Войти"}</button>
+                <a href="./">Вернуться к рейсам</a>
+              </section>
+            ) : (
+              <>
+                <section className="admin-heading">
+                  <div><small>ПАНЕЛЬ АГЕНТСТВА</small><h2>Наценки</h2><p>Правила применяются к себестоимости автоматически при каждой синхронизации.</p></div>
+                  <button onClick={() => { setAdminAuthorized(false); setAdminCode(""); setPricingConfig(null); sessionStorage.removeItem("charter-admin-code"); }}>Выйти</button>
+                </section>
+
+                <section className="pricing-priority">
+                  <strong>Приоритет правил</strong>
+                  <p>Конкретный рейс → направление + OW/RT → направление → поставщик + OW/RT → поставщик → OW/RT → общее правило.</p>
+                </section>
+
+                <div className="admin-toolbar">
+                  <button className="secondary" onClick={addPricingRule}>+ Добавить правило</button>
+                  <button className="secondary" disabled={adminSyncRunning} onClick={() => void runAdminSync()}>{adminSyncRunning ? "Пересчитываю…" : "Пересчитать сейчас"}</button>
+                </div>
+
+                <div className="pricing-rules">
+                  {pricingConfig?.rules.map(rule => {
+                    const mode = scopeMode(rule.scope);
+                    return (
+                      <article className={"pricing-rule" + (rule.enabled ? " enabled" : "")} key={rule.id}>
+                        <div className="rule-top">
+                          <label className="rule-toggle"><input type="checkbox" checked={rule.enabled} onChange={event => updateRule(rule.id, current => ({ ...current, enabled: event.target.checked }))} /><span /></label>
+                          <div><input className="rule-name" value={rule.name} onChange={event => updateRule(rule.id, current => ({ ...current, name: event.target.value }))} /><small>{scopeLabel(rule.scope)} · {calculationLabel(rule)}</small></div>
+                          <button className="rule-delete" onClick={() => setPricingConfig(current => current ? { ...current, rules: current.rules.filter(item => item.id !== rule.id) } : current)}>×</button>
+                        </div>
+
+                        <div className="rule-fields">
+                          <label>Уровень
+                            <select value={mode} onChange={event => updateRule(rule.id, current => setRuleScopeMode(current, event.target.value as ScopeMode))}>
+                              <option value="global">Общее правило</option>
+                              <option value="trip">OW / RT</option>
+                              <option value="route">Направление</option>
+                              <option value="route_trip">Направление + OW / RT</option>
+                              <option value="source">Поставщик</option>
+                              <option value="source_trip">Поставщик + OW / RT</option>
+                              <option value="offer">Конкретный рейс</option>
+                            </select>
+                          </label>
+
+                          {(mode === "trip" || mode === "route_trip" || mode === "source_trip") && (
+                            <label>Тип
+                              <select value={rule.scope.trip || "OW"} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { ...current.scope, trip: event.target.value as Trip } }))}>
+                                <option value="OW">OW · в одну сторону</option>
+                                <option value="RT">RT · туда-обратно</option>
+                              </select>
+                            </label>
+                          )}
+
+                          {(mode === "route" || mode === "route_trip") && (
+                            <>
+                              <label>Откуда<input value={rule.scope.from || ""} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { ...current.scope, from: event.target.value } }))} placeholder="Алматы" /></label>
+                              <label>Куда<input value={rule.scope.to || ""} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { ...current.scope, to: event.target.value } }))} placeholder="Нячанг" /></label>
+                            </>
+                          )}
+
+                          {(mode === "source" || mode === "source_trip") && (
+                            <label>Поставщик
+                              <select value={rule.scope.sourceId || "neos"} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { ...current.scope, sourceId: event.target.value } }))}>
+                                {PRICING_SOURCES.map(([id, label]) => <option value={id} key={id}>{label}</option>)}
+                              </select>
+                            </label>
+                          )}
+
+                          {mode === "offer" && (
+                            <label>ID рейса<input value={rule.scope.offerId || ""} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { offerId: event.target.value } }))} placeholder="offer id" /></label>
+                          )}
+
+                          <label>Формула
+                            <select value={rule.calculation.type} onChange={event => updateRule(rule.id, current => ({ ...current, calculation: { ...current.calculation, type: event.target.value as PricingCalculationType } }))}>
+                              <option value="fixed_kzt">Добавить сумму ₸</option>
+                              <option value="percent">Добавить %</option>
+                              <option value="sale_price_kzt">Фиксированная цена продажи</option>
+                            </select>
+                          </label>
+
+                          <label>{rule.calculation.type === "percent" ? "Процент" : "Сумма, ₸"}
+                            <input type="number" min="0" step={rule.calculation.type === "percent" ? "0.1" : "1000"} value={rule.calculation.value} onChange={event => updateRule(rule.id, current => ({ ...current, calculation: { ...current.calculation, value: Number(event.target.value) || 0 } }))} />
+                          </label>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="admin-savebar">
+                  <div><strong>{pricingConfig?.rules.filter(rule => rule.enabled).length || 0}</strong><span>активных правил</span></div>
+                  <button disabled={pricingSaving} onClick={() => void savePricing()}>{pricingSaving ? "Сохраняю…" : "Сохранить и пересчитать"}</button>
+                </div>
+              </>
+            )}
           </main>
         )}
       </MobileScroll>
 
-      <nav className="bottom-nav">
+      {screen !== "admin" && <nav className="bottom-nav">
         <button className={screen === "flights" ? "active" : ""} onClick={() => setScreen("flights")}><MixerHorizontalIcon /><span>Рейсы</span></button>
         <button onClick={() => { setScreen("flights"); setTab("mine"); }} className={screen === "flights" && tab === "mine" ? "active" : ""}><BookmarkIcon /><span>Избранное</span></button>
         <button className={screen === "notifications" ? "active" : ""} onClick={() => setScreen("notifications")}><BellIcon /><span>Уведомления</span></button>
         <button className={screen === "profile" ? "active" : ""} onClick={() => setScreen("profile")}><PersonIcon /><span>Профиль</span></button>
-      </nav>
+      </nav>}
 
       {picker && (
         <div className="picker-backdrop" onClick={() => setPicker(null)}>
