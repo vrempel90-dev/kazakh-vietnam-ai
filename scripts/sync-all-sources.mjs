@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { enabledSources } from "./source-registry.mjs";
+import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -310,23 +311,7 @@ function envNumber(name) {
   return Number.isFinite(number) ? number : null;
 }
 
-function roundSale(value) {
-  const step = Math.max(1, envNumber("SALE_PRICE_ROUNDING") || 1000);
-  return Math.ceil(value / step) * step;
-}
-
-function costToSale(sourceId, sourcePrice, currency) {
-  const markup = envNumber("MARKUP_" + sourceId.toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_PERCENT") ?? envNumber("MARKUP_PERCENT_DEFAULT");
-  if (markup == null || markup < 0) return null;
-  let rate = 1;
-  if (currency !== "KZT") {
-    rate = envNumber("FX_" + currency + "_KZT");
-    if (rate == null || rate <= 0) return null;
-  }
-  return roundSale(sourcePrice * rate * (1 + markup / 100));
-}
-
-function parseNeosCsv(csv, source, now) {
+function parseNeosCsv(csv, source, now, pricingConfig, pricingRates) {
   const rows = parseCsv(csv);
   const currency = (process.env[source.currencyEnv] || "").trim().toUpperCase();
   const parsed = [];
@@ -342,13 +327,23 @@ function parseNeosCsv(csv, source, now) {
     if (!Number.isFinite(price) || price <= 0 || /мест\s*нет/iu.test(String(priceText) + " " + String(noteText))) continue;
     usableRows += 1;
     if (!currency) continue;
-    const salePrice = costToSale(source.id, price, currency);
-    if (salePrice == null) continue;
+    const priced = calculateSalePrice({
+      sourcePrice: price,
+      currency,
+      sourceId: source.id,
+      from: route.from,
+      to: route.to,
+      trip: "OW",
+      rates: pricingRates,
+      config: pricingConfig,
+      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
+    });
+    if (!priced) continue;
     parsed.push(publicFlight({
       from: route.from,
       to: route.to,
       offset,
-      price: salePrice,
+      price: priced.salePrice,
       trip: "OW",
       hot: false,
       seats: "Наличие уточняется",
@@ -360,7 +355,7 @@ function parseNeosCsv(csv, source, now) {
     flights: parsed,
     rows: Math.max(0, rows.length - 1),
     usableRows,
-    pricingReady: Boolean(currency) && (envNumber("MARKUP_NEOS_PERCENT") ?? envNumber("MARKUP_PERCENT_DEFAULT")) != null && (currency === "KZT" || envNumber("FX_" + currency + "_KZT") != null),
+    pricingReady: Boolean(currency) && parsed.length > 0,
     currencyConfigured: Boolean(currency)
   };
 }
@@ -382,9 +377,9 @@ async function syncTelegram(source, now) {
   return { flights, status: { id: source.id, kind: source.kind, status: "ok", messages: messages.length, offers: flights.length } };
 }
 
-async function syncNeos(source, now) {
+async function syncNeos(source, now, pricingConfig, pricingRates) {
   const { text } = await fetchText(source.url);
-  const result = parseNeosCsv(text, source, now);
+  const result = parseNeosCsv(text, source, now, pricingConfig, pricingRates);
   let status = "ok";
   let reason;
   if (!result.currencyConfigured) {
@@ -392,7 +387,7 @@ async function syncNeos(source, now) {
     reason = source.currencyEnv + " is not configured";
   } else if (!result.pricingReady) {
     status = "configuration_required";
-    reason = "markup and/or FX rate is not configured";
+    reason = "No enabled pricing rule matches this cost feed, or FX is not configured";
   }
   return {
     flights: result.flights,
@@ -493,6 +488,11 @@ const now = new Date();
 const collected = [];
 const statuses = [];
 const displayRates = await fetchDisplayRates();
+const pricingConfig = await loadPricingConfig();
+const pricingRates = {
+  USD_KZT: displayRates?.USD_KZT || envNumber("FX_USD_KZT"),
+  EUR_KZT: displayRates?.EUR_KZT || envNumber("FX_EUR_KZT")
+};
 
 for (const source of enabledSources()) {
   try {
@@ -501,7 +501,7 @@ for (const source of enabledSources()) {
       collected.push(...result.flights);
       statuses.push(result.status);
     } else if (source.kind === "google_sheet_csv") {
-      const result = await syncNeos(source, now);
+      const result = await syncNeos(source, now, pricingConfig, pricingRates);
       collected.push(...result.flights);
       statuses.push(result.status);
     } else if (source.kind === "b2b_web") {
