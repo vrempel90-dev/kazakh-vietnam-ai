@@ -28,6 +28,9 @@ jobs:
       - name: Runtime integrity
         run: npm run check:runtime
 
+      - name: Pricing engine tests
+        run: npm run test:pricing
+
       - name: Typecheck
         run: npm run typecheck
 
