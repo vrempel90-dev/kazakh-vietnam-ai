@@ -1,3 +1,72 @@
+
+/* Production/Telegram mode: the repository's protected PhoneFrame is a local preview shell.
+   Flatten it at the app stylesheet layer so real users see the Mini App itself, not an iPhone mockup. */
+html.charter-live-runtime .phone-stage{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#eef5fb!important;
+}
+html.charter-live-runtime .device-menu-bar,
+html.charter-live-runtime .phone-bezel,
+html.charter-live-runtime .status-bar,
+html.charter-live-runtime .home-indicator-svg,
+html.charter-live-runtime .android-navigation-bar,
+html.charter-live-runtime .device-camera,
+html.charter-live-runtime .mobile-cursor{
+  display:none!important;
+}
+html.charter-live-runtime .phone-scale-box{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+}
+html.charter-live-runtime .phone-device{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  transform:none!important;
+  user-select:auto!important;
+}
+html.charter-live-runtime .device-screen{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  cursor:auto!important;
+  user-select:auto!important;
+  --device-safe-area-bottom:var(--tg-content-safe-area-inset-bottom,0px);
+}
+html.charter-live-runtime .device-screen,
+html.charter-live-runtime .device-screen *{
+  cursor:auto!important;
+}
+html.charter-live-runtime .mobile-app-viewport{
+  inset:0!important;
+  bottom:0!important;
+}
+html.charter-live-runtime .charter-header{
+  height:calc(70px + var(--tg-content-safe-area-inset-top,0px));
+  padding:calc(10px + var(--tg-content-safe-area-inset-top,0px)) 16px 10px;
+}
+html.charter-live-runtime .charter-scroll{
+  top:calc(70px + var(--tg-content-safe-area-inset-top,0px))!important;
+  bottom:calc(62px + var(--tg-content-safe-area-inset-bottom,0px))!important;
+}
+html.charter-live-runtime .bottom-nav{
+  height:calc(62px + var(--tg-content-safe-area-inset-bottom,0px));
+  padding:7px 8px calc(7px + var(--tg-content-safe-area-inset-bottom,0px));
+}
+html.charter-live-runtime .mobile-page{
+  --mobile-safe-area-height:var(--tg-content-safe-area-inset-bottom,0px);
+}
+
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 .community-app{--bg:#eef5fb;--card:#fff;--text:#102844;--muted:#718399;--line:#dfe9f3;--blue:#1372d4;--blue-dark:#0b5eaf;--green:#1fb56d;--green-dark:#159456;--soft:#eaf4ff;--orange:#ffae43;--orange-soft:#fff2dc;--shadow:0 8px 24px rgba(28,79,125,.08);position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-size:14px}
 .community-app *{box-sizing:border-box}
