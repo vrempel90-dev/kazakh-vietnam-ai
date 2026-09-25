@@ -28,6 +28,7 @@ type Picker = "city" | "country" | null;
 type Trip = "OW" | "RT";
 
 type TelegramWebApp = {
+  initData?: string;
   ready?: () => void;
   expand?: () => void;
   setHeaderColor?: (color: string) => void;
@@ -35,6 +36,7 @@ type TelegramWebApp = {
   disableVerticalSwipes?: () => void;
   initDataUnsafe?: {
     user?: {
+      id?: number;
       first_name?: string;
       last_name?: string;
       username?: string;
@@ -294,6 +296,8 @@ export default function Prototype() {
   const [toast, setToast] = useState("");
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [adminCode, setAdminCode] = useState(() => sessionStorage.getItem("charter-admin-code") || "");
+  const [adminSessionToken, setAdminSessionToken] = useState("");
+  const [adminIdentity, setAdminIdentity] = useState<{ id: string; first_name?: string; username?: string } | null>(null);
   const [adminAuthorized, setAdminAuthorized] = useState(false);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
@@ -357,45 +361,79 @@ export default function Prototype() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const adminRequest = useCallback(async (path: string, options: RequestInit = {}, code = adminCode) => {
+  const adminRequest = useCallback(async (path: string, options: RequestInit = {}, authOverride?: string) => {
+    const auth = authOverride || adminSessionToken || adminCode;
     const response = await fetch(path, {
       ...options,
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + code,
+        Authorization: "Bearer " + auth,
         ...(options.headers || {})
       }
     });
-    if (response.status === 401) throw new Error("Неверный код администратора");
+    if (response.status === 401 || response.status === 403) throw new Error("Нет доступа к админ-панели");
     if (!response.ok) {
       const payload = await response.json().catch(() => ({})) as { error?: string };
       throw new Error(payload.error || "Ошибка сервера");
     }
     return response.json();
-  }, [adminCode]);
+  }, [adminCode, adminSessionToken]);
 
-  const loadPricing = useCallback(async (code = adminCode) => {
-    if (!code) return;
+  const loadPricing = useCallback(async (authOverride?: string, persistCode = false) => {
+    const auth = authOverride || adminSessionToken || adminCode;
+    if (!auth) return;
     setPricingLoading(true);
     try {
-      const payload = await adminRequest("/api/admin/pricing", {}, code) as { config: PricingConfig; sync?: { running?: boolean } };
+      const payload = await adminRequest("/api/admin/pricing", {}, auth) as { config: PricingConfig; sync?: { running?: boolean } };
       setPricingConfig(payload.config);
       setAdminAuthorized(true);
       setAdminSyncRunning(Boolean(payload.sync?.running));
-      sessionStorage.setItem("charter-admin-code", code);
+      if (persistCode && adminCode) sessionStorage.setItem("charter-admin-code", adminCode);
     } catch (error) {
       setAdminAuthorized(false);
       setPricingConfig(null);
-      sessionStorage.removeItem("charter-admin-code");
+      if (persistCode) sessionStorage.removeItem("charter-admin-code");
       setToast(error instanceof Error ? error.message : "Не удалось открыть панель");
     } finally {
       setPricingLoading(false);
     }
-  }, [adminCode, adminRequest]);
+  }, [adminCode, adminRequest, adminSessionToken]);
 
   useEffect(() => {
-    if (screen === "admin" && adminCode && !adminAuthorized && !pricingLoading) void loadPricing(adminCode);
-  }, [screen, adminCode, adminAuthorized, pricingLoading, loadPricing]);
+    if (screen !== "admin" || adminAuthorized || pricingLoading) return;
+
+    const initData = window.Telegram?.WebApp?.initData;
+    if (initData && !adminSessionToken) {
+      setPricingLoading(true);
+      void fetch("/api/admin/telegram-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData })
+      })
+        .then(async response => {
+          const payload = await response.json() as { token?: string; admin?: { id: string; first_name?: string; username?: string }; error?: string };
+          if (!response.ok || !payload.token) throw new Error("Этот Telegram-аккаунт не имеет доступа");
+          setAdminSessionToken(payload.token);
+          setAdminIdentity(payload.admin || null);
+          const pricingResponse = await fetch("/api/admin/pricing", {
+            headers: { Authorization: "Bearer " + payload.token }
+          });
+          if (!pricingResponse.ok) throw new Error("Не удалось загрузить админ-панель");
+          const pricingPayload = await pricingResponse.json() as { config: PricingConfig; sync?: { running?: boolean } };
+          setPricingConfig(pricingPayload.config);
+          setAdminSyncRunning(Boolean(pricingPayload.sync?.running));
+          setAdminAuthorized(true);
+        })
+        .catch(error => {
+          setAdminAuthorized(false);
+          setToast(error instanceof Error ? error.message : "Нет доступа");
+        })
+        .finally(() => setPricingLoading(false));
+      return;
+    }
+
+    if (adminCode) void loadPricing(adminCode, true);
+  }, [screen, adminAuthorized, pricingLoading, adminSessionToken, adminCode, loadPricing]);
 
   const savePricing = async () => {
     if (!pricingConfig) return;
@@ -619,9 +657,9 @@ export default function Prototype() {
     <div className={"community-app charter-app" + (previewMode ? " preview-mode" : " live-mode") + (screen === "admin" ? " admin-view" : "")}>
       <header className="charter-header">
         {screen === "admin" ? <>
-          <div className="brand-logo"><PaperPlaneIcon /></div>
-          <div className="brand-title"><strong>Чартерные авиабилеты</strong><small>{feedMode === "live" ? "актуальные предложения" : "поиск лучших рейсов"}</small></div>
-          <button className="header-profile" aria-label="Профиль" onClick={() => setScreen("profile")}><PersonIcon /></button>
+          <div className="brand-logo"><MixerHorizontalIcon /></div>
+          <div className="brand-title"><strong>Админ-панель</strong><small>{adminIdentity?.first_name ? adminIdentity.first_name : "Чартерные авиабилеты"}</small></div>
+          <button className="header-profile" aria-label="К рейсам" onClick={() => setScreen("flights")}><HomeIcon /></button>
         </> : <>
           <button className="header-back" aria-label="Назад" onClick={() => {
             if (screen === "booking") { setSelected(null); setScreen("flights"); }
@@ -781,16 +819,23 @@ export default function Prototype() {
               <section className="admin-login">
                 <span className="heading-icon"><MixerHorizontalIcon /></span>
                 <h2>Панель агентства</h2>
-                <p>Управление автоматическими наценками. Доступ защищён кодом администратора.</p>
-                <label>Код администратора<input type="password" value={adminCode} onChange={event => setAdminCode(event.target.value)} placeholder="Введите код" /></label>
-                <button disabled={!adminCode || pricingLoading} onClick={() => void loadPricing(adminCode)}>{pricingLoading ? "Проверяю…" : "Войти"}</button>
+                <p>{window.Telegram?.WebApp?.initData ? "Проверяем доступ вашего Telegram-аккаунта." : "Откройте панель командой /admin в Telegram или войдите по коду."}</p>
+                {!window.Telegram?.WebApp?.initData && <><label>Код администратора<input type="password" value={adminCode} onChange={event => setAdminCode(event.target.value)} placeholder="Введите код" /></label>
+                <button disabled={!adminCode || pricingLoading} onClick={() => void loadPricing(adminCode, true)}>{pricingLoading ? "Проверяю…" : "Войти"}</button></>}
+                {window.Telegram?.WebApp?.initData && <div className="admin-telegram-check">{pricingLoading ? "Авторизация через Telegram…" : "Доступ к панели не подтверждён"}</div>}
                 <a href="./">Вернуться к рейсам</a>
               </section>
             ) : (
               <>
                 <section className="admin-heading">
-                  <div><small>ПАНЕЛЬ АГЕНТСТВА</small><h2>Наценки</h2><p>Правила применяются к себестоимости автоматически при каждой синхронизации.</p></div>
-                  <button onClick={() => { setAdminAuthorized(false); setAdminCode(""); setPricingConfig(null); sessionStorage.removeItem("charter-admin-code"); }}>Выйти</button>
+                  <div><small>УПРАВЛЕНИЕ СИСТЕМОЙ</small><h2>Чартеры Pro</h2><p>Рейсы, синхронизация и правила продаж в одном месте.</p></div>
+                  <button onClick={() => { setAdminAuthorized(false); setAdminCode(""); setAdminSessionToken(""); setAdminIdentity(null); setPricingConfig(null); sessionStorage.removeItem("charter-admin-code"); }}>Выйти</button>
+                </section>
+
+                <section className="admin-kpis">
+                  <div><span>Активные рейсы</span><strong>{activeFlights.length}</strong><small>{feedMode === "live" ? "данные актуальны" : "резервный режим"}</small></div>
+                  <div><span>Правила цен</span><strong>{pricingConfig?.rules.filter(rule => rule.enabled).length || 0}</strong><small>активных</small></div>
+                  <div><span>Синхронизация</span><strong>{adminSyncRunning ? "…" : "✓"}</strong><small>{adminSyncRunning ? "идёт сейчас" : "готово"}</small></div>
                 </section>
 
                 <section className="pricing-priority">
