@@ -55,46 +55,6 @@ button {
   cursor: pointer;
 }
 
-
-.mobile-live-runtime {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  background: #eef5fb;
-  --device-safe-area-bottom: var(--tg-content-safe-area-inset-bottom, 0px);
-}
-
-.mobile-live-runtime .mobile-app-viewport {
-  position: absolute;
-  inset: 0 !important;
-  bottom: 0 !important;
-}
-
-.mobile-live-runtime .charter-header {
-  height: calc(70px + var(--tg-content-safe-area-inset-top, 0px));
-  padding:
-    calc(10px + var(--tg-content-safe-area-inset-top, 0px))
-    16px
-    10px;
-}
-
-.mobile-live-runtime .charter-scroll {
-  top: calc(70px + var(--tg-content-safe-area-inset-top, 0px)) !important;
-  bottom: calc(62px + var(--tg-content-safe-area-inset-bottom, 0px)) !important;
-}
-
-.mobile-live-runtime .bottom-nav {
-  height: calc(62px + var(--tg-content-safe-area-inset-bottom, 0px));
-  padding:
-    7px
-    8px
-    calc(7px + var(--tg-content-safe-area-inset-bottom, 0px));
-}
-
-.mobile-live-runtime .mobile-page {
-  --mobile-safe-area-height: var(--tg-content-safe-area-inset-bottom, 0px);
-}
-
 .phone-stage {
   position: relative;
   display: grid;
