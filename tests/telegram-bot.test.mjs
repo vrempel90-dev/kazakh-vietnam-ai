@@ -34,6 +34,7 @@ const runtime = createTelegramRuntime({
   publicAppUrl: "https://example.com",
   webhookSecret: "secret-123",
   managerPhone: "77007772414",
+  adminTelegramIds: "16815689",
   fetchImpl: fakeFetch
 });
 
@@ -48,6 +49,10 @@ assert.ok(calls.some(call => call.method === "setMyCommands"));
 assert.ok(calls.some(call => call.method === "setMyDescription"));
 assert.ok(calls.some(call => call.method === "setMyShortDescription"));
 assert.ok(calls.some(call => call.method === "setChatMenuButton"));
+const menuButtonCall = calls.find(call => call.method === "setChatMenuButton");
+assert.equal(menuButtonCall.payload.menu_button.text, "Запустить приложение");
+const commandsCall = calls.find(call => call.method === "setMyCommands");
+assert.ok(commandsCall.payload.commands.some(command => command.command === "admin"));
 const webhookCall = calls.find(call => call.method === "setWebhook");
 assert.equal(webhookCall.payload.url, "https://example.com/api/telegram/webhook");
 assert.equal(webhookCall.payload.secret_token, "secret-123");
@@ -64,4 +69,25 @@ assert.equal(startMessage.payload.chat_id, 42);
 assert.ok(startMessage.payload.text.includes("Ирина"));
 assert.equal(startMessage.payload.reply_markup.inline_keyboard[0][0].web_app.url, "https://example.com");
 
-console.log("Telegram runtime commands, webhook, menu button, and Mini App keyboard: passed");
+await runtime.handleUpdate({
+  message: {
+    chat: { id: 16815689, type: "private" },
+    from: { id: 16815689, first_name: "Admin" },
+    text: "/admin"
+  }
+});
+const adminMessage = calls.filter(call => call.method === "sendMessage").at(-1);
+assert.equal(adminMessage.payload.chat_id, 16815689);
+assert.equal(adminMessage.payload.reply_markup.inline_keyboard[0][0].web_app.url, "https://example.com/?admin=1");
+
+await runtime.handleUpdate({
+  message: {
+    chat: { id: 999, type: "private" },
+    from: { id: 999, first_name: "Guest" },
+    text: "/admin"
+  }
+});
+const deniedMessage = calls.filter(call => call.method === "sendMessage").at(-1);
+assert.ok(deniedMessage.payload.text.includes("запрещён"));
+
+console.log("Telegram runtime commands, admin access, webhook, launch button, and Mini App keyboard: passed");
