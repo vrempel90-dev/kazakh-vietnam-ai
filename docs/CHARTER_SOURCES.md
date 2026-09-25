@@ -47,19 +47,38 @@ For authenticated sources, credentials must be supplied as repository/deployment
 
 ## Pricing
 
-Cost-based sources use:
+Supplier COST feeds use a rule-based Pricing Engine. No COST offer is published unless an enabled rule matches.
 
-`sale = cost × FX_to_KZT × (1 + markup_percent / 100)`
+Supported formulas:
 
-The result is rounded up to `SALE_PRICE_ROUNDING` (default 1000 KZT).
+- add a fixed amount in KZT, e.g. `cost + 10,000 ₸`;
+- add a percentage, e.g. `cost + 7%`;
+- set an exact customer sale price in KZT.
 
-Example only:
-if a confirmed supplier cost is 100,000 KZT and markup is 7%, the customer price is 107,000 KZT.
+Rule priority is deterministic:
+
+1. exact offer ID;
+2. route + OW/RT;
+3. route;
+4. supplier + OW/RT;
+5. supplier;
+6. OW/RT;
+7. global rule.
+
+This lets the agency keep simple defaults while overriding individual directions or flights.
+
+The result is rounded up to `SALE_PRICE_ROUNDING` (default 1000 KZT). Supplier COST prices are never written to the public feed.
+
+Pricing rules are stored in `PRICING_RULES_PATH`. In Railway production this path is backed by a persistent volume. The admin page is available at `/?admin=1` and requires `ADMIN_PRICING_TOKEN`.
+
+The two sample rules, OW +10,000 KZT and RT +20,000 KZT, are shipped **disabled** because the customer's actual formula has not yet been confirmed.
 
 ## Refresh behavior
 
-- GitHub Actions source refresh: every 15 minutes.
+- Railway runtime source refresh: every `SYNC_INTERVAL_MINUTES` (default 15 minutes).
+- Changing pricing rules triggers an immediate recalculation.
 - Mini App feed refresh while open: every 60 seconds.
+- GitHub Actions sync is manual-only and kept as a diagnostic fallback.
 - If a source fails, the previous customer feed is kept instead of being erased.
 - Duplicate customer offers are collapsed by route/date/trip/airline and the lowest sale price is kept.
 
