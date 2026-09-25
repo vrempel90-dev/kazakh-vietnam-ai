@@ -587,7 +587,9 @@ await mkdir(resolve("public"), { recursive: true });
 await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
 console.log("Published", flights.length, "customer-visible offers");
 
-if (changedFlightsForPublish.length && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
+const publishAllowedForRun = process.env.SYNC_REASON !== "startup";
+
+if (changedFlightsForPublish.length && publishAllowedForRun && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
   try {
     const publishResult = await publishFreshFlights({
       token: process.env.TELEGRAM_BOT_TOKEN,
@@ -603,7 +605,11 @@ if (changedFlightsForPublish.length && process.env.TELEGRAM_PUBLISH_ENABLED !== 
     console.error("Telegram fresh-flight publishing failed:", error instanceof Error ? error.message : String(error));
   }
 } else {
-  console.log("No fresh flight changes to publish to Telegram channels.");
+  console.log(
+    publishAllowedForRun
+      ? "No fresh flight changes to publish to Telegram channels."
+      : "Startup sync establishes a fresh baseline; Telegram publishing is skipped."
+  );
 }
 
 console.log("Source status:", JSON.stringify(statuses, null, 2));
