@@ -637,17 +637,6 @@ export default function Prototype() {
       <CharterScroll key={screen} screen={screen} preview={previewMode}>
         {screen === "flights" && (
           <main className="charter-page">
-            <section className="chat-message welcome-message">
-              <strong>Привет! 👋</strong>
-              <span>Я помогу найти лучшие<br />чартерные авиабилеты.</span>
-              <span>Куда вы хотите полететь?</span>
-            </section>
-            <div className="search-bubble">
-              <span>{country === "Все" ? "Хочу найти чартерные рейсы" : "Хочу в " + country}</span>
-              <span>{city === "Все" ? "из любого города" : "из " + city}</span>
-              <span>с актуальными ценами</span>
-            </div>
-
             <div className="toolbar search-toolbar">
               <button className={city !== "Все" ? "filter active" : "filter"} onClick={() => setPicker("city")}>
                 <PaperPlaneIcon /><span>{city === "Все" ? "Город" : city}</span><ChevronDownIcon />
