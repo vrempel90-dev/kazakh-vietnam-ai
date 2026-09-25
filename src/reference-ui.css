@@ -1,0 +1,342 @@
+/* Client Mini App. The pricing admin keeps its existing styles. */
+body:has(.charter-app.live-mode) { background: #eaf5fa; }
+.charter-app.live-mode {
+  --mobile-safe-area-height: env(safe-area-inset-bottom, 0px);
+  width: 100%;
+  max-width: 540px;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+}
+.charter-app.live-mode.admin-view { max-width: none; }
+.charter-app.live-mode.admin-view .charter-header { height: 70px; padding: 10px 16px; }
+.charter-app.live-mode.admin-view .charter-scroll { top: 70px !important; bottom: 0 !important; overflow-y: auto; }
+.charter-app:not(.admin-view) {
+  --bg: #eaf5fa;
+  --card: #fff;
+  --text: #17212b;
+  --muted: #687989;
+  --line: #d9e6ee;
+  --blue: #3381b8;
+  --green: #17a253;
+  --shadow: 0 1px 3px rgba(21, 53, 73, .09);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 14px;
+}
+.charter-app:not(.admin-view) .charter-header {
+  height: 66px;
+  padding: 7px 10px;
+  gap: 9px;
+  background: #3381b8;
+  box-shadow: none;
+}
+.charter-app.live-mode:not(.admin-view) .charter-header {
+  height: calc(66px + var(--tg-content-safe-area-inset-top, 0px));
+  padding-top: calc(7px + var(--tg-content-safe-area-inset-top, 0px));
+}
+.charter-app.preview-mode:not(.admin-view) .charter-header {
+  height: 118px;
+  padding-top: 59px;
+}
+.header-back, .charter-app:not(.admin-view) .header-profile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  background: transparent;
+}
+.header-back svg, .charter-app:not(.admin-view) .header-profile svg { width: 22px; height: 22px; }
+.charter-app:not(.admin-view) .brand-logo {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #fff;
+  background: transparent;
+}
+.charter-app:not(.admin-view) .brand-logo svg { width: 22px; height: 22px; }
+.charter-app:not(.admin-view) .brand-title { gap: 2px; }
+.charter-app:not(.admin-view) .brand-title strong {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.charter-app:not(.admin-view) .brand-title small { color: #d4e8f5; font-size: 11px; }
+.charter-app:not(.admin-view) .charter-scroll {
+  top: 66px !important;
+  bottom: calc(59px + var(--mobile-safe-area-height, 0px)) !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #eaf5fa;
+  scrollbar-width: none;
+}
+.charter-app.live-mode:not(.admin-view) .charter-scroll {
+  top: calc(66px + var(--tg-content-safe-area-inset-top, 0px)) !important;
+  bottom: calc(59px + var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
+}
+.charter-app.preview-mode:not(.admin-view) .charter-scroll { top: 118px !important; }
+.charter-app:not(.admin-view) .charter-page { min-height: 100%; padding: 10px 10px 28px; }
+.chat-message {
+  width: fit-content;
+  max-width: 78%;
+  padding: 10px 12px;
+  border: 1px solid #e2e9ee;
+  border-radius: 12px 12px 12px 4px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  color: #17212b;
+  font-size: 14px;
+  line-height: 1.33;
+}
+.chat-message strong, .chat-message span { display: block; }
+.chat-message strong { font-weight: 650; }
+.welcome-message { display: grid; gap: 8px; width: 72%; max-width: 72%; margin-bottom: 11px; }
+.search-bubble {
+  width: 70%;
+  max-width: 70%;
+  margin: 0 0 11px auto;
+  padding: 9px 11px;
+  border-radius: 12px 12px 4px 12px;
+  background: #d9fbd5;
+  color: #17212b;
+  font-size: 13px;
+  line-height: 1.32;
+  box-shadow: var(--shadow);
+}
+.search-bubble span { display: block; }
+.charter-app:not(.admin-view) .toolbar { gap: 5px; margin: 0 0 6px; }
+.charter-app:not(.admin-view) .filter {
+  height: 32px;
+  padding: 0 7px;
+  border-color: #d6e3ec;
+  border-radius: 7px;
+  box-shadow: none;
+  color: #36546b;
+}
+.charter-app:not(.admin-view) .filter span { font-size: 11px; }
+.charter-app:not(.admin-view) .filter svg { width: 12px; height: 12px; }
+.charter-app:not(.admin-view) .currency-switch { padding: 2px; border-radius: 7px; box-shadow: none; }
+.charter-app:not(.admin-view) .currency-switch button { width: 27px; height: 26px; border-radius: 5px; font-size: 12px; }
+.charter-app:not(.admin-view) .currency-switch button.active { background: #3381b8; }
+.charter-app:not(.admin-view) .sync-line { padding: 0 2px 8px; font-size: 10px; }
+.found-message { display: grid; gap: 2px; width: 84%; max-width: 84%; margin: 2px 0 7px; padding: 7px 10px; font-size: 13px; }
+.charter-app:not(.admin-view) .deal-list { gap: 6px; }
+.charter-app:not(.admin-view) .deal-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 102px;
+  padding: 5px;
+  border: 1px solid #dce7ee;
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+}
+.deal-photo {
+  display: block;
+  width: 84px;
+  height: 90px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.destination-placeholder {
+  display: grid;
+  place-items: center;
+  background: #e4f1f8;
+  font-size: 27px;
+}
+.charter-app:not(.admin-view) .deal-copy { gap: 3px; padding: 2px 3px 0 0; }
+.charter-app:not(.admin-view) .deal-copy > strong {
+  display: block;
+  max-width: calc(100% - 22px);
+  font-size: 13px;
+  line-height: 1.15;
+  white-space: normal;
+  overflow: visible;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.charter-app:not(.admin-view) .deal-copy > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: #394c5a;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.charter-app:not(.admin-view) .deal-copy > span svg { width: 11px; height: 11px; color: #3e759d; }
+.charter-app:not(.admin-view) .deal-bottom { margin-top: auto; align-items: end; gap: 4px; }
+.charter-app:not(.admin-view) .price {
+  display: block;
+  min-width: 0;
+  color: #17212b;
+  font-size: 17px;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: -.02em;
+}
+.select-flight, .green-button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: #16a252;
+  color: #fff;
+  font-weight: 650;
+}
+.select-flight { flex: none; width: 80px; height: 29px; font-size: 11px; }
+.charter-app:not(.admin-view) .favorite {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 25px;
+  height: 25px;
+  border-radius: 5px;
+}
+.charter-app:not(.admin-view) .favorite svg { width: 15px; height: 15px; }
+.show-more {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 5px;
+  border: 1px solid #e2e9ee;
+  border-radius: 7px;
+  background: #fff;
+  color: #34465a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.notice-message { max-width: 84%; margin-bottom: 9px; }
+.notice-message span { margin-top: 5px; }
+.notice-offer {
+  overflow: hidden;
+  border: 1px solid #e0e8ed;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.notice-image { position: relative; height: 150px; background: #e4f1f8; }
+.notice-image img { width: 100%; height: 100%; object-fit: cover; }
+.notice-image > span:not(.notice-label) { display: grid; place-items: center; height: 100%; font-size: 48px; }
+.notice-label {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #ed4049;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 650;
+}
+.notice-body { display: grid; gap: 3px; padding: 10px; }
+.notice-body > strong { font-size: 13px; line-height: 1.2; }
+.notice-body > span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #354b5c; }
+.notice-body > span svg { width: 12px; height: 12px; color: #3f779f; }
+.notice-body > b { margin: 2px 0 3px; font-size: 18px; }
+.notice-body .green-button { width: 100%; height: 36px; font-size: 13px; }
+.notice-matches { display: grid; gap: 4px; margin-top: 11px; font-size: 11px; }
+.notice-matches strong { font-weight: 600; }
+.notice-matches span { display: flex; gap: 5px; align-items: center; }
+.notice-matches svg { width: 14px; height: 14px; padding: 2px; border-radius: 3px; background: #17a253; color: #fff; }
+.subscription-message { display: grid; gap: 9px; max-width: 100%; width: 100%; margin-top: 10px; }
+.subscription-message button { height: 35px; border: 0; border-radius: 5px; background: #dce7f2; color: #1e3446; font-size: 12px; font-weight: 600; }
+.subscription-heading { margin: 16px 0 7px !important; font-size: 12px; font-weight: 600; color: #4c6578; }
+.charter-app:not(.admin-view) .alert-row { margin-bottom: 6px; border-radius: 7px; box-shadow: none; }
+.booking-flight {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 84px;
+  padding: 5px;
+  border: 1px solid #e0e8ed;
+  border-radius: 9px;
+  background: #fff;
+}
+.booking-flight img, .booking-flight > .destination-placeholder { width: 76px; height: 72px; border-radius: 5px; object-fit: cover; }
+.booking-flight > div { display: grid; gap: 2px; min-width: 0; }
+.booking-flight strong { font-size: 12px; line-height: 1.2; }
+.booking-flight span:not(.destination-placeholder) { display: flex; align-items: center; gap: 3px; font-size: 10px; color: #3e5364; }
+.booking-flight span svg { width: 11px; height: 11px; }
+.booking-flight b { font-size: 16px; }
+.booking-offer-meta { margin: 5px 3px 9px; color: #627787; font-size: 9px; }
+.booking-intro { max-width: 85%; margin-bottom: 10px; }
+.booking-intro span { margin-top: 5px; }
+.booking-form {
+  display: grid;
+  gap: 0;
+  padding: 3px 7px 7px;
+  border: 1px solid #e0e8ed;
+  border-radius: 9px;
+  background: #fff;
+}
+.booking-form label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(102px, 39%);
+  align-items: center;
+  gap: 8px;
+  min-height: 53px;
+  border-bottom: 1px solid #edf1f4;
+  color: #253746;
+  font-size: 11px;
+}
+.booking-form label > span { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.booking-form label svg { width: 15px; height: 15px; color: #5d7687; }
+.booking-form select, .booking-form input {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid #dce5ec;
+  border-radius: 6px;
+  background: #f9fbfd;
+  color: #17212b;
+  font-size: 11px;
+}
+.booking-form .submit-button { width: 100%; height: 40px; margin-top: 7px; font-size: 13px; }
+.application-success {
+  display: grid;
+  gap: 5px;
+  width: 88%;
+  margin: 11px 0 0 auto;
+  padding: 11px 13px;
+  border-radius: 10px 10px 4px 10px;
+  background: #d7ffdd;
+  color: #18372b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.booking-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.booking-actions button { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 5px 7px; border: 1px solid #d8e4ec; border-radius: 6px; background: #fff; color: #426075; font-size: 10px; }
+.booking-actions svg { width: 12px; height: 12px; }
+.manager-contact { margin: 12px 0 0 !important; font-size: 10px !important; text-align: center; }
+.charter-app:not(.admin-view) .bottom-nav {
+  height: calc(59px + var(--mobile-safe-area-height, 0px));
+  padding: 5px 5px calc(5px + var(--mobile-safe-area-height, 0px));
+  border-top: 1px solid #d8e4ec;
+  background: #fff;
+}
+.charter-app.live-mode:not(.admin-view) .bottom-nav {
+  height: calc(59px + var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: calc(5px + var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+.charter-app:not(.admin-view) .bottom-nav button { gap: 2px; color: #697e8e; font-size: 10px; }
+.charter-app:not(.admin-view) .bottom-nav button svg { width: 18px; height: 18px; }
+.charter-app:not(.admin-view) .bottom-nav button.active { color: #2383c4; }
+.charter-app:not(.admin-view) .toast { bottom: 67px; font-size: 12px; }
+@media (max-width: 360px) {
+  .charter-app:not(.admin-view) .charter-page { padding-left: 8px; padding-right: 8px; }
+  .charter-app:not(.admin-view) .deal-card { grid-template-columns: 72px minmax(0, 1fr); min-height: 96px; }
+  .deal-photo { width: 72px; height: 84px; }
+  .charter-app:not(.admin-view) .price { font-size: 14px; }
+  .select-flight { width: 70px; }
+  .charter-app:not(.admin-view) .filter { padding: 0 5px; }
+  .charter-app:not(.admin-view) .currency-switch button { width: 23px; }
+}
