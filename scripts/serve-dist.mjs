@@ -4,15 +4,17 @@ import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { loadPricingConfig, savePricingConfig } from "./pricing-engine.mjs";
 import { createTelegramRuntime } from "./telegram-bot.mjs";
+import { isTelegramAdmin, parseAdminTelegramIds, verifyTelegramInitData } from "./telegram-admin-auth.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
 const port = Number(process.env.PORT || 3000);
 const pricingPath = process.env.PRICING_RULES_PATH || "/data/pricing-rules.json";
 const adminToken = String(process.env.ADMIN_PRICING_TOKEN || "");
+const adminTelegramIds = parseAdminTelegramIds(process.env.ADMIN_TELEGRAM_IDS);
 const syncIntervalMinutes = Math.max(5, Number(process.env.SYNC_INTERVAL_MINUTES || 15));
 
 const publicAppUrl = String(
@@ -26,7 +28,8 @@ const telegram = createTelegramRuntime({
   token: process.env.TELEGRAM_BOT_TOKEN,
   publicAppUrl,
   webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
-  managerPhone: process.env.VITE_MANAGER_WHATSAPP || "77007772414"
+  managerPhone: process.env.VITE_MANAGER_WHATSAPP || "77007772414",
+  adminTelegramIds: process.env.ADMIN_TELEGRAM_IDS
 });
 
 const syncState = {
@@ -81,13 +84,43 @@ function sendJson(res, statusCode, body) {
   res.end(JSON.stringify(body));
 }
 
+function safeEqualText(a, b) {
+  const left = Buffer.from(String(a || ""));
+  const right = Buffer.from(String(b || ""));
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function signAdminSession(userId, ttlSeconds = 3600) {
+  if (!adminToken) return "";
+  const payload = Buffer.from(JSON.stringify({
+    uid: String(userId),
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds
+  })).toString("base64url");
+  const signature = createHmac("sha256", adminToken).update(payload).digest("base64url");
+  return payload + "." + signature;
+}
+
+function verifyAdminSession(token) {
+  if (!adminToken || !token || !token.includes(".")) return false;
+  const [payload, signature] = token.split(".", 2);
+  const expected = createHmac("sha256", adminToken).update(payload).digest("base64url");
+  if (!safeEqualText(signature, expected)) return false;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!parsed?.uid || !parsed?.exp) return false;
+    if (Number(parsed.exp) < Math.floor(Date.now() / 1000)) return false;
+    return isTelegramAdmin(String(parsed.uid), adminTelegramIds);
+  } catch {
+    return false;
+  }
+}
+
 function isAuthorized(req) {
   if (!adminToken) return false;
   const header = String(req.headers.authorization || "");
   const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const expectedBuffer = Buffer.from(adminToken);
-  const providedBuffer = Buffer.from(provided);
-  return expectedBuffer.length === providedBuffer.length && timingSafeEqual(expectedBuffer, providedBuffer);
+  if (safeEqualText(provided, adminToken)) return true;
+  return verifyAdminSession(provided);
 }
 
 async function readJsonBody(req) {
@@ -163,6 +196,30 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, { ok: true });
       void telegram.handleUpdate(update).catch(error => {
         console.error("Telegram update failed:", error instanceof Error ? error.message : String(error));
+      });
+    } catch (error) {
+      sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/admin/telegram-auth" && req.method === "POST") {
+    try {
+      const body = await readJsonBody(req);
+      const verified = verifyTelegramInitData(body?.initData, process.env.TELEGRAM_BOT_TOKEN, 900);
+      if (!verified.ok || !isTelegramAdmin(verified.user?.id, adminTelegramIds)) {
+        sendJson(res, 403, { error: "admin_access_denied" });
+        return;
+      }
+      const sessionToken = signAdminSession(verified.user.id);
+      if (!sessionToken) {
+        sendJson(res, 503, { error: "admin_session_unavailable" });
+        return;
+      }
+      sendJson(res, 200, {
+        token: sessionToken,
+        expiresIn: 3600,
+        admin: verified.user
       });
     } catch (error) {
       sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
