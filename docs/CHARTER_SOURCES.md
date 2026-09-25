@@ -71,7 +71,7 @@ The result is rounded up to `SALE_PRICE_ROUNDING` (default 1000 KZT). Supplier C
 
 Pricing rules are stored in `PRICING_RULES_PATH`. In Railway production this path is backed by a persistent volume. The admin page is available at `/?admin=1` and requires `ADMIN_PRICING_TOKEN`.
 
-The two sample rules, OW +10,000 KZT and RT +20,000 KZT, are shipped **disabled** because the customer's actual formula has not yet been confirmed.
+The default automatic rules are enabled: OW adds 10,000 KZT and RT adds 20,000 KZT. More specific route, supplier, or exact-offer rules override these defaults.
 
 ## Refresh behavior
 
@@ -88,7 +88,7 @@ The two sample rules, OW +10,000 KZT and RT +20,000 KZT, are shipped **disabled*
 A browser/network discovery pass was run against every supplied source.
 
 - **Forever Travel Telegram / charterkaz Telegram:** live parsing works. These are treated as SALE-price feeds.
-- **NEOS Google Sheet:** live table access and parsing work. 60 data rows were readable and 54 future priced rows were parseable at the time of verification. Publishing is intentionally blocked until the sheet currency and markup are configured.
+- **NEOS Google Sheet:** live table access and parsing work. 60 data rows were readable and 54 future priced rows were parseable at the time of verification. Publishing still requires a confirmed source currency/FX conversion; once currency is configured, the enabled automatic OW/RT pricing rules are applied.
 - **KAZUNION:** the ticket search is publicly accessible. The page uses SAMO-Soft dynamic requests (`samo_action=PRICES`). Public fare extraction is technically possible without agency credentials, but the production route/date enumerator still needs to be implemented before this source can publish offers.
 - **Crystal Bay:** public SAMO-Soft ticket search is accessible and exposes `samo_action=PRICES`; production fare extraction still needs the route/date enumerator.
 - **ABK Tourism:** public SAMO-Soft ticket search is accessible and exposes `samo_action=PRICES`; production fare extraction still needs the route/date enumerator.
