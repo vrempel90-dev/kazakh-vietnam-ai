@@ -514,7 +514,7 @@ for (const source of enabledSources()) {
 }
 
 const freshFlights = dedupeFlights(collected);
-const outputPath = resolve("public/flights.json");
+const outputPath = resolve(process.env.FLIGHT_FEED_OUTPUT || "public/flights.json");
 let existing = null;
 try {
   existing = JSON.parse(await readFile(outputPath, "utf8"));
