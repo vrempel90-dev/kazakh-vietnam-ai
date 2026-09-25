@@ -1,3 +1,4 @@
+import { parseAdminTelegramIds } from "./telegram-admin-auth.mjs";
 const DEFAULT_MANAGER_PHONE = "77007772414";
 
 export function normalizePublicUrl(value) {
@@ -28,12 +29,14 @@ export function createTelegramRuntime({
   publicAppUrl,
   webhookSecret,
   managerPhone = DEFAULT_MANAGER_PHONE,
+  adminTelegramIds = "",
   fetchImpl = fetch
 }) {
   const botToken = String(token || "").trim();
   const appUrl = normalizePublicUrl(publicAppUrl);
   const secret = String(webhookSecret || "").trim();
   const manager = String(managerPhone || DEFAULT_MANAGER_PHONE).replace(/\D/g, "");
+  const adminIds = parseAdminTelegramIds(adminTelegramIds);
   const base = botToken ? "https://api.telegram.org/bot" + botToken + "/" : "";
 
   const status = {
@@ -89,6 +92,38 @@ export function createTelegramRuntime({
       return;
     }
 
+    if (command === "/admin") {
+      const userId = String(message.from?.id || "");
+      const isPrivate = message.chat?.type === "private" || !message.chat?.type;
+      if (!isPrivate) {
+        await api("sendMessage", {
+          chat_id: chatId,
+          text: "Админ-панель доступна только в личном чате с ботом."
+        });
+        return;
+      }
+      if (!adminIds.has(userId)) {
+        await api("sendMessage", {
+          chat_id: chatId,
+          text:
+            "Доступ к админ-панели запрещён.\n\n" +
+            "Ваш Telegram ID: " + userId
+        });
+        return;
+      }
+      await api("sendMessage", {
+        chat_id: chatId,
+        text: "⚙️ Админ-панель\n\nУправление рейсами, синхронизацией и наценками.",
+        reply_markup: {
+          inline_keyboard: [[{
+            text: "Открыть админ-панель",
+            web_app: { url: appUrl + "/?admin=1" }
+          }]]
+        }
+      });
+      return;
+    }
+
     if (command === "/help") {
       await api("sendMessage", {
         chat_id: chatId,
@@ -122,6 +157,7 @@ export function createTelegramRuntime({
             { command: "start", description: "Открыть чартерные авиабилеты" },
             { command: "flights", description: "Актуальные рейсы" },
             { command: "menu", description: "Главное меню" },
+            { command: "admin", description: "Админ-панель" },
             { command: "help", description: "Помощь" }
           ]
         }),
@@ -135,7 +171,7 @@ export function createTelegramRuntime({
         api("setChatMenuButton", {
           menu_button: {
             type: "web_app",
-            text: "Авиабилеты",
+            text: "Запустить приложение",
             web_app: { url: appUrl }
           }
         })
@@ -164,6 +200,7 @@ export function createTelegramRuntime({
     api,
     configure,
     handleUpdate,
-    isWebhookAuthorized
+    isWebhookAuthorized,
+    isAdminUser: userId => adminIds.has(String(userId || ""))
   };
 }
