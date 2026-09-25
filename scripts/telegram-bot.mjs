@@ -12,7 +12,7 @@ export function buildTelegramHomeKeyboard(publicAppUrl, managerPhone = DEFAULT_M
   const phone = String(managerPhone || DEFAULT_MANAGER_PHONE).replace(/\D/g, "");
   return {
     inline_keyboard: [
-      [{ text: "✈️ Открыть авиабилеты", web_app: { url: appUrl } }],
+      [{ text: "🚀 Запустить приложение", web_app: { url: appUrl } }],
       [{ text: "💬 Написать менеджеру", url: "https://wa.me/" + phone }]
     ]
   };
