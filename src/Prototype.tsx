@@ -287,7 +287,9 @@ export default function Prototype() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [applicationPrepared, setApplicationPrepared] = useState(false);
-  const [flights, setFlights] = useState<Flight[]>(fallbackFlights);
+  const [flights, setFlights] = useState<Flight[]>(() =>
+    new URLSearchParams(window.location.search).get("preview") === "1" ? fallbackFlights : []
+  );
   const [favorites, setFavorites] = useState<string[]>(() => readList("charter-favorites"));
   const [alerts, setAlerts] = useState<string[]>(() => readList("charter-route-alerts"));
   const [feedMode, setFeedMode] = useState<"loading" | "live" | "demo" | "error">("loading");
@@ -313,14 +315,13 @@ export default function Prototype() {
       const next = Array.isArray(payload.flights)
         ? payload.flights.filter((item): item is Flight => Boolean(item && item.id && item.from && item.to && Number.isFinite(item.price)))
         : [];
-      if (!next.length) throw new Error("Flight feed is empty");
       setFlights(next);
       setRates(payload.rates || {});
       setFeedMode(payload.mode === "demo" ? "demo" : "live");
       const generated = payload.generatedAt ? new Date(payload.generatedAt) : new Date();
       setLastUpdated(Number.isNaN(generated.getTime()) ? new Date() : generated);
     } catch {
-      setFeedMode(current => current === "live" ? "error" : "demo");
+      setFeedMode("error");
     }
   }, []);
 
@@ -713,8 +714,8 @@ export default function Prototype() {
             ) : (
               <section className="empty-state">
                 <MagnifyingGlassIcon />
-                <strong>{tab === "mine" ? "Нет сохранённых направлений" : "Рейсы не найдены"}</strong>
-                <p>{tab === "mine" ? "Добавьте понравившийся рейс в избранное." : "Измените город вылета или страну."}</p>
+                <strong>{tab === "mine" ? "Нет сохранённых направлений" : activeFlights.length === 0 && feedMode === "live" ? "Актуальных рейсов пока нет" : "Рейсы не найдены"}</strong>
+                <p>{tab === "mine" ? "Добавьте понравившийся рейс в избранное." : activeFlights.length === 0 && feedMode === "live" ? "Показываем только проверенные актуальные предложения. Источники обновляются автоматически." : "Измените город вылета или страну."}</p>
                 <button onClick={() => { setCity("Все"); setCountry("Все"); setTab("all"); }}>Показать все рейсы</button>
               </section>
             )}
