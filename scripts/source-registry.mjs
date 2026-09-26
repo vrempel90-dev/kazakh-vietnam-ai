@@ -5,7 +5,9 @@ export const sourceRegistry = [
     kind: "telegram_public",
     priceKind: "sale",
     url: "https://t.me/s/charter_forever_travel",
-    enabled: true
+    enabled: true,
+    ingest: false,
+    note: "Reference feed only. Telegram must never be used as the production source of charter offers."
   },
   {
     id: "charterkaz",
@@ -13,7 +15,9 @@ export const sourceRegistry = [
     kind: "telegram_public",
     priceKind: "sale",
     url: "https://t.me/s/charterkaz",
-    enabled: true
+    enabled: true,
+    ingest: false,
+    note: "Publication/community channel only. Manual Telegram posts must never re-enter the offer ingestion pipeline."
   },
   {
     id: "neos",
@@ -160,5 +164,5 @@ export const sourceRegistry = [
 ];
 
 export function enabledSources() {
-  return sourceRegistry.filter(source => source.enabled);
+  return sourceRegistry.filter(source => source.enabled && source.ingest !== false);
 }

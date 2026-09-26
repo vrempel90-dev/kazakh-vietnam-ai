@@ -34,6 +34,9 @@ jobs:
       - name: Offer lifecycle tests
         run: npm run test:lifecycle
 
+      - name: Charter source ingestion tests
+        run: npm run test:sources
+
       - name: Telegram integration tests
         run: npm run test:telegram
 
