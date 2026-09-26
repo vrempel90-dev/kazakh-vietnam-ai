@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { enabledSources } from "./source-registry.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
+import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 
 const AIRLINES = [
@@ -471,42 +472,6 @@ function offerTtlHours() {
   return configured != null && configured >= 1 ? configured : 24;
 }
 
-function hasMaterialChange(previous, current) {
-  if (!previous) return true;
-  return previous.price !== current.price
-    || previous.seats !== current.seats
-    || previous.airline !== current.airline
-    || previous.departureDate !== current.departureDate
-    || previous.returnDate !== current.returnDate
-    || previous.trip !== current.trip;
-}
-
-function reconcileLifecycle(flights, existing, now) {
-  const existingById = new Map(
-    Array.isArray(existing?.flights) ? existing.flights.map(flight => [flight.id, flight]) : []
-  );
-  const ttlMs = offerTtlHours() * 60 * 60 * 1000;
-  const nowIso = now.toISOString();
-
-  return flights.map(flight => {
-    const previous = existingById.get(flight.id);
-    const changed = hasMaterialChange(previous, flight);
-    const previousPublishedAt = previous?.publishedAt || previous?.updatedAt;
-    const publishedAt = changed || !previousPublishedAt ? nowIso : previousPublishedAt;
-    const expiresAt = changed || !previous?.expiresAt
-      ? new Date(new Date(publishedAt).getTime() + ttlMs).toISOString()
-      : previous.expiresAt;
-    const updatedAt = changed ? nowIso : (previous?.updatedAt || publishedAt);
-
-    return {
-      ...flight,
-      publishedAt,
-      updatedAt,
-      expiresAt
-    };
-  });
-}
-
 function comparablePayload(payload) {
   return JSON.stringify({ mode: payload.mode, note: payload.note, rates: payload.rates, flights: payload.flights });
 }
@@ -548,7 +513,7 @@ try {
 } catch {
   // A missing previous feed is allowed on first run.
 }
-const flights = reconcileLifecycle(freshFlights, existing, now);
+const flights = reconcileLifecycle(freshFlights, existing, now, offerTtlHours());
 const existingByIdForPublish = new Map(
   Array.isArray(existing?.flights) ? existing.flights.map(flight => [flight.id, flight]) : []
 );
