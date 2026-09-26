@@ -31,6 +31,9 @@ jobs:
       - name: Pricing engine tests
         run: npm run test:pricing
 
+      - name: Offer lifecycle tests
+        run: npm run test:lifecycle
+
       - name: Telegram integration tests
         run: npm run test:telegram
 
