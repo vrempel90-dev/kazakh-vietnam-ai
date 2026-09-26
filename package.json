@@ -22,7 +22,8 @@
     "test:pricing": "node tests/pricing-engine.test.mjs",
     "test:telegram": "node tests/telegram-bot.test.mjs",
     "test:admin-auth": "node tests/telegram-admin-auth.test.mjs",
-    "test:publisher": "node tests/telegram-publisher.test.mjs"
+    "test:publisher": "node tests/telegram-publisher.test.mjs",
+    "test:lifecycle": "node tests/offer-lifecycle.test.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",
