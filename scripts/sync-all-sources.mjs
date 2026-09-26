@@ -523,11 +523,21 @@ const changedFlightsForPublish = Array.isArray(existing?.flights) && existing.fl
 
 if (!flights.length) {
   console.error("Source status:", JSON.stringify(statuses, null, 2));
-  if (existing?.flights?.length) {
-    console.warn("No fresh publishable offers; keeping the previous public feed.");
-    process.exit(0);
-  }
-  throw new Error("No publishable flight offers and no previous feed is available");
+  const emptyPayload = {
+    generatedAt: new Date().toISOString(),
+    mode: "live-sale-price",
+    note: "No currently verified publishable offers. Stale or non-source offers are not retained.",
+    rates: displayRates ? {
+      USD_KZT: displayRates.USD_KZT,
+      EUR_KZT: displayRates.EUR_KZT,
+      updatedAt: displayRates.updatedAt
+    } : undefined,
+    flights: []
+  };
+  await mkdir(resolve("public"), { recursive: true });
+  await writeFile(outputPath, JSON.stringify(emptyPayload, null, 2) + "\n", "utf8");
+  console.warn("No fresh publishable offers; cleared the public feed instead of retaining stale offers.");
+  process.exit(0);
 }
 
 const payload = {
