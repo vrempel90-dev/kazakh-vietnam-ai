@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { enabledSources } from "./source-registry.mjs";
+import { ingestSources, monitoredSources } from "./source-registry.mjs";
+import { resolveSourceCurrency } from "./source-currency.mjs";
+import { writeSourceStatus } from "./source-status.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
@@ -315,7 +317,11 @@ function envNumber(name) {
 
 function parseNeosCsv(csv, source, now, pricingConfig, pricingRates) {
   const rows = parseCsv(csv);
-  const currency = (process.env[source.currencyEnv] || "").trim().toUpperCase();
+  const currencyResolution = resolveSourceCurrency({
+    configured: process.env[source.currencyEnv],
+    sourceText: csv
+  });
+  const currency = currencyResolution.currency;
   const parsed = [];
   let usableRows = 0;
   for (const row of rows.slice(1)) {
@@ -361,7 +367,8 @@ function parseNeosCsv(csv, source, now, pricingConfig, pricingRates) {
     rows: Math.max(0, rows.length - 1),
     usableRows,
     pricingReady: Boolean(currency) && parsed.length > 0,
-    currencyConfigured: Boolean(currency)
+    currencyConfigured: Boolean(currency),
+    currencySource: currencyResolution.source
   };
 }
 
@@ -416,6 +423,7 @@ async function syncNeos(source, now, pricingConfig, pricingRates) {
       rows: result.rows,
       usableRows: result.usableRows,
       offers: result.flights.length,
+      currencySource: result.currencySource,
       reason
     }
   };
@@ -486,19 +494,29 @@ const pricingRates = {
   EUR_KZT: displayRates?.EUR_KZT || envNumber("FX_EUR_KZT")
 };
 
-for (const source of enabledSources()) {
+for (const source of ingestSources()) {
   try {
-    if (source.kind === "telegram_public") {
-      const result = await syncTelegram(source, now);
-      collected.push(...result.flights);
-      statuses.push(result.status);
-    } else if (source.kind === "google_sheet_csv") {
+    if (source.kind === "google_sheet_csv") {
       const result = await syncNeos(source, now, pricingConfig, pricingRates);
       collected.push(...result.flights);
       statuses.push(result.status);
-    } else if (source.kind === "b2b_web") {
-      statuses.push(await probeB2B(source));
+    } else {
+      statuses.push({
+        id: source.id,
+        kind: source.kind,
+        status: "adapter_missing",
+        reason: "Source is marked for ingestion but no production adapter is implemented."
+      });
     }
+  } catch (error) {
+    statuses.push({ id: source.id, kind: source.kind, status: "error", reason: error instanceof Error ? error.message : String(error) });
+  }
+  await sleep(250);
+}
+
+for (const source of monitoredSources()) {
+  try {
+    statuses.push(await probeB2B(source));
   } catch (error) {
     statuses.push({ id: source.id, kind: source.kind, status: "error", reason: error instanceof Error ? error.message : String(error) });
   }
@@ -514,6 +532,25 @@ try {
   // A missing previous feed is allowed on first run.
 }
 const flights = reconcileLifecycle(freshFlights, existing, now, offerTtlHours());
+
+try {
+  await writeSourceStatus(
+    resolve(process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json"),
+    {
+      statuses,
+      summary: {
+        ingestionSources: ingestSources().length,
+        monitoredSources: monitoredSources().length,
+        rawOffers: collected.length,
+        deduplicatedOffers: freshFlights.length,
+        publishableOffers: flights.length
+      }
+    }
+  );
+} catch (error) {
+  console.warn("Could not persist source diagnostics:", error instanceof Error ? error.message : String(error));
+}
+
 const existingByIdForPublish = new Map(
   Array.isArray(existing?.flights) ? existing.flights.map(flight => [flight.id, flight]) : []
 );
