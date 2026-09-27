@@ -48,6 +48,10 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://online.kazunion.com/tickets",
     enabled: true,
+    ingest: true,
+    adapter: "samo_ticket_api",
+    apiBaseUrl: "https://online.kazunion.com/export/default.php",
+    apiTokenEnv: "KAZUNION_SAMO_API_TOKEN",
     auth: "public_search",
     usernameEnv: "KAZUNION_USERNAME",
     passwordEnv: "KAZUNION_PASSWORD"
@@ -114,6 +118,10 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://booking-kz.crystalbay.com/tickets",
     enabled: true,
+    ingest: true,
+    adapter: "samo_ticket_api",
+    apiBaseUrl: "https://booking-kz.crystalbay.com/export/default.php",
+    apiTokenEnv: "CRYSTAL_BAY_SAMO_API_TOKEN",
     auth: "public_search",
     usernameEnv: "CRYSTAL_BAY_USERNAME",
     passwordEnv: "CRYSTAL_BAY_PASSWORD"
@@ -125,6 +133,10 @@ export const sourceRegistry = [
     priceKind: "cost",
     url: "https://b2b.abktourism.kz/tickets",
     enabled: true,
+    ingest: true,
+    adapter: "samo_ticket_api",
+    apiBaseUrl: "https://b2b.abktourism.kz/export/default.php",
+    apiTokenEnv: "ABK_SAMO_API_TOKEN",
     auth: "public_search",
     usernameEnv: "ABK_USERNAME",
     passwordEnv: "ABK_PASSWORD"
@@ -169,7 +181,7 @@ export function ingestSources() {
 }
 
 export function monitoredSources() {
-  return sourceRegistry.filter(source => source.enabled && source.kind === "b2b_web");
+  return sourceRegistry.filter(source => source.enabled && source.kind === "b2b_web" && source.ingest !== true);
 }
 
 // Backward-compatible alias used by older code/tests. Only real ingestion adapters belong here.
