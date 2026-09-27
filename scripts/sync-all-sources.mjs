@@ -5,9 +5,10 @@ import { ingestSources, monitoredSources } from "./source-registry.mjs";
 import { resolveSourceCurrency } from "./source-currency.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
 import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
+import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
-import { publishFreshFlights } from "./telegram-publisher.mjs";
+import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -412,6 +413,69 @@ async function syncNeos(source, now, pricingConfig, pricingRates) {
   };
 }
 
+async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
+  const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
+  const maxPages = Math.max(1, Math.min(20, Math.floor(envNumber("TELEGRAM_SOURCE_MAX_PAGES") || 6)));
+  const result = await fetchTelegramSourceOffers({
+    source,
+    now,
+    ttlHours,
+    maxPages,
+    shouldSkipText: shouldSkipParsedTelegramMessage
+  });
+
+  const flights = [];
+  let pricingSkipped = 0;
+
+  for (const offer of result.offers || []) {
+    const priced = calculateSalePrice({
+      sourcePrice: offer.sourcePrice,
+      currency: "KZT",
+      sourceId: source.id,
+      offerId: offer.externalId,
+      from: offer.from,
+      to: offer.to,
+      trip: offer.trip,
+      rates: pricingRates,
+      config: pricingConfig,
+      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
+    });
+    if (!priced) {
+      pricingSkipped += 1;
+      continue;
+    }
+
+    const offset = dayOffset(offer.departureDate, now);
+    if (offset <= 0 || offset > 365) continue;
+
+    flights.push({
+      ...publicFlight({
+        from: offer.from,
+        to: offer.to,
+        offset,
+        price: priced.salePrice,
+        trip: offer.trip,
+        hot: offer.hot,
+        seats: offer.seats,
+        airline: offer.airline,
+        departureDate: offer.departureDate,
+        returnDate: offer.returnDate
+      }),
+      sourceIds: [source.id]
+    });
+  }
+
+  return {
+    flights,
+    status: {
+      ...result.status,
+      rawOffers: (result.offers || []).length,
+      offers: flights.length,
+      pricingSkipped
+    }
+  };
+}
+
 async function syncSamo(source, now, pricingConfig, pricingRates) {
   const token = source.apiTokenEnv ? process.env[source.apiTokenEnv] : "";
   const result = await fetchSamoTicketOffers({
@@ -549,6 +613,8 @@ for (const source of ingestSources()) {
     let result;
     if (source.kind === "google_sheet_csv") {
       result = await syncNeos(source, now, pricingConfig, pricingRates);
+    } else if (source.adapter === "telegram_public_feed") {
+      result = await syncTelegramSource(source, now, pricingConfig, pricingRates);
     } else if (source.adapter === "samo_ticket_api") {
       result = await syncSamo(source, now, pricingConfig, pricingRates);
     } else {
@@ -614,6 +680,13 @@ const changedFlightsForPublish = Array.isArray(existing?.flights) && existing.fl
   ? flights.filter(flight => hasMaterialChange(existingByIdForPublish.get(flight.id), flight))
   : [];
 
+const republishTelegramSources = String(process.env.TELEGRAM_REPUBLISH_SOURCE_FEEDS || "false").toLowerCase() === "true";
+const telegramPublishCandidates = republishTelegramSources
+  ? changedFlightsForPublish
+  : changedFlightsForPublish.filter(
+      flight => !(flight.sourceIds || []).some(sourceId => String(sourceId).startsWith("telegram:"))
+    );
+
 if (!flights.length) {
   console.error("Source status:", JSON.stringify(statuses, null, 2));
   const emptyPayload = {
@@ -657,16 +730,16 @@ console.log("Published", flights.length, "customer-visible offers");
 
 const publishAllowedForRun = process.env.SYNC_REASON !== "startup";
 
-if (changedFlightsForPublish.length && publishAllowedForRun && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
+if (telegramPublishCandidates.length && publishAllowedForRun && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
   try {
     const publishResult = await publishFreshFlights({
       token: process.env.TELEGRAM_BOT_TOKEN,
       targets: process.env.TELEGRAM_PUBLISH_CHATS,
-      flights: changedFlightsForPublish,
+      flights: telegramPublishCandidates,
       publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
     });
     console.log("Telegram fresh-flight publishing:", JSON.stringify({
-      changedFlights: changedFlightsForPublish.length,
+      changedFlights: telegramPublishCandidates.length,
       ...publishResult
     }, null, 2));
   } catch (error) {
