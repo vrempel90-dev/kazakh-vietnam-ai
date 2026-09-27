@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { enabledSources, ingestSources, monitoredSources, sourceRegistry } from "../scripts/source-registry.mjs";
+import { configuredTelegramSources, enabledSources, ingestSources, monitoredSources, sourceRegistry } from "../scripts/source-registry.mjs";
 
 test("Telegram feeds are reference-only and cannot enter production ingestion", () => {
   const telegramSources = sourceRegistry.filter(source => source.kind === "telegram_public");
@@ -25,4 +25,15 @@ test("Telegram feeds are reference-only and cannot enter production ingestion", 
   assert.ok(monitored.length >= 1);
   assert.ok(monitored.every(source => source.kind === "b2b_web"));
   assert.ok(monitored.every(source => source.ingest !== true));
+
+  const telegram = configuredTelegramSources({
+    TELEGRAM_SOURCE_CHANNELS: "@supplier_one,https://t.me/supplier_two,supplier_one"
+  });
+  assert.deepEqual(telegram.map(source => source.id), ["telegram:supplier_one", "telegram:supplier_two"]);
+  assert.ok(telegram.every(source => source.adapter === "telegram_public_feed"));
+
+  const withTelegram = ingestSources({
+    TELEGRAM_SOURCE_CHANNELS: "supplier_one"
+  });
+  assert.ok(withTelegram.some(source => source.id === "telegram:supplier_one"));
 });
