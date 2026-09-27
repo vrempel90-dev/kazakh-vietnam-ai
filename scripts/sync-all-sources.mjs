@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { ingestSources, monitoredSources } from "./source-registry.mjs";
 import { resolveSourceCurrency } from "./source-currency.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
+import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { publishFreshFlights } from "./telegram-publisher.mjs";
@@ -22,7 +23,8 @@ const IATA = {
   BKK: "Бангкок",
   DAD: "Дананг",
   PRG: "Прага",
-  SYX: "Санья"
+  SYX: "Санья",
+  HKT: "Пхукет"
 };
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -410,6 +412,73 @@ async function syncNeos(source, now, pricingConfig, pricingRates) {
   };
 }
 
+async function syncSamo(source, now, pricingConfig, pricingRates) {
+  const token = source.apiTokenEnv ? process.env[source.apiTokenEnv] : "";
+  const result = await fetchSamoTicketOffers({
+    source,
+    token,
+    now
+  });
+
+  if (result.status.status !== "ok") {
+    return { flights: [], status: result.status };
+  }
+
+  const flights = [];
+  let pricingSkipped = 0;
+
+  for (const offer of result.offers) {
+    const from = IATA[offer.fromIata] || offer.from;
+    const to = IATA[offer.toIata] || offer.to;
+    const priced = calculateSalePrice({
+      sourcePrice: offer.sourcePrice,
+      currency: offer.currency,
+      sourceId: source.id,
+      offerId: offer.externalId,
+      from,
+      to,
+      trip: offer.trip,
+      rates: pricingRates,
+      config: pricingConfig,
+      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
+    });
+
+    if (!priced) {
+      pricingSkipped += 1;
+      continue;
+    }
+
+    const offset = dayOffset(offer.departureDate, now);
+    if (offset < 0 || offset > 365) continue;
+
+    flights.push({
+      ...publicFlight({
+        from,
+        to,
+        offset,
+        price: priced.salePrice,
+        trip: offer.trip,
+        hot: false,
+        seats: offer.seats,
+        airline: offer.airline,
+        departureDate: offer.departureDate,
+        returnDate: offer.returnDate
+      }),
+      sourceIds: [source.id]
+    });
+  }
+
+  return {
+    flights,
+    status: {
+      ...result.status,
+      rawOffers: result.offers.length,
+      offers: flights.length,
+      pricingSkipped
+    }
+  };
+}
+
 async function probeB2B(source) {
   try {
     const { text, finalUrl } = await fetchText(source.url);
@@ -477,18 +546,24 @@ const pricingRates = {
 
 for (const source of ingestSources()) {
   try {
+    let result;
     if (source.kind === "google_sheet_csv") {
-      const result = await syncNeos(source, now, pricingConfig, pricingRates);
-      collected.push(...result.flights);
-      statuses.push(result.status);
+      result = await syncNeos(source, now, pricingConfig, pricingRates);
+    } else if (source.adapter === "samo_ticket_api") {
+      result = await syncSamo(source, now, pricingConfig, pricingRates);
     } else {
-      statuses.push({
-        id: source.id,
-        kind: source.kind,
-        status: "adapter_missing",
-        reason: "Source is marked for ingestion but no production adapter is implemented."
-      });
+      result = {
+        flights: [],
+        status: {
+          id: source.id,
+          kind: source.kind,
+          status: "adapter_missing",
+          reason: "Source is marked for ingestion but no production adapter is implemented."
+        }
+      };
     }
+    collected.push(...result.flights);
+    statuses.push(result.status);
   } catch (error) {
     statuses.push({ id: source.id, kind: source.kind, status: "error", reason: error instanceof Error ? error.message : String(error) });
   }
