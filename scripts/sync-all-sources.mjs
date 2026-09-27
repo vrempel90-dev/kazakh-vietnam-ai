@@ -5,9 +5,10 @@ import { ingestSources, monitoredSources } from "./source-registry.mjs";
 import { resolveSourceCurrency } from "./source-currency.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
 import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
+import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
-import { publishFreshFlights } from "./telegram-publisher.mjs";
+import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
