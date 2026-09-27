@@ -613,6 +613,8 @@ for (const source of ingestSources()) {
     let result;
     if (source.kind === "google_sheet_csv") {
       result = await syncNeos(source, now, pricingConfig, pricingRates);
+    } else if (source.adapter === "telegram_public_feed") {
+      result = await syncTelegramSource(source, now, pricingConfig, pricingRates);
     } else if (source.adapter === "samo_ticket_api") {
       result = await syncSamo(source, now, pricingConfig, pricingRates);
     } else {
