@@ -1,3 +1,5 @@
+import { parseTelegramSourceList, sourceFromHandle } from "./telegram-source-adapter.mjs";
+
 export const sourceRegistry = [
   {
     id: "charter_forever_travel",
@@ -176,15 +178,24 @@ export const sourceRegistry = [
   }
 ];
 
-export function ingestSources() {
-  return sourceRegistry.filter(source => source.enabled && source.ingest === true);
+export function configuredTelegramSources(env = process.env) {
+  return parseTelegramSourceList(env.TELEGRAM_SOURCE_CHANNELS)
+    .map(sourceFromHandle)
+    .filter(source => source.enabled);
+}
+
+export function ingestSources(env = process.env) {
+  return [
+    ...sourceRegistry.filter(source => source.enabled && source.ingest === true),
+    ...configuredTelegramSources(env)
+  ];
 }
 
 export function monitoredSources() {
   return sourceRegistry.filter(source => source.enabled && source.kind === "b2b_web" && source.ingest !== true);
 }
 
-// Backward-compatible alias used by older code/tests. Only real ingestion adapters belong here.
-export function enabledSources() {
-  return ingestSources();
+// Backward-compatible alias used by older code/tests.
+export function enabledSources(env = process.env) {
+  return ingestSources(env);
 }
