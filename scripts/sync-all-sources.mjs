@@ -680,6 +680,13 @@ const changedFlightsForPublish = Array.isArray(existing?.flights) && existing.fl
   ? flights.filter(flight => hasMaterialChange(existingByIdForPublish.get(flight.id), flight))
   : [];
 
+const republishTelegramSources = String(process.env.TELEGRAM_REPUBLISH_SOURCE_FEEDS || "false").toLowerCase() === "true";
+const telegramPublishCandidates = republishTelegramSources
+  ? changedFlightsForPublish
+  : changedFlightsForPublish.filter(
+      flight => !(flight.sourceIds || []).some(sourceId => String(sourceId).startsWith("telegram:"))
+    );
+
 if (!flights.length) {
   console.error("Source status:", JSON.stringify(statuses, null, 2));
   const emptyPayload = {
@@ -723,16 +730,16 @@ console.log("Published", flights.length, "customer-visible offers");
 
 const publishAllowedForRun = process.env.SYNC_REASON !== "startup";
 
-if (changedFlightsForPublish.length && publishAllowedForRun && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
+if (telegramPublishCandidates.length && publishAllowedForRun && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
   try {
     const publishResult = await publishFreshFlights({
       token: process.env.TELEGRAM_BOT_TOKEN,
       targets: process.env.TELEGRAM_PUBLISH_CHATS,
-      flights: changedFlightsForPublish,
+      flights: telegramPublishCandidates,
       publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
     });
     console.log("Telegram fresh-flight publishing:", JSON.stringify({
-      changedFlights: changedFlightsForPublish.length,
+      changedFlights: telegramPublishCandidates.length,
       ...publishResult
     }, null, 2));
   } catch (error) {
