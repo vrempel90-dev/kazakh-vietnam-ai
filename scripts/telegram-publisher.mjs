@@ -66,14 +66,23 @@ function flightBlock(flight) {
   return rows.filter(Boolean).join("\n");
 }
 
-export function buildFlightPosts(flights, maxChars = 3400, maxFlightsPerPost = 8) {
+export function buildFlightPostBatches(flights, maxChars = 3400, maxFlightsPerPost = 8) {
   const items = Array.isArray(flights) ? flights : [];
   const posts = [];
   let current = "";
   let currentCount = 0;
+  let currentFlightIds = [];
 
   const intro = "✈️ <b>Свежие чартерные рейсы</b>\n\n";
   const footer = "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
+
+  const flush = () => {
+    if (!current) return;
+    posts.push({ text: current + footer, flightIds: [...currentFlightIds] });
+    current = "";
+    currentCount = 0;
+    currentFlightIds = [];
+  };
 
   for (const flight of items) {
     const block = flightBlock(flight);
@@ -81,17 +90,23 @@ export function buildFlightPosts(flights, maxChars = 3400, maxFlightsPerPost = 8
     const finalLength = candidate.length + footer.length;
 
     if (current && (finalLength > maxChars || currentCount >= maxFlightsPerPost)) {
-      posts.push(current + footer);
+      flush();
       current = intro + block;
       currentCount = 1;
+      currentFlightIds = flight?.id ? [flight.id] : [];
     } else {
       current = candidate;
       currentCount += 1;
+      if (flight?.id) currentFlightIds.push(flight.id);
     }
   }
 
-  if (current) posts.push(current + footer);
+  flush();
   return posts;
+}
+
+export function buildFlightPosts(flights, maxChars = 3400, maxFlightsPerPost = 8) {
+  return buildFlightPostBatches(flights, maxChars, maxFlightsPerPost).map(post => post.text);
 }
 
 export function filterFlightsForTarget(flights, target) {
@@ -133,16 +148,17 @@ export async function publishFreshFlights({
 
   for (const target of targetList) {
     const targetFlights = filterFlightsForTarget(flights, target);
-    const allPosts = buildFlightPosts(targetFlights);
+    const allPosts = buildFlightPostBatches(targetFlights);
     const posts = allPosts.slice(0, maxPostsPerRun);
     let sent = 0;
     let error = null;
+    const sentFlightIds = [];
 
-    for (const text of posts) {
+    for (const post of posts) {
       try {
         await telegramApi(botToken, "sendMessage", {
           chat_id: target,
-          text,
+          text: post.text,
           parse_mode: "HTML",
           disable_web_page_preview: true,
           reply_markup: appUrl ? {
@@ -151,6 +167,7 @@ export async function publishFreshFlights({
         }, fetchImpl);
         sent += 1;
         published += 1;
+        sentFlightIds.push(...post.flightIds);
         if (delayMs > 0) await new Promise(resolve => setTimeout(resolve, delayMs));
       } catch (err) {
         error = err instanceof Error ? err.message : String(err);
@@ -165,6 +182,7 @@ export async function publishFreshFlights({
       postsAvailable: allPosts.length,
       postsSkipped: Math.max(0, allPosts.length - posts.length),
       sent,
+      sentFlightIds: [...new Set(sentFlightIds)],
       error
     });
   }

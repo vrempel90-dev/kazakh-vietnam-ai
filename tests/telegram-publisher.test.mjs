@@ -69,6 +69,8 @@ const result = await publishFreshFlights({
 });
 
 assert.equal(result.published, 2);
+assert.deepEqual(result.targets[0].sentFlightIds, ["b"]);
+assert.deepEqual(result.targets[1].sentFlightIds.sort(), ["a", "b"]);
 assert.equal(calls.length, 2);
 assert.equal(calls[0].payload.chat_id, "@charterkaz");
 assert.ok(calls[0].payload.text.includes("Астана → Дананг"));

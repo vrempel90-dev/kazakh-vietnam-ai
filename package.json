@@ -22,7 +22,7 @@
     "test:pricing": "node tests/pricing-engine.test.mjs",
     "test:telegram": "node tests/telegram-bot.test.mjs",
     "test:admin-auth": "node tests/telegram-admin-auth.test.mjs",
-    "test:publisher": "node tests/telegram-publisher.test.mjs",
+    "test:publisher": "node tests/telegram-publisher.test.mjs && node tests/telegram-publication-state.test.mjs",
     "test:lifecycle": "node tests/offer-lifecycle.test.mjs",
     "test:sources": "node --test tests/source-registry.test.mjs tests/source-currency.test.mjs tests/samo-ticket-adapter.test.mjs tests/telegram-source-adapter.test.mjs"
   },
