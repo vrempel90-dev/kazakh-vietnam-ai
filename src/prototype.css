@@ -40,6 +40,7 @@
 .live-dot.live{background:#26b86f;box-shadow:0 0 0 4px rgba(38,184,111,.1)}
 .live-dot.error{background:#f29a37}
 .live-dot.demo{background:#8aa0b7}
+.live-dot.cached{background:#f2a23b;box-shadow:0 0 0 4px rgba(242,162,59,.12)}
 
 .deal-list{display:flex;flex-direction:column;gap:10px}
 .deal-card{width:100%;border:1px solid var(--line);background:var(--card);border-radius:17px;padding:13px;text-align:left;color:var(--text);box-shadow:var(--shadow)}
@@ -50,6 +51,7 @@
 .deal-copy small{font-size:10px;color:#74879d;margin-bottom:3px}
 .deal-copy span{display:flex;align-items:center;gap:5px;color:#6f8196;font-size:10.5px}
 .deal-copy span svg{width:13px;height:13px;color:#4c79a1}
+.deal-copy .deal-warning{color:#a76816;font-weight:700;font-size:9.5px;line-height:1.3;margin-top:2px}
 .favorite{border:0;background:transparent;color:#8194a8;width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
 .favorite svg{width:20px;height:20px}
 .favorite.active{color:#ec536a;background:#fff1f4}

@@ -65,6 +65,8 @@ type Flight = {
   publishedAt?: string;
   updatedAt?: string;
   expiresAt?: string;
+  cachedFallback?: boolean;
+  verificationNote?: string;
 };
 
 type FlightFeed = {
@@ -292,7 +294,7 @@ export default function Prototype() {
   );
   const [favorites, setFavorites] = useState<string[]>(() => readList("charter-favorites"));
   const [alerts, setAlerts] = useState<string[]>(() => readList("charter-route-alerts"));
-  const [feedMode, setFeedMode] = useState<"loading" | "live" | "demo" | "error">("loading");
+  const [feedMode, setFeedMode] = useState<"loading" | "live" | "cached" | "demo" | "error">("loading");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [rates, setRates] = useState<{ USD_KZT?: number; EUR_KZT?: number; updatedAt?: string }>({});
   const [toast, setToast] = useState("");
@@ -317,7 +319,7 @@ export default function Prototype() {
         : [];
       setFlights(next);
       setRates(payload.rates || {});
-      setFeedMode(payload.mode === "demo" ? "demo" : "live");
+      setFeedMode(payload.mode === "demo" ? "demo" : payload.mode === "cached-sale-price" ? "cached" : "live");
       const generated = payload.generatedAt ? new Date(payload.generatedAt) : new Date();
       setLastUpdated(Number.isNaN(generated.getTime()) ? new Date() : generated);
     } catch {
@@ -636,6 +638,7 @@ export default function Prototype() {
           <strong>{flightRoute(flight)}</strong>
           <span><PaperPlaneIcon /> {flight.airline || "Авиакомпания уточняется"}</span>
           <span><CalendarIcon /> {flightDate(flight)} | {flightNights(flight)}</span>
+          {flight.cachedFallback && <span className="deal-warning">⚠️ Цена и наличие требуют подтверждения</span>}
           <div className="deal-bottom">
             <strong className="price">{displayPrice(flight.price)}</strong>
             <button className="select-flight" onClick={() => chooseFlight(flight)}>Выбрать</button>
@@ -700,7 +703,7 @@ export default function Prototype() {
 
             <div className="sync-line">
               <span className={"live-dot " + feedMode} />
-              <span>{feedMode === "live" ? "Рейсы обновляются автоматически" : "Резервные данные"}</span>
+              <span>{feedMode === "live" ? "Рейсы обновляются автоматически" : feedMode === "cached" ? "Ранее найденные рейсы — требуется подтверждение" : "Резервные данные"}</span>
               {lastUpdated && <small>{lastUpdated.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</small>}
             </div>
 
