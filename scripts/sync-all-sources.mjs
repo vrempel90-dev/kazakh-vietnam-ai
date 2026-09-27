@@ -6,7 +6,7 @@ import { resolveSourceCurrency } from "./source-currency.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
-import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
+import { publishFreshFlights } from "./telegram-publisher.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -382,26 +382,7 @@ function classifyB2BPage(html, finalUrl) {
   return { publicSearch, login, needsJs };
 }
 
-async function syncTelegram(source, now) {
-  const { text } = await fetchText(source.url);
-  const messages = extractMessages(text);
-  const sourceMessages = messages.filter(message => !shouldSkipParsedTelegramMessage(message));
-  const flights = sourceMessages
-    .flatMap(message => parseTelegramMessage(message, now))
-    .map(flight => ({ ...flight, sourceIds: [source.id] }));
-  return {
-    flights,
-    status: {
-      id: source.id,
-      kind: source.kind,
-      status: "ok",
-      messages: sourceMessages.length,
-      ignoredAutoPosts: messages.length - sourceMessages.length,
-      offers: flights.length
-    }
-  };
-}
-
+// Telegram channels are publication destinations only. They are intentionally not an ingestion adapter.
 async function syncNeos(source, now, pricingConfig, pricingRates) {
   const { text } = await fetchText(source.url);
   const result = parseNeosCsv(text, source, now, pricingConfig, pricingRates);
