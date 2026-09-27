@@ -413,6 +413,69 @@ async function syncNeos(source, now, pricingConfig, pricingRates) {
   };
 }
 
+async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
+  const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
+  const maxPages = Math.max(1, Math.min(20, Math.floor(envNumber("TELEGRAM_SOURCE_MAX_PAGES") || 6)));
+  const result = await fetchTelegramSourceOffers({
+    source,
+    now,
+    ttlHours,
+    maxPages,
+    shouldSkipText: shouldSkipParsedTelegramMessage
+  });
+
+  const flights = [];
+  let pricingSkipped = 0;
+
+  for (const offer of result.offers || []) {
+    const priced = calculateSalePrice({
+      sourcePrice: offer.sourcePrice,
+      currency: "KZT",
+      sourceId: source.id,
+      offerId: offer.externalId,
+      from: offer.from,
+      to: offer.to,
+      trip: offer.trip,
+      rates: pricingRates,
+      config: pricingConfig,
+      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
+    });
+    if (!priced) {
+      pricingSkipped += 1;
+      continue;
+    }
+
+    const offset = dayOffset(offer.departureDate, now);
+    if (offset <= 0 || offset > 365) continue;
+
+    flights.push({
+      ...publicFlight({
+        from: offer.from,
+        to: offer.to,
+        offset,
+        price: priced.salePrice,
+        trip: offer.trip,
+        hot: offer.hot,
+        seats: offer.seats,
+        airline: offer.airline,
+        departureDate: offer.departureDate,
+        returnDate: offer.returnDate
+      }),
+      sourceIds: [source.id]
+    });
+  }
+
+  return {
+    flights,
+    status: {
+      ...result.status,
+      rawOffers: (result.offers || []).length,
+      offers: flights.length,
+      pricingSkipped
+    }
+  };
+}
+
 async function syncSamo(source, now, pricingConfig, pricingRates) {
   const token = source.apiTokenEnv ? process.env[source.apiTokenEnv] : "";
   const result = await fetchSamoTicketOffers({
