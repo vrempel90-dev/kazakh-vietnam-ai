@@ -61,7 +61,8 @@ function flightBlock(flight) {
       + (flight.returnDate ? " — " + fmtDate(flight.returnDate) : "")
       + " · " + (flight.trip === "RT" ? "туда-обратно" : "в одну сторону"),
     flight.seats && flight.seats !== "Наличие уточняется" ? "💺 " + esc(flight.seats) : null,
-    "💰 " + fmtPrice(flight.price)
+    "💰 " + fmtPrice(flight.price),
+    flight.cachedFallback ? "⚠️ Цена и наличие требуют подтверждения" : null
   ];
   return rows.filter(Boolean).join("\n");
 }
