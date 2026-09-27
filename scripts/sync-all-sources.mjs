@@ -390,7 +390,7 @@ async function syncNeos(source, now, pricingConfig, pricingRates) {
   let reason;
   if (!result.currencyConfigured) {
     status = "configuration_required";
-    reason = source.currencyEnv + " is not configured";
+    reason = source.currencyEnv + " is not configured and the source has no single explicit currency marker";
   } else if (!result.pricingReady) {
     status = "configuration_required";
     reason = "No enabled pricing rule matches this cost feed, or FX is not configured";
@@ -419,7 +419,7 @@ async function probeB2B(source) {
     let reason = "Public landing page is reachable; fare extraction adapter still requires validated browser/network flow.";
     if (page.publicSearch) {
       status = "public_search_accessible";
-      reason = "Public ticket-search controls are available; fare-result extraction is being handled without agency credentials.";
+      reason = "Public ticket-search controls are available, but fare-result extraction is not yet implemented and validated.";
     } else if (page.login && !credentialsConfigured) {
       status = "credentials_required";
       reason = "Partner login is required before fare extraction.";
