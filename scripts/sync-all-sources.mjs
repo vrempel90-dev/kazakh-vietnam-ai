@@ -7,8 +7,20 @@ import { writeSourceStatus } from "./source-status.mjs";
 import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
 import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
-import { hasMaterialChange, reconcileLifecycle } from "./offer-lifecycle.mjs";
-import { publishFreshFlights, shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
+import { reconcileLifecycle } from "./offer-lifecycle.mjs";
+import {
+  filterFlightsForTarget,
+  parsePublishTargets,
+  publishFreshFlights,
+  shouldSkipParsedTelegramMessage
+} from "./telegram-publisher.mjs";
+import {
+  isPublicationPending,
+  loadPublicationState,
+  markFlightsPublished,
+  prunePublicationState,
+  savePublicationState
+} from "./telegram-publication-state.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -673,17 +685,10 @@ try {
   console.warn("Could not persist source diagnostics:", error instanceof Error ? error.message : String(error));
 }
 
-const existingByIdForPublish = new Map(
-  Array.isArray(existing?.flights) ? existing.flights.map(flight => [flight.id, flight]) : []
-);
-const changedFlightsForPublish = Array.isArray(existing?.flights) && existing.flights.length
-  ? flights.filter(flight => hasMaterialChange(existingByIdForPublish.get(flight.id), flight))
-  : [];
-
 const republishTelegramSources = String(process.env.TELEGRAM_REPUBLISH_SOURCE_FEEDS || "false").toLowerCase() === "true";
 const telegramPublishCandidates = republishTelegramSources
-  ? changedFlightsForPublish
-  : changedFlightsForPublish.filter(
+  ? flights
+  : flights.filter(
       flight => !(flight.sourceIds || []).some(sourceId => String(sourceId).startsWith("telegram:"))
     );
 
@@ -718,38 +723,77 @@ const payload = {
   flights
 };
 
-if (existing && comparablePayload(existing) === comparablePayload(payload)) {
+const feedChanged = !(existing && comparablePayload(existing) === comparablePayload(payload));
+if (feedChanged) {
+  await mkdir(resolve("public"), { recursive: true });
+  await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
+  console.log("Published", flights.length, "customer-visible offers");
+} else {
   console.log("No customer-visible flight changes.");
-  console.log("Source status:", JSON.stringify(statuses, null, 2));
-  process.exit(0);
 }
 
-await mkdir(resolve("public"), { recursive: true });
-await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
-console.log("Published", flights.length, "customer-visible offers");
-
-const publishAllowedForRun = process.env.SYNC_REASON !== "startup";
-
-if (telegramPublishCandidates.length && publishAllowedForRun && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
+if (telegramPublishCandidates.length && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
   try {
-    const publishResult = await publishFreshFlights({
-      token: process.env.TELEGRAM_BOT_TOKEN,
-      targets: process.env.TELEGRAM_PUBLISH_CHATS,
-      flights: telegramPublishCandidates,
-      publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
-    });
+    const targets = parsePublishTargets(process.env.TELEGRAM_PUBLISH_CHATS);
+    const statePath = process.env.TELEGRAM_PUBLISH_STATE_PATH || "/data/telegram-publications.json";
+    const retentionDays = Math.max(1, Number(process.env.TELEGRAM_PUBLICATION_RETENTION_DAYS || 30));
+    const publicationState = await loadPublicationState(statePath);
+    let publishedFlights = 0;
+    let publishedPosts = 0;
+    const targetResults = [];
+
+    for (const target of targets) {
+      const eligibleFlights = filterFlightsForTarget(telegramPublishCandidates, target);
+      const pendingFlights = eligibleFlights.filter(flight => isPublicationPending(publicationState, target, flight));
+
+      if (!pendingFlights.length) {
+        targetResults.push({ target, pendingFlights: 0, sent: 0, sentFlightIds: [] });
+        continue;
+      }
+
+      const publishResult = await publishFreshFlights({
+        token: process.env.TELEGRAM_BOT_TOKEN,
+        targets: [target],
+        flights: pendingFlights,
+        publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+      });
+      const result = publishResult.targets?.[0] || {
+        target,
+        sent: 0,
+        sentFlightIds: [],
+        error: publishResult.reason || null
+      };
+
+      const sentIds = new Set(result.sentFlightIds || []);
+      const sentFlights = pendingFlights.filter(flight => sentIds.has(flight.id));
+      if (sentFlights.length) {
+        markFlightsPublished(publicationState, target, sentFlights);
+        prunePublicationState(publicationState, { retentionDays });
+        await savePublicationState(statePath, publicationState);
+      }
+
+      publishedFlights += sentFlights.length;
+      publishedPosts += Number(result.sent || 0);
+      targetResults.push({
+        ...result,
+        pendingFlights: pendingFlights.length
+      });
+    }
+
     console.log("Telegram fresh-flight publishing:", JSON.stringify({
-      changedFlights: telegramPublishCandidates.length,
-      ...publishResult
+      eligibleFlights: telegramPublishCandidates.length,
+      publishedFlights,
+      publishedPosts,
+      targets: targetResults
     }, null, 2));
   } catch (error) {
     console.error("Telegram fresh-flight publishing failed:", error instanceof Error ? error.message : String(error));
   }
 } else {
   console.log(
-    publishAllowedForRun
-      ? "No fresh flight changes to publish to Telegram channels."
-      : "Startup sync establishes a fresh baseline; Telegram publishing is skipped."
+    telegramPublishCandidates.length
+      ? "Telegram publishing is disabled."
+      : "No verified flights are eligible for Telegram publication."
   );
 }
 
