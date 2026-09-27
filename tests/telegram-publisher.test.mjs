@@ -76,4 +76,42 @@ assert.ok(!calls[0].payload.text.includes("Алматы → Камрань"));
 assert.equal(calls[1].payload.chat_id, "@charter_forever_travel");
 assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].url, "https://example.com");
 
+
+const manyFlights = Array.from({ length: 20 }, (_, index) => ({
+  id: "bulk-" + index,
+  from: "Алматы",
+  to: "Камрань",
+  price: 200000 + index * 1000,
+  trip: "OW",
+  airline: "SCAT",
+  seats: "Наличие уточняется",
+  departureDate: "2026-10-" + String(1 + (index % 20)).padStart(2, "0"),
+  sourceIds: ["neos"]
+}));
+
+const cappedCalls = [];
+const cappedResult = await publishFreshFlights({
+  token: "123:test",
+  targets: "@test_channel",
+  flights: manyFlights,
+  publicAppUrl: "https://example.com",
+  fetchImpl: async (url, options) => {
+    cappedCalls.push({ url: String(url), payload: JSON.parse(options.body) });
+    return new Response(JSON.stringify({ ok: true, result: { message_id: cappedCalls.length } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  },
+  delayMs: 0,
+  maxPostsPerRun: 1
+});
+
+assert.equal(cappedCalls.length, 1);
+assert.equal(cappedResult.targets[0].posts, 1);
+assert.ok(cappedResult.targets[0].postsAvailable > 1);
+assert.equal(
+  cappedResult.targets[0].postsSkipped,
+  cappedResult.targets[0].postsAvailable - 1
+);
+
 console.log("Telegram fresh-flight publisher batching, source-loop protection, targets, and CTA: passed");

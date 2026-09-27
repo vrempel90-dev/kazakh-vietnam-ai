@@ -120,7 +120,8 @@ export async function publishFreshFlights({
   flights,
   publicAppUrl,
   fetchImpl = fetch,
-  delayMs = 350
+  delayMs = Math.max(0, Number(process.env.POST_DELAY_SECONDS || 2) * 1000),
+  maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 3)))
 }) {
   const botToken = String(token || "").trim();
   const appUrl = String(publicAppUrl || "").trim();
@@ -132,7 +133,8 @@ export async function publishFreshFlights({
 
   for (const target of targetList) {
     const targetFlights = filterFlightsForTarget(flights, target);
-    const posts = buildFlightPosts(targetFlights);
+    const allPosts = buildFlightPosts(targetFlights);
+    const posts = allPosts.slice(0, maxPostsPerRun);
     let sent = 0;
     let error = null;
 
@@ -160,6 +162,8 @@ export async function publishFreshFlights({
       target,
       flights: targetFlights.length,
       posts: posts.length,
+      postsAvailable: allPosts.length,
+      postsSkipped: Math.max(0, allPosts.length - posts.length),
       sent,
       error
     });

@@ -8,6 +8,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { loadPricingConfig, savePricingConfig } from "./pricing-engine.mjs";
 import { createTelegramRuntime } from "./telegram-bot.mjs";
 import { isTelegramAdmin, parseAdminTelegramIds, verifyTelegramInitData } from "./telegram-admin-auth.mjs";
+import { readSourceStatus } from "./source-status.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
@@ -16,6 +17,7 @@ const pricingPath = process.env.PRICING_RULES_PATH || "/data/pricing-rules.json"
 const adminToken = String(process.env.ADMIN_PRICING_TOKEN || "");
 const adminTelegramIds = parseAdminTelegramIds(process.env.ADMIN_TELEGRAM_IDS);
 const syncIntervalMinutes = Math.max(5, Number(process.env.SYNC_INTERVAL_MINUTES || 15));
+const sourceStatusPath = process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json";
 
 const publicAppUrl = String(
   process.env.PUBLIC_APP_URL
@@ -144,6 +146,7 @@ function runFlightSync(reason = "scheduled") {
       ...process.env,
       FLIGHT_FEED_OUTPUT: join(root, "flights.json"),
       PRICING_RULES_PATH: pricingPath,
+      SOURCE_STATUS_PATH: sourceStatusPath,
       SYNC_REASON: reason
     },
     stdio: ["ignore", "pipe", "pipe"]
@@ -257,7 +260,24 @@ const server = createServer(async (req, res) => {
 
       if (url.pathname === "/api/admin/status" && req.method === "GET") {
         const config = await loadPricingConfig(pricingPath);
-        sendJson(res, 200, { sync: syncState, pricingUpdatedAt: config.updatedAt });
+        const sourceStatus = await readSourceStatus(sourceStatusPath);
+        sendJson(res, 200, {
+          sync: syncState,
+          pricingUpdatedAt: config.updatedAt,
+          sourceSummary: sourceStatus?.summary || null,
+          sourcesUpdatedAt: sourceStatus?.generatedAt || null
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/admin/sources" && req.method === "GET") {
+        const sourceStatus = await readSourceStatus(sourceStatusPath);
+        sendJson(res, 200, sourceStatus || {
+          generatedAt: null,
+          sources: [],
+          summary: {},
+          status: "not_synced_yet"
+        });
         return;
       }
 

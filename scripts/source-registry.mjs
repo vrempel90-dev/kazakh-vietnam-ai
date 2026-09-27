@@ -27,7 +27,8 @@ export const sourceRegistry = [
     url: "https://docs.google.com/spreadsheets/d/1On4MmRaa6JOK8KPud8oLN_Rsd7cm5r3p-_ft3JDDCuw/gviz/tq?tqx=out:csv&gid=0",
     spreadsheetId: "1On4MmRaa6JOK8KPud8oLN_Rsd7cm5r3p-_ft3JDDCuw",
     enabled: true,
-    currencyEnv: "NEOS_SOURCE_CURRENCY"
+    currencyEnv: "NEOS_SOURCE_CURRENCY",
+    ingest: true
   },
   {
     id: "fun_sun",
@@ -163,6 +164,15 @@ export const sourceRegistry = [
   }
 ];
 
+export function ingestSources() {
+  return sourceRegistry.filter(source => source.enabled && source.ingest === true);
+}
+
+export function monitoredSources() {
+  return sourceRegistry.filter(source => source.enabled && source.kind === "b2b_web");
+}
+
+// Backward-compatible alias used by older code/tests. Only real ingestion adapters belong here.
 export function enabledSources() {
-  return sourceRegistry.filter(source => source.enabled && source.ingest !== false);
+  return ingestSources();
 }

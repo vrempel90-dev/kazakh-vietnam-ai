@@ -24,7 +24,7 @@
     "test:admin-auth": "node tests/telegram-admin-auth.test.mjs",
     "test:publisher": "node tests/telegram-publisher.test.mjs",
     "test:lifecycle": "node tests/offer-lifecycle.test.mjs",
-    "test:sources": "node --test tests/source-registry.test.mjs"
+    "test:sources": "node --test tests/source-registry.test.mjs tests/source-currency.test.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",
