@@ -8,6 +8,7 @@ import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
 import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
+import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
 import {
   filterFlightsForTarget,
   parsePublishTargets,
@@ -665,7 +666,30 @@ try {
 } catch {
   // A missing previous feed is allowed on first run.
 }
-const flights = reconcileLifecycle(freshFlights, existing, now, offerTtlHours());
+let flights = reconcileLifecycle(freshFlights, existing, now, offerTtlHours());
+const cachedFallbackEnabled = String(process.env.ALLOW_CACHED_FALLBACK || "false").toLowerCase() === "true";
+let cachedFallbackMode = false;
+
+if (!flights.length && cachedFallbackEnabled && existing) {
+  const fallbackFlights = selectCachedFallbackFlights(existing, {
+    now,
+    maxAgeHours: envNumber("CACHED_FALLBACK_MAX_AGE_HOURS") || 72,
+    ttlHours: envNumber("CACHED_FALLBACK_TTL_HOURS") || 6,
+    maxFlights: envNumber("CACHED_FALLBACK_MAX_FLIGHTS") || 80
+  });
+
+  if (fallbackFlights.length) {
+    flights = fallbackFlights;
+    cachedFallbackMode = true;
+    statuses.push({
+      id: "cached_customer_feed",
+      kind: "cached_fallback",
+      status: "fallback_active",
+      offers: fallbackFlights.length,
+      reason: "Previously observed future offers are shown temporarily and require price/availability confirmation."
+    });
+  }
+}
 
 try {
   await writeSourceStatus(
@@ -677,7 +701,8 @@ try {
         monitoredSources: monitoredSources().length,
         rawOffers: collected.length,
         deduplicatedOffers: freshFlights.length,
-        publishableOffers: flights.length
+        publishableOffers: flights.length,
+        fallbackOffers: cachedFallbackMode ? flights.length : 0
       }
     }
   );
@@ -713,13 +738,15 @@ if (!flights.length) {
 
 const payload = {
   generatedAt: new Date().toISOString(),
-  mode: "live-sale-price",
-  note: "Only customer-facing sale prices are persisted. Supplier cost prices and credentials are never written to the public feed.",
+  mode: cachedFallbackMode ? "cached-sale-price" : "live-sale-price",
+  note: cachedFallbackMode
+    ? "Previously observed customer prices are shown temporarily. Price and availability must be confirmed before booking."
+    : "Only customer-facing sale prices are persisted. Supplier cost prices and credentials are never written to the public feed.",
   rates: displayRates ? {
     USD_KZT: displayRates.USD_KZT,
     EUR_KZT: displayRates.EUR_KZT,
     updatedAt: displayRates.updatedAt
-  } : undefined,
+  } : existing?.rates,
   flights
 };
 
@@ -727,7 +754,7 @@ const feedChanged = !(existing && comparablePayload(existing) === comparablePayl
 if (feedChanged) {
   await mkdir(resolve("public"), { recursive: true });
   await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
-  console.log("Published", flights.length, "customer-visible offers");
+  console.log("Published", flights.length, cachedFallbackMode ? "cached customer-visible offers" : "customer-visible offers");
 } else {
   console.log("No customer-visible flight changes.");
 }
