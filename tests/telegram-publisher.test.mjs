@@ -64,6 +64,7 @@ const result = await publishFreshFlights({
   targets: "@charterkaz,@charter_forever_travel",
   flights,
   publicAppUrl: "https://example.com",
+  managerPhone: "+7 700 777 24 14",
   fetchImpl: fakeFetch,
   delayMs: 0
 });
@@ -76,8 +77,14 @@ assert.equal(calls[0].payload.chat_id, "@charterkaz");
 assert.ok(calls[0].payload.text.includes("Астана → Дананг"));
 assert.ok(!calls[0].payload.text.includes("Алматы → Камрань"));
 assert.equal(calls[1].payload.chat_id, "@charter_forever_travel");
-assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].url, "https://example.com");
+assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
+assert.ok(calls[1].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
+assert.ok(!calls[1].payload.text.includes("Цена и наличие требуют подтверждения"));
 
+
+const cachedPosts = buildFlightPosts([{ ...flights[1], cachedFallback: true }]);
+assert.ok(cachedPosts[0].includes("Цены и наличие указаны по последним полученным данным."));
+assert.ok(!cachedPosts[0].includes("Цена и наличие требуют подтверждения"));
 
 const manyFlights = Array.from({ length: 20 }, (_, index) => ({
   id: "bulk-" + index,
@@ -97,6 +104,7 @@ const cappedResult = await publishFreshFlights({
   targets: "@test_channel",
   flights: manyFlights,
   publicAppUrl: "https://example.com",
+  managerPhone: "77007772414",
   fetchImpl: async (url, options) => {
     cappedCalls.push({ url: String(url), payload: JSON.parse(options.body) });
     return new Response(JSON.stringify({ ok: true, result: { message_id: cappedCalls.length } }), {

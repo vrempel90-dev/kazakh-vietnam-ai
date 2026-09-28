@@ -638,7 +638,6 @@ export default function Prototype() {
           <strong>{flightRoute(flight)}</strong>
           <span><PaperPlaneIcon /> {flight.airline || "Авиакомпания уточняется"}</span>
           <span><CalendarIcon /> {flightDate(flight)} | {flightNights(flight)}</span>
-          {flight.cachedFallback && <span className="deal-warning">⚠️ Цена и наличие требуют подтверждения</span>}
           <div className="deal-bottom">
             <strong className="price">{displayPrice(flight.price)}</strong>
             <button className="select-flight" onClick={() => chooseFlight(flight)}>Выбрать</button>
@@ -703,7 +702,7 @@ export default function Prototype() {
 
             <div className="sync-line">
               <span className={"live-dot " + feedMode} />
-              <span>{feedMode === "live" ? "Рейсы обновляются автоматически" : feedMode === "cached" ? "Ранее найденные рейсы — требуется подтверждение" : "Резервные данные"}</span>
+              <span>{feedMode === "live" ? "Рейсы обновляются автоматически" : feedMode === "cached" ? "Последние доступные данные по рейсам" : "Резервные данные"}</span>
               {lastUpdated && <small>{lastUpdated.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</small>}
             </div>
 
