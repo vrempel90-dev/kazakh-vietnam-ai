@@ -61,8 +61,7 @@ function flightBlock(flight) {
       + (flight.returnDate ? " — " + fmtDate(flight.returnDate) : "")
       + " · " + (flight.trip === "RT" ? "туда-обратно" : "в одну сторону"),
     flight.seats && flight.seats !== "Наличие уточняется" ? "💺 " + esc(flight.seats) : null,
-    "💰 " + fmtPrice(flight.price),
-    flight.cachedFallback ? "⚠️ Цена и наличие требуют подтверждения" : null
+    "💰 " + fmtPrice(flight.price)
   ];
   return rows.filter(Boolean).join("\n");
 }
@@ -75,7 +74,10 @@ export function buildFlightPostBatches(flights, maxChars = 3400, maxFlightsPerPo
   let currentFlightIds = [];
 
   const intro = "✈️ <b>Свежие чартерные рейсы</b>\n\n";
-  const footer = "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
+  const hasCached = items.some(flight => Boolean(flight?.cachedFallback));
+  const footer = hasCached
+    ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
+    : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
 
   const flush = () => {
     if (!current) return;
@@ -135,12 +137,17 @@ export async function publishFreshFlights({
   targets,
   flights,
   publicAppUrl,
+  managerPhone,
   fetchImpl = fetch,
   delayMs = Math.max(0, Number(process.env.POST_DELAY_SECONDS || 2) * 1000),
   maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 3)))
 }) {
   const botToken = String(token || "").trim();
   const appUrl = String(publicAppUrl || "").trim();
+  const phone = String(managerPhone || process.env.VITE_MANAGER_WHATSAPP || "77007772414").replace(/\D/g, "");
+  const buyUrl = phone
+    ? "https://wa.me/" + phone + "?text=" + encodeURIComponent("Здравствуйте! Хочу купить билет на чартерный рейс из публикации.")
+    : "";
   if (!botToken) return { published: 0, skipped: true, reason: "TELEGRAM_BOT_TOKEN missing", targets: [] };
 
   const targetList = parsePublishTargets(targets);
@@ -162,9 +169,11 @@ export async function publishFreshFlights({
           text: post.text,
           parse_mode: "HTML",
           disable_web_page_preview: true,
-          reply_markup: appUrl ? {
-            inline_keyboard: [[{ text: "🚀 Запустить приложение", url: appUrl }]]
-          } : undefined
+          reply_markup: buyUrl ? {
+            inline_keyboard: [[{ text: "🎫 Купить билет", url: buyUrl }]]
+          } : (appUrl ? {
+            inline_keyboard: [[{ text: "✈️ Посмотреть рейсы", url: appUrl }]]
+          } : undefined)
         }, fetchImpl);
         sent += 1;
         published += 1;
