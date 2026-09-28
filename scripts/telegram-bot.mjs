@@ -12,8 +12,8 @@ export function buildTelegramHomeKeyboard(publicAppUrl, managerPhone = DEFAULT_M
   const phone = String(managerPhone || DEFAULT_MANAGER_PHONE).replace(/\D/g, "");
   return {
     inline_keyboard: [
-      [{ text: "🚀 Запустить приложение", web_app: { url: appUrl } }],
-      [{ text: "💬 Написать менеджеру", url: "https://wa.me/" + phone }]
+      [{ text: "🎫 Купить билет", url: "https://wa.me/" + phone }],
+      [{ text: "✈️ Посмотреть рейсы", web_app: { url: appUrl } }]
     ]
   };
 }
@@ -74,8 +74,8 @@ export function createTelegramRuntime({
       text:
         "Здравствуйте" + hello + "! ✈️\n\n" +
         "Здесь собраны актуальные чартерные авиабилеты. " +
-        "Откройте приложение, выберите направление и рейс — после этого можно сразу написать менеджеру для оформления.\n\n" +
-        "Цена и наличие перепроверяются перед оформлением.",
+        "Нажмите «Купить билет», чтобы сразу написать менеджеру в WhatsApp, или откройте список рейсов.\n\n" +
+        "Цены и наличие указаны по последним данным.",
       reply_markup: buildTelegramHomeKeyboard(appUrl, manager)
     });
   }
@@ -128,8 +128,8 @@ export function createTelegramRuntime({
       await api("sendMessage", {
         chat_id: chatId,
         text:
-          "Нажмите «Открыть авиабилеты», чтобы посмотреть актуальные рейсы. " +
-          "В карточке выбранного рейса есть кнопка WhatsApp для связи с менеджером.",
+          "Нажмите «Купить билет», чтобы сразу перейти в WhatsApp к менеджеру. " +
+          "Для просмотра вариантов используйте кнопку «Посмотреть рейсы».",
         reply_markup: buildTelegramHomeKeyboard(appUrl, manager)
       });
       return;
@@ -137,7 +137,7 @@ export function createTelegramRuntime({
 
     await api("sendMessage", {
       chat_id: chatId,
-      text: "Для поиска чартерных рейсов откройте приложение 👇",
+      text: "Выберите действие 👇",
       reply_markup: buildTelegramHomeKeyboard(appUrl, manager)
     });
   }
@@ -171,7 +171,7 @@ export function createTelegramRuntime({
         api("setChatMenuButton", {
           menu_button: {
             type: "web_app",
-            text: "Запустить приложение",
+            text: "Рейсы",
             web_app: { url: appUrl }
           }
         })
