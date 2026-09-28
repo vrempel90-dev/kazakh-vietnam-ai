@@ -782,7 +782,8 @@ if (telegramPublishCandidates.length && process.env.TELEGRAM_PUBLISH_ENABLED !==
         token: process.env.TELEGRAM_BOT_TOKEN,
         targets: [target],
         flights: pendingFlights,
-        publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+        publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN,
+        managerPhone: process.env.VITE_MANAGER_WHATSAPP
       });
       const result = publishResult.targets?.[0] || {
         target,
