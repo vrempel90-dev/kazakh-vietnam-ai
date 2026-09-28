@@ -12,8 +12,10 @@ assert.equal(parseTelegramCommand("/menu@charter_bot"), "/menu");
 assert.equal(parseTelegramCommand("hello"), null);
 
 const keyboard = buildTelegramHomeKeyboard("https://example.com/", "+7 700 777 24 14");
-assert.equal(keyboard.inline_keyboard[0][0].web_app.url, "https://example.com");
-assert.equal(keyboard.inline_keyboard[1][0].url, "https://wa.me/77007772414");
+assert.equal(keyboard.inline_keyboard[0][0].text, "🎫 Купить билет");
+assert.equal(keyboard.inline_keyboard[0][0].url, "https://wa.me/77007772414");
+assert.equal(keyboard.inline_keyboard[1][0].text, "✈️ Посмотреть рейсы");
+assert.equal(keyboard.inline_keyboard[1][0].web_app.url, "https://example.com");
 
 const calls = [];
 const fakeFetch = async (url, options) => {
@@ -50,7 +52,7 @@ assert.ok(calls.some(call => call.method === "setMyDescription"));
 assert.ok(calls.some(call => call.method === "setMyShortDescription"));
 assert.ok(calls.some(call => call.method === "setChatMenuButton"));
 const menuButtonCall = calls.find(call => call.method === "setChatMenuButton");
-assert.equal(menuButtonCall.payload.menu_button.text, "Запустить приложение");
+assert.equal(menuButtonCall.payload.menu_button.text, "Рейсы");
 const commandsCall = calls.find(call => call.method === "setMyCommands");
 assert.ok(commandsCall.payload.commands.some(command => command.command === "admin"));
 const webhookCall = calls.find(call => call.method === "setWebhook");
@@ -67,7 +69,8 @@ await runtime.handleUpdate({
 const startMessage = calls.filter(call => call.method === "sendMessage").at(-1);
 assert.equal(startMessage.payload.chat_id, 42);
 assert.ok(startMessage.payload.text.includes("Ирина"));
-assert.equal(startMessage.payload.reply_markup.inline_keyboard[0][0].web_app.url, "https://example.com");
+assert.equal(startMessage.payload.reply_markup.inline_keyboard[0][0].url, "https://wa.me/77007772414");
+assert.equal(startMessage.payload.reply_markup.inline_keyboard[1][0].web_app.url, "https://example.com");
 
 await runtime.handleUpdate({
   message: {
@@ -90,4 +93,4 @@ await runtime.handleUpdate({
 const deniedMessage = calls.filter(call => call.method === "sendMessage").at(-1);
 assert.ok(deniedMessage.payload.text.includes("запрещён"));
 
-console.log("Telegram runtime commands, admin access, webhook, launch button, and Mini App keyboard: passed");
+console.log("Telegram runtime commands, admin access, WhatsApp purchase CTA, and Mini App keyboard: passed");
