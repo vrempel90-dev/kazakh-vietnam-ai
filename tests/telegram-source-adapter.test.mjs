@@ -146,6 +146,6 @@ test("normalizes route formats used by NURADEL and AviaTravel", () => {
   assert.deepEqual(parseRouteLine("(Астана -> Нячанг)"), { from: "Астана", to: "Нячанг", trip: "OW" });
   assert.deepEqual(
     parseRouteLine("🇻🇳 Камрань/Нячанг (Вьетнам) ➔ Алматы 🇰🇿 (Econom)"),
-    { from: "Нячанг (Вьетнам)", to: "Алматы", trip: "OW" }
+    { from: "Нячанг", to: "Алматы", trip: "OW" }
   );
 });
