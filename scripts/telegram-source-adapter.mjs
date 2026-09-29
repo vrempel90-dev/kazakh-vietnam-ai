@@ -199,7 +199,7 @@ function dateFromText(value, now) {
 }
 
 function compactRangeFromText(value, now) {
-  const match = String(value || "").match(/(\d{1,2})\s*[-–—]\s*(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/u);
+  const match = String(value || "").match(/(?<![\d./])(\d{1,2})\s*[-–—]\s*(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/u);
   if (!match) return null;
   return [toIso(match[1], match[3], match[4], now), toIso(match[2], match[3], match[4], now)];
 }
@@ -246,18 +246,18 @@ export function parseOfferLine(line, now) {
   let returnDate = null;
   let price = null;
 
-  const compact = compactRangeFromText(text, now);
-  if (compact?.[0] && compact?.[1]) {
-    departureDate = compact[0];
-    returnDate = compact[1];
+  const range = text.match(/(?:^|\s)(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:→|->|—|–|-)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/u);
+  if (range) {
+    departureDate = dateFromText(range[1], now);
+    returnDate = dateFromText(range[2], now);
     price = priceFromText(text);
   }
 
   if (!departureDate) {
-    const range = text.match(/(?:^|\s)(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:→|->|—|–|-)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/u);
-    if (range) {
-      departureDate = dateFromText(range[1], now);
-      returnDate = dateFromText(range[2], now);
+    const compact = compactRangeFromText(text, now);
+    if (compact?.[0] && compact?.[1]) {
+      departureDate = compact[0];
+      returnDate = compact[1];
       price = priceFromText(text);
     }
   }
