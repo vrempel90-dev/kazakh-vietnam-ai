@@ -1,6 +1,8 @@
 name: Sync charter flights
 
 on:
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -43,6 +45,11 @@ jobs:
       VIETRA_PASSWORD: ${{ secrets.VIETRA_PASSWORD }}
       SANAT_USERNAME: ${{ secrets.SANAT_USERNAME }}
       SANAT_PASSWORD: ${{ secrets.SANAT_PASSWORD }}
+      TG_API_ID: ${{ secrets.TG_API_ID }}
+      TG_API_HASH: ${{ secrets.TG_API_HASH }}
+      TG_SESSION: ${{ secrets.TG_SESSION }}
+      TELEGRAM_SESSION_POSTS_PATH: /tmp/telegram-session-posts.json
+      TELEGRAM_SESSION_SOURCES_PATH: config/telegram-session-sources.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +58,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect Telegram user-session sources
+        if: ${{ env.TG_API_ID != '' && env.TG_API_HASH != '' && env.TG_SESSION != '' }}
+        run: |
+          python -m pip install -r collector/requirements.txt
+          python collector/session_collector.py
 
       - name: Sync charter sources
         run: npm run sync:flights
