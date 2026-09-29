@@ -282,13 +282,14 @@ export function parseOfferLine(line, now) {
   const count = Number(seatMatch?.[1] || seatMatch?.[2] || 0);
   const lastSeat = /последн(?:ее|ий|яя)\s+(?:место|кресло)/iu.test(text);
 
+  const baggage = detectBaggage(text);
   return {
     departureDate,
     returnDate,
     price,
     hot: /🔥/u.test(text),
     seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется",
-    baggage: detectBaggage(text)
+    ...(baggage ? { baggage } : {})
   };
 }
 
