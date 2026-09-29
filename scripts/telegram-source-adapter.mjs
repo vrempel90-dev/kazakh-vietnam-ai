@@ -132,10 +132,10 @@ function normalizeCity(value) {
     .replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, "")
     .replace(/^\p{Extended_Pictographic}+\s*/u, "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
-    .replace(/^\(+|\)+$/g, "")
     .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
     .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка)\)\s*/giu, " ")
     .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
+    .replace(/^\(+|\)+$/g, "")
     .replace(/\s+/g, " ")
     .replace(/[,.]+$/g, "")
     .trim();
