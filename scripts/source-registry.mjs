@@ -184,9 +184,25 @@ export function configuredTelegramSources(env = process.env) {
     .filter(source => source.enabled);
 }
 
+export function configuredTelegramSessionSources(env = process.env) {
+  const filePath = String(env.TELEGRAM_SESSION_POSTS_PATH || "").trim();
+  if (!filePath) return [];
+  return [{
+    id: "telegram-session",
+    label: "Telegram user-session collector",
+    kind: "telegram_session",
+    adapter: "telegram_session_file",
+    priceKind: "cost",
+    filePath,
+    enabled: true,
+    ingest: true
+  }];
+}
+
 export function ingestSources(env = process.env) {
   return [
     ...sourceRegistry.filter(source => source.enabled && source.ingest === true),
+    ...configuredTelegramSessionSources(env),
     ...configuredTelegramSources(env)
   ];
 }
