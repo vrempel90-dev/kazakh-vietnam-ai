@@ -2,7 +2,11 @@ import { parseTelegramSourceList, sourceFromHandle } from "./telegram-source-ada
 
 const DEFAULT_PUBLIC_TELEGRAM_CHANNELS = [
   "charter_forever_travel",
-  "charterkaz"
+  "bilettu",
+  "biletuu",
+  "avia07",
+  "chartersavia",
+  "charter_antalya"
 ];
 
 function uniqueById(sources) {
@@ -19,7 +23,7 @@ export const sourceRegistry = DEFAULT_PUBLIC_TELEGRAM_CHANNELS.map(handle => ({
   enabled: true,
   ingest: true,
   priceKind: "cost",
-  note: "Public Telegram charter source"
+  note: "Verified public Telegram charter source"
 }));
 
 export function configuredTelegramSources(env = process.env) {
