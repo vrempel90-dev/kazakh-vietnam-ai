@@ -3,6 +3,7 @@ export function hasMaterialChange(previous, current) {
   return previous.price !== current.price
     || previous.seats !== current.seats
     || previous.airline !== current.airline
+    || previous.baggage !== current.baggage
     || previous.departureDate !== current.departureDate
     || previous.returnDate !== current.returnDate
     || previous.trip !== current.trip;
