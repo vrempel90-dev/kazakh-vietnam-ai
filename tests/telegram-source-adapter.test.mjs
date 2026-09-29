@@ -97,3 +97,45 @@ test("extracts public Telegram post metadata and obeys TTL/auto marker", async (
   assert.equal(result.status.skippedAuto, 1);
   assert.equal(result.offers[0].sourcePrice, 90000);
 });
+
+
+test("supports KatokPass-style IATA, word dates, thousand prices and baggage", () => {
+  const now = new Date("2026-09-16T08:00:00Z");
+  assert.deepEqual(parseRouteLine("ALA-AYT"), { from: "Алматы", to: "Анталия", trip: "OW" });
+  assert.deepEqual(parseRouteLine("Из Астаны в Хургаду"), { from: "Астана", to: "Хургада", trip: "OW" });
+
+  const offers = parseTelegramPost([
+    "SCAT",
+    "ALA-AYT",
+    "17 сентября — 150 тыс тг",
+    "багаж 23+5 кг"
+  ].join("\n"), {
+    sourceId: "telegram-session:step-to-travel",
+    postId: 700,
+    postedAt: "2026-09-16T07:00:00Z",
+    now
+  });
+
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].departureDate, "2026-09-17");
+  assert.equal(offers[0].sourcePrice, 150000);
+  assert.equal(offers[0].airline, "SCAT");
+});
+
+test("supports split departure and price lines", () => {
+  const offers = parseTelegramPost([
+    "Шымкент — Шарджа",
+    "Вылет: 25.09",
+    "Цена: 55 000",
+    "без багажа"
+  ].join("\n"), {
+    sourceId: "telegram-session:step-to-travel",
+    postId: 701,
+    postedAt: "2026-09-16T07:00:00Z",
+    now: new Date("2026-09-16T08:00:00Z")
+  });
+
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].departureDate, "2026-09-25");
+  assert.equal(offers[0].sourcePrice, 55000);
+});

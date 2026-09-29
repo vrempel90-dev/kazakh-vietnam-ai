@@ -3,20 +3,43 @@
   "updatedAt": null,
   "rules": [
     {
+      "id": "katokpass-step-to-travel",
+      "name": "Step to Travel +3%",
+      "enabled": true,
+      "priority": 100,
+      "scope": {
+        "sourceId": "telegram-session:step-to-travel"
+      },
+      "calculation": {
+        "type": "percent",
+        "value": 3
+      }
+    },
+    {
       "id": "template-ow",
       "name": "OW +10 000 ₸",
       "enabled": true,
       "priority": 0,
-      "scope": { "trip": "OW" },
-      "calculation": { "type": "fixed_kzt", "value": 10000 }
+      "scope": {
+        "trip": "OW"
+      },
+      "calculation": {
+        "type": "fixed_kzt",
+        "value": 10000
+      }
     },
     {
       "id": "template-rt",
       "name": "RT +20 000 ₸",
       "enabled": true,
       "priority": 0,
-      "scope": { "trip": "RT" },
-      "calculation": { "type": "fixed_kzt", "value": 20000 }
+      "scope": {
+        "trip": "RT"
+      },
+      "calculation": {
+        "type": "fixed_kzt",
+        "value": 20000
+      }
     }
   ]
 }

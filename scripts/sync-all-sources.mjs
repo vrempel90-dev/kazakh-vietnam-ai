@@ -168,7 +168,7 @@ function findAirline(line) {
 }
 
 function stableId(flight) {
-  const raw = [flight.from, flight.to, flight.departureDate, flight.returnDate || "", flight.trip, flight.airline || ""].join("|");
+  const raw = [flight.from, flight.to, flight.departureDate, flight.returnDate || "", flight.trip].join("|");
   return createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
 
@@ -183,8 +183,10 @@ function publicFlight(input) {
     hot: Boolean(input.hot),
     seats: input.seats || "Наличие уточняется",
     airline: input.airline || undefined,
+    baggage: input.baggage || undefined,
     departureDate: input.departureDate,
     returnDate: input.returnDate || undefined,
+    sourcePostedAt: input.sourcePostedAt || undefined,
     updatedAt: new Date().toISOString()
   };
   flight.id = stableId(flight);
@@ -472,8 +474,10 @@ async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
         hot: offer.hot,
         seats: offer.seats,
         airline: offer.airline,
+        baggage: offer.baggage,
         departureDate: offer.departureDate,
-        returnDate: offer.returnDate
+        returnDate: offer.returnDate,
+        sourcePostedAt: offer.postedAt
       }),
       sourceIds: [source.id]
     });
@@ -534,8 +538,10 @@ async function syncTelegramSessionSource(source, now, pricingConfig, pricingRate
         hot: offer.hot,
         seats: offer.seats,
         airline: offer.airline,
+        baggage: offer.baggage,
         departureDate: offer.departureDate,
-        returnDate: offer.returnDate
+        returnDate: offer.returnDate,
+        sourcePostedAt: offer.postedAt
       }),
       sourceIds: [effectiveSourceId]
     });
@@ -601,8 +607,10 @@ async function syncSamo(source, now, pricingConfig, pricingRates) {
         hot: false,
         seats: offer.seats,
         airline: offer.airline,
+        baggage: offer.baggage,
         departureDate: offer.departureDate,
-        returnDate: offer.returnDate
+        returnDate: offer.returnDate,
+        sourcePostedAt: offer.postedAt
       }),
       sourceIds: [source.id]
     });
@@ -648,19 +656,29 @@ async function probeB2B(source) {
 function dedupeFlights(flights) {
   const map = new Map();
   for (const flight of flights) {
-    const key = [normalizeCity(flight.from), normalizeCity(flight.to), flight.departureDate, flight.returnDate || "", flight.trip, flight.airline || ""].join("|");
+    const key = [normalizeCity(flight.from), normalizeCity(flight.to), flight.departureDate, flight.returnDate || "", flight.trip].join("|");
     const current = map.get(key);
-    if (!current || flight.price < current.price) {
+
+    if (!current) {
       map.set(key, {
         ...flight,
         sourceIds: Array.isArray(flight.sourceIds) ? [...new Set(flight.sourceIds)] : []
       });
-    } else if (flight.price === current.price) {
-      map.set(key, {
-        ...current,
-        sourceIds: [...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])]
-      });
+      continue;
     }
+
+    const flightStamp = Date.parse(flight.sourcePostedAt || flight.updatedAt || "") || 0;
+    const currentStamp = Date.parse(current.sourcePostedAt || current.updatedAt || "") || 0;
+    const newer = flightStamp > currentStamp;
+    const winner = flight.price < current.price || (flight.price === current.price && newer)
+      ? { ...flight }
+      : { ...current };
+    const freshest = newer ? flight : current;
+
+    winner.seats = freshest.seats || winner.seats;
+    winner.sourcePostedAt = freshest.sourcePostedAt || winner.sourcePostedAt;
+    winner.sourceIds = [...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])];
+    map.set(key, winner);
   }
   return [...map.values()].sort((a, b) => a.offset - b.offset || a.price - b.price).slice(0, 300);
 }

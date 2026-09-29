@@ -4,8 +4,35 @@ const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
   "Fly Arystan", "FlyArystan", "Pegasus", "Sunday Airlines", "Air Cairo",
   "Red Sea", "Neos", "Neos Air", "Sun Phu Quoc", "Air Arabia", "Centrum Air",
-  "CENTRUM AIR", "Qazaq Air", "Turkish Airlines", "Wizz Air", "Charter", "Чартер"
+  "CENTRUM AIR", "Qazaq Air", "Turkish Airlines", "Wizz Air", "Southwind",
+  "AJet", "Azur Air", "Red Wings", "Corendon", "Freebird", "flydubai",
+  "Vietravel", "Bamboo", "Air Serbia", "Uzbekistan Airways", "China Southern",
+  "Nesma", "Charter", "Чартер"
 ];
+
+const IATA = {
+  ALA: "Алматы", NQZ: "Астана", CIT: "Шымкент", GUW: "Атырау", AKX: "Актобе",
+  KSN: "Костанай", KZO: "Кызылорда", DMB: "Тараз", URA: "Уральск", PPK: "Петропавловск",
+  SSH: "Шарм-эш-Шейх", HRG: "Хургада", CAI: "Каир", AYT: "Анталия", IST: "Стамбул",
+  SAW: "Стамбул", DXB: "Дубай", DWC: "Дубай", SHJ: "Шарджа", AUH: "Абу-Даби",
+  CXR: "Нячанг", DAD: "Дананг", PQC: "Фукуок", HKT: "Пхукет", BKK: "Бангкок",
+  SYX: "Санья", MLE: "Мале", CMB: "Коломбо", GOI: "Гоа", TBS: "Тбилиси",
+  BUS: "Батуми", GYD: "Баку", EVN: "Ереван", DOH: "Доха", BEG: "Белград",
+  MXP: "Милан", FCO: "Рим", BCN: "Барселона", CDG: "Париж", PRG: "Прага",
+  VIE: "Вена", LCA: "Ларнака", FRU: "Бишкек", TAS: "Ташкент",
+  SVO: "Москва", DME: "Москва", VKO: "Москва", LED: "Санкт-Петербург", AER: "Сочи"
+};
+
+const CITY_FORMS = {
+  "астаны": "Астана", "астане": "Астана", "хургаду": "Хургада",
+  "анталию": "Анталия", "анталью": "Анталия", "анталья": "Анталия",
+  "дубаи": "Дубай", "камрань": "Нячанг", "москву": "Москва"
+};
+
+const MONTHS = {
+  янв: 1, фев: 2, мар: 3, апр: 4, мая: 5, май: 5, июн: 6,
+  июл: 7, авг: 8, сен: 9, окт: 10, ноя: 11, дек: 12
+};
 
 function decodeHtml(value) {
   return String(value || "")
@@ -92,12 +119,15 @@ export function extractPublicTelegramPosts(html) {
 }
 
 function normalizeCity(value) {
-  return String(value || "")
+  const clean = String(value || "")
     .replace(/^\p{Extended_Pictographic}+\s*/u, "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
     .replace(/\s+/g, " ")
     .replace(/[,.]+$/g, "")
     .trim();
+  const code = clean.toUpperCase();
+  if (/^[A-Z]{3}$/.test(code) && IATA[code]) return IATA[code];
+  return CITY_FORMS[clean.toLocaleLowerCase("ru-RU")] || clean;
 }
 
 function sameCity(a, b) {
@@ -116,10 +146,19 @@ export function parseRouteLine(line) {
     .trim();
   if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
 
-  const parts = raw
-    .split(/\s*(?:→|->|⟶|➡|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
-    .map(normalizeCity)
-    .filter(Boolean);
+  const iataRoute = raw.match(/^([A-Z]{3})\s*[-–—→]\s*([A-Z]{3})(?:\s*[-–—→]\s*([A-Z]{3}))?$/);
+  let parts;
+  if (iataRoute) {
+    parts = [iataRoute[1], iataRoute[2], iataRoute[3]].filter(Boolean).map(normalizeCity);
+  } else {
+    const prose = raw.match(/^из\s+(.+?)\s+(?:в|во)\s+(.+)$/iu);
+    parts = prose
+      ? [normalizeCity(prose[1]), normalizeCity(prose[2])]
+      : raw
+          .split(/\s*(?:→|->|⟶|➡|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
+          .map(normalizeCity)
+          .filter(Boolean);
+  }
 
   if (parts.length < 2 || parts.length > 3) return null;
   if (parts.some(part => /^\d/.test(part) || part.length < 2 || /^(?:₸|тенге)$/iu.test(part))) return null;
@@ -134,7 +173,7 @@ function inferYear(day, month, now) {
   let year = now.getUTCFullYear();
   const candidate = new Date(Date.UTC(year, month - 1, day, 12));
   const diffDays = (candidate.getTime() - now.getTime()) / 86400000;
-  if (diffDays < -120) year += 1;
+  if (diffDays < -7) year += 1;
   return year;
 }
 
@@ -151,8 +190,18 @@ function toIso(day, month, explicitYear, now) {
 }
 
 function dateFromText(value, now) {
-  const match = String(value || "").match(/(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/);
-  return match ? toIso(match[1], match[2], match[3], now) : null;
+  const text = String(value || "");
+  const numeric = text.match(/(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/);
+  if (numeric) return toIso(numeric[1], numeric[2], numeric[3], now);
+  const word = text.match(/(\d{1,2})\s*(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-яё]*\.?/iu);
+  if (!word) return null;
+  return toIso(word[1], MONTHS[word[2].toLocaleLowerCase("ru-RU").slice(0, 3)], null, now);
+}
+
+function compactRangeFromText(value, now) {
+  const match = String(value || "").match(/(?<![\d./])(\d{1,2})\s*[-–—]\s*(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/u);
+  if (!match) return null;
+  return [toIso(match[1], match[3], match[4], now), toIso(match[2], match[3], match[4], now)];
 }
 
 function addDays(iso, days) {
@@ -161,55 +210,86 @@ function addDays(iso, days) {
   return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
 }
 
-function numericPrice(value) {
-  const n = Number(String(value || "").replace(/[^0-9]/g, ""));
+function numericPrice(value, multiplier = 1) {
+  const n = Number(String(value || "").replace(/[^0-9]/g, "")) * multiplier;
   return Number.isFinite(n) && n >= 5000 && n <= 5000000 ? n : null;
+}
+
+function priceFromText(value) {
+  const text = String(value || "");
+  if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(text)) return null;
+  const thousands = text.match(/(?<![\d.,])(\d{1,4})\s*(?:тыс\.?|к)(?![а-яё\w])/iu);
+  if (thousands) return numericPrice(thousands[1], 1000);
+  const currency = text.match(/(?<!\d)(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{4,7})\s*(?:₸|тг\.?|тенге|kzt\b)/iu);
+  if (currency) return numericPrice(currency[1]);
+  const label = text.match(/(?:цена|стоимость|price)\s*[:\-–—]?\s*(?:от\s*)?(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{4,7})/iu);
+  if (label) return numericPrice(label[1]);
+  const separated = text.match(/(?:=|—|–|-)\s*(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{4,7})(?:\s|$)/u);
+  return separated ? numericPrice(separated[1]) : null;
+}
+
+function detectBaggage(value) {
+  const text = String(value || "");
+  const pair = text.match(/(?<!\d)(\d{1,2})\s*\+\s*(\d{1,2})\s*(?:кг|kg)?/iu);
+  if (pair) return Number(pair[1]) + " + " + Number(pair[2]) + " кг";
+  const single = text.match(/багаж\D{0,12}?(\d{1,2})\s*(?:кг|kg)/iu);
+  if (single) return Number(single[1]) + " кг";
+  if (/без\s+багаж/iu.test(text)) return "только ручная кладь";
+  return null;
 }
 
 export function parseOfferLine(line, now) {
   const text = String(line || "").replace(/\u00a0/g, " ").trim();
-  if (!text) return null;
+  if (!text || /\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(text)) return null;
 
   let departureDate = null;
   let returnDate = null;
   let price = null;
 
-  const range = text.match(/(?:^|\s)(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:→|->|—|–|-)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:=|—|–|-)\s*([\d\s.,]{4,})/u);
+  const range = text.match(/(?:^|\s)(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:→|->|—|–|-)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/u);
   if (range) {
     departureDate = dateFromText(range[1], now);
     returnDate = dateFromText(range[2], now);
-    price = numericPrice(range[3]);
+    price = priceFromText(text);
   }
 
   if (!departureDate) {
-    const nights = text.match(/(?:^|\s)(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s+на\s+(\d{1,2})(?:\s*[-–—]\s*\d{1,2})?\s+ноч(?:ь|и|ей)\s*(?:=|—|–|-)\s*([\d\s.,]{4,})/iu);
+    const compact = compactRangeFromText(text, now);
+    if (compact?.[0] && compact?.[1]) {
+      departureDate = compact[0];
+      returnDate = compact[1];
+      price = priceFromText(text);
+    }
+  }
+
+  if (!departureDate) {
+    const nights = text.match(/(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s+на\s+(\d{1,2})(?:\s*[-–—]\s*\d{1,2})?\s+ноч(?:ь|и|ей)/iu);
     if (nights) {
       departureDate = dateFromText(nights[1], now);
       if (departureDate) returnDate = addDays(departureDate, Number(nights[2]));
-      price = numericPrice(nights[3]);
+      price = priceFromText(text);
     }
   }
 
   if (!departureDate) {
-    const single = text.match(/(?:^|\s)(?:[A-ZА-Я]\s+)?(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:=|—|–|-)\s*([\d\s.,]{4,})/u);
-    if (single) {
-      departureDate = dateFromText(single[1], now);
-      price = numericPrice(single[2]);
-    }
+    departureDate = dateFromText(text, now);
+    price = priceFromText(text);
   }
 
   if (!departureDate || !price) return null;
 
-  const seatMatch = text.match(/\((\d{1,2})\)|\b(\d{1,2})\s*(?:мест|место|места|кресл)/iu);
+  const seatMatch = text.match(/\((\d{1,3})\)|\b(\d{1,3})\s*(?:мест|место|места|кресл)/iu);
   const count = Number(seatMatch?.[1] || seatMatch?.[2] || 0);
   const lastSeat = /последн(?:ее|ий|яя)\s+(?:место|кресло)/iu.test(text);
 
+  const baggage = detectBaggage(text);
   return {
     departureDate,
     returnDate,
     price,
     hot: /🔥/u.test(text),
-    seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется"
+    seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется",
+    ...(baggage ? { baggage } : {})
   };
 }
 
@@ -240,61 +320,88 @@ export function parseTelegramPost(text, {
   now = new Date()
 } = {}) {
   const lines = String(text || "").split("\n").map(line => line.trim()).filter(Boolean);
+  if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(String(text || ""))) return [];
+
   const offers = [];
   let route = null;
   let tripHint = "OW";
   let airline = null;
+  let baggage = null;
+  let pendingDeparture = null;
+  let pendingReturn = null;
 
-  for (const line of lines) {
-    const foundAirline = detectAirline(line);
-    const maybeRoute = parseRouteLine(line);
-
-    if (foundAirline && !maybeRoute) {
-      airline = foundAirline;
-      continue;
-    }
-
-    if (maybeRoute) {
-      route = maybeRoute;
-      tripHint = maybeRoute.trip;
-      const inlineAirline = detectAirline(line);
-      if (inlineAirline) airline = inlineAirline;
-      continue;
-    }
-
-    if (/\b(?:RT|туда[ -]?обратно)\b/iu.test(line)) {
-      tripHint = "RT";
-      continue;
-    }
-    if (/\b(?:OW|в одну сторону)\b/iu.test(line)) {
-      tripHint = "OW";
-      continue;
-    }
-
-    const parsed = parseOfferLine(line, now);
-    if (!parsed || !route) continue;
-
-    const trip = parsed.returnDate ? "RT" : tripHint;
+  const appendOffer = parsed => {
+    if (!route || !parsed?.departureDate || !parsed?.price) return;
     const offset = daysUntil(parsed.departureDate, now);
-    if (offset <= 0 || offset > 365) continue;
-
+    if (offset <= 0 || offset > 365) return;
     const offer = {
       sourceId,
       externalId: "",
       from: route.from,
       to: route.to,
       departureDate: parsed.departureDate,
-      returnDate: parsed.returnDate,
-      trip,
+      returnDate: parsed.returnDate || null,
+      trip: parsed.returnDate ? "RT" : tripHint,
       airline: airline || undefined,
+      baggage: parsed.baggage || baggage || undefined,
       sourcePrice: parsed.price,
       currency: "KZT",
-      seats: parsed.seats,
-      hot: parsed.hot,
+      seats: parsed.seats || "Наличие уточняется",
+      hot: Boolean(parsed.hot),
       postedAt
     };
     offer.externalId = stableExternalId(sourceId, postId, offers.length, offer);
     offers.push(offer);
+  };
+
+  for (const line of lines) {
+    const maybeRoute = parseRouteLine(line);
+    if (maybeRoute) {
+      route = maybeRoute;
+      tripHint = maybeRoute.trip;
+      pendingDeparture = null;
+      pendingReturn = null;
+      continue;
+    }
+
+    const foundAirline = detectAirline(line);
+    if (foundAirline) airline = foundAirline;
+    const foundBaggage = detectBaggage(line);
+    if (foundBaggage) baggage = foundBaggage;
+
+    if (/\b(?:RT|туда[ -]?(?:и\s*)?обратно|т\/о)\b/iu.test(line)) tripHint = "RT";
+    if (/\b(?:OW|в одну сторону)\b/iu.test(line)) tripHint = "OW";
+
+    const parsed = parseOfferLine(line, now);
+    if (parsed && route) {
+      appendOffer(parsed);
+      pendingDeparture = null;
+      pendingReturn = null;
+      continue;
+    }
+
+    const compact = compactRangeFromText(line, now);
+    if (compact?.[0]) {
+      pendingDeparture = compact[0];
+      pendingReturn = compact[1] || null;
+    } else {
+      const oneDate = dateFromText(line, now);
+      if (oneDate && !priceFromText(line)) pendingDeparture = oneDate;
+    }
+
+    const standalonePrice = priceFromText(line);
+    if (route && pendingDeparture && standalonePrice) {
+      appendOffer({
+        departureDate: pendingDeparture,
+        returnDate: pendingReturn,
+        price: standalonePrice,
+        hot: /🔥/u.test(line),
+        seats: "Наличие уточняется",
+        baggage: foundBaggage
+      });
+      pendingDeparture = null;
+      pendingReturn = null;
+    }
   }
 
   return offers;
