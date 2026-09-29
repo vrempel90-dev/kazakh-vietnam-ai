@@ -26,7 +26,16 @@ const IATA = {
 const CITY_FORMS = {
   "астаны": "Астана", "астане": "Астана", "хургаду": "Хургада",
   "анталию": "Анталия", "анталью": "Анталия", "анталья": "Анталия",
-  "дубаи": "Дубай", "камрань": "Нячанг", "москву": "Москва"
+  "дубаи": "Дубай", "камрань": "Нячанг", "камрань/нячанг": "Нячанг", "москву": "Москва",
+  "almaty": "Алматы", "astana": "Астана", "shymkent": "Шымкент",
+  "nha trang": "Нячанг", "cam ranh": "Нячанг", "camranh": "Нячанг",
+  "phu quoc": "Фукуок", "danang": "Дананг", "da nang": "Дананг",
+  "phuket": "Пхукет", "bangkok": "Бангкок", "sanya": "Санья",
+  "antalya": "Анталия", "sharjah": "Шарджа", "abu dhabi": "Абу-Даби",
+  "sharm el sheikh": "Шарм-эль-Шейх", "hurghada": "Хургада",
+  "mattala": "Маттала", "jeddah": "Джидда", "aktau": "Актау",
+  "aktobe": "Актобе", "atyrau": "Атырау", "kostanay": "Костанай",
+  "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми"
 };
 
 const MONTHS = {
@@ -122,6 +131,9 @@ function normalizeCity(value) {
   const clean = String(value || "")
     .replace(/^\p{Extended_Pictographic}+\s*/u, "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
+    .replace(/^\(+|\)+$/g, "")
+    .replace(/\s+🇦🇪|\s+🇰🇿|\s+🇻🇳|\s+🇹🇷|\s+🇨🇳|\s+🇪🇬|\s+🇱🇰/gu, "")
+    .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
     .replace(/\s+/g, " ")
     .replace(/[,.]+$/g, "")
     .trim();
@@ -155,7 +167,7 @@ export function parseRouteLine(line) {
     parts = prose
       ? [normalizeCity(prose[1]), normalizeCity(prose[2])]
       : raw
-          .split(/\s*(?:→|->|⟶|➡|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
+          .split(/\s*(?:→|->|⟶|➡|➔|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
           .map(normalizeCity)
           .filter(Boolean);
   }
