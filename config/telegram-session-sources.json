@@ -1,0 +1,12 @@
+{
+  "ttlHours": 24,
+  "sources": [
+    {
+      "id": "step-to-travel",
+      "name": "Step to Travel",
+      "telegram": "",
+      "title": "Step to Travel",
+      "enabled": true
+    }
+  ]
+}

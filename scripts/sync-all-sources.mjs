@@ -6,6 +6,7 @@ import { resolveSourceCurrency } from "./source-currency.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
 import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
 import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
+import { fetchTelegramSessionFileOffers } from "./telegram-session-file-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
@@ -489,6 +490,68 @@ async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
   };
 }
 
+async function syncTelegramSessionSource(source, now, pricingConfig, pricingRates) {
+  const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
+  const result = await fetchTelegramSessionFileOffers({
+    source,
+    now,
+    ttlHours,
+    shouldSkipText: shouldSkipParsedTelegramMessage
+  });
+
+  const flights = [];
+  let pricingSkipped = 0;
+
+  for (const offer of result.offers || []) {
+    const effectiveSourceId = offer.sourceId || source.id;
+    const priced = calculateSalePrice({
+      sourcePrice: offer.sourcePrice,
+      currency: "KZT",
+      sourceId: effectiveSourceId,
+      offerId: offer.externalId,
+      from: offer.from,
+      to: offer.to,
+      trip: offer.trip,
+      rates: pricingRates,
+      config: pricingConfig,
+      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
+    });
+    if (!priced) {
+      pricingSkipped += 1;
+      continue;
+    }
+
+    const offset = dayOffset(offer.departureDate, now);
+    if (offset <= 0 || offset > 365) continue;
+
+    flights.push({
+      ...publicFlight({
+        from: offer.from,
+        to: offer.to,
+        offset,
+        price: priced.salePrice,
+        trip: offer.trip,
+        hot: offer.hot,
+        seats: offer.seats,
+        airline: offer.airline,
+        departureDate: offer.departureDate,
+        returnDate: offer.returnDate
+      }),
+      sourceIds: [effectiveSourceId]
+    });
+  }
+
+  return {
+    flights,
+    status: {
+      ...result.status,
+      rawOffers: (result.offers || []).length,
+      offers: flights.length,
+      pricingSkipped
+    }
+  };
+}
+
 async function syncSamo(source, now, pricingConfig, pricingRates) {
   const token = source.apiTokenEnv ? process.env[source.apiTokenEnv] : "";
   const result = await fetchSamoTicketOffers({
@@ -628,6 +691,8 @@ for (const source of ingestSources()) {
       result = await syncNeos(source, now, pricingConfig, pricingRates);
     } else if (source.adapter === "telegram_public_feed") {
       result = await syncTelegramSource(source, now, pricingConfig, pricingRates);
+    } else if (source.adapter === "telegram_session_file") {
+      result = await syncTelegramSessionSource(source, now, pricingConfig, pricingRates);
     } else if (source.adapter === "samo_ticket_api") {
       result = await syncSamo(source, now, pricingConfig, pricingRates);
     } else {
