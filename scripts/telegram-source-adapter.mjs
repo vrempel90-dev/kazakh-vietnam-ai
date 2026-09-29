@@ -133,6 +133,7 @@ function normalizeCity(value) {
     .replace(/^\s*(?:OW|RT)\s+/i, "")
     .replace(/^\(+|\)+$/g, "")
     .replace(/\s+🇦🇪|\s+🇰🇿|\s+🇻🇳|\s+🇹🇷|\s+🇨🇳|\s+🇪🇬|\s+🇱🇰/gu, "")
+    .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка)\)\s*/giu, " ")
     .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
     .replace(/\s+/g, " ")
     .replace(/[,.]+$/g, "")
