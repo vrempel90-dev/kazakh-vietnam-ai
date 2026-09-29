@@ -26,7 +26,16 @@ const IATA = {
 const CITY_FORMS = {
   "астаны": "Астана", "астане": "Астана", "хургаду": "Хургада",
   "анталию": "Анталия", "анталью": "Анталия", "анталья": "Анталия",
-  "дубаи": "Дубай", "камрань": "Нячанг", "москву": "Москва"
+  "дубаи": "Дубай", "камрань": "Нячанг", "камрань/нячанг": "Нячанг", "москву": "Москва",
+  "almaty": "Алматы", "astana": "Астана", "shymkent": "Шымкент",
+  "nha trang": "Нячанг", "cam ranh": "Нячанг", "camranh": "Нячанг",
+  "phu quoc": "Фукуок", "danang": "Дананг", "da nang": "Дананг",
+  "phuket": "Пхукет", "bangkok": "Бангкок", "sanya": "Санья",
+  "antalya": "Анталия", "sharjah": "Шарджа", "abu dhabi": "Абу-Даби",
+  "sharm el sheikh": "Шарм-эль-Шейх", "hurghada": "Хургада",
+  "mattala": "Маттала", "jeddah": "Джидда", "aktau": "Актау",
+  "aktobe": "Актобе", "atyrau": "Атырау", "kostanay": "Костанай",
+  "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми"
 };
 
 const MONTHS = {
@@ -120,8 +129,13 @@ export function extractPublicTelegramPosts(html) {
 
 function normalizeCity(value) {
   const clean = String(value || "")
+    .replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, "")
     .replace(/^\p{Extended_Pictographic}+\s*/u, "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка)\)\s*/giu, " ")
+    .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
+    .replace(/^\(+|\)+$/g, "")
     .replace(/\s+/g, " ")
     .replace(/[,.]+$/g, "")
     .trim();
@@ -142,7 +156,7 @@ export function parseRouteLine(line) {
   const raw = String(line || "")
     .replace(/^[-•]+\s*/, "")
     .replace(/^✈️?\s*/u, "")
-    .replace(/[),]+$/g, "")
+    .replace(/,+$/g, "")
     .trim();
   if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
 
@@ -155,7 +169,7 @@ export function parseRouteLine(line) {
     parts = prose
       ? [normalizeCity(prose[1]), normalizeCity(prose[2])]
       : raw
-          .split(/\s*(?:→|->|⟶|➡|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
+          .split(/\s*(?:→|->|⟶|➡|➔|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
           .map(normalizeCity)
           .filter(Boolean);
   }
