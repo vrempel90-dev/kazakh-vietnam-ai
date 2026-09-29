@@ -129,10 +129,11 @@ export function extractPublicTelegramPosts(html) {
 
 function normalizeCity(value) {
   const clean = String(value || "")
+    .replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, "")
     .replace(/^\p{Extended_Pictographic}+\s*/u, "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
     .replace(/^\(+|\)+$/g, "")
-    .replace(/\s+🇦🇪|\s+🇰🇿|\s+🇻🇳|\s+🇹🇷|\s+🇨🇳|\s+🇪🇬|\s+🇱🇰/gu, "")
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
     .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка)\)\s*/giu, " ")
     .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
     .replace(/\s+/g, " ")
@@ -155,7 +156,7 @@ export function parseRouteLine(line) {
   const raw = String(line || "")
     .replace(/^[-•]+\s*/, "")
     .replace(/^✈️?\s*/u, "")
-    .replace(/[),]+$/g, "")
+    .replace(/,+$/g, "")
     .trim();
   if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
 
