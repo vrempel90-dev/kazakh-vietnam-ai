@@ -139,3 +139,13 @@ test("supports split departure and price lines", () => {
   assert.equal(offers[0].departureDate, "2026-09-25");
   assert.equal(offers[0].sourcePrice, 55000);
 });
+
+
+test("normalizes route formats used by NURADEL and AviaTravel", () => {
+  assert.deepEqual(parseRouteLine("Almaty - Sharjah"), { from: "Алматы", to: "Шарджа", trip: "OW" });
+  assert.deepEqual(parseRouteLine("(Астана -> Нячанг)"), { from: "Астана", to: "Нячанг", trip: "OW" });
+  assert.deepEqual(
+    parseRouteLine("🇻🇳 Камрань/Нячанг (Вьетнам) ➔ Алматы 🇰🇿 (Econom)"),
+    { from: "Нячанг (Вьетнам)", to: "Алматы", trip: "OW" }
+  );
+});
