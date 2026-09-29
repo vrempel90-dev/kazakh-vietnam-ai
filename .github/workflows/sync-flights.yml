@@ -17,39 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      NEOS_SOURCE_CURRENCY: ${{ vars.NEOS_SOURCE_CURRENCY }}
-      FX_USD_KZT: ${{ vars.FX_USD_KZT }}
-      FX_EUR_KZT: ${{ vars.FX_EUR_KZT }}
+      TELEGRAM_SOURCE_CHANNELS: ${{ vars.TELEGRAM_SOURCE_CHANNELS }}
+      TELEGRAM_SOURCE_TTL_HOURS: ${{ vars.TELEGRAM_SOURCE_TTL_HOURS }}
+      TELEGRAM_SOURCE_MAX_PAGES: ${{ vars.TELEGRAM_SOURCE_MAX_PAGES }}
       SALE_PRICE_ROUNDING: ${{ vars.SALE_PRICE_ROUNDING }}
-      FUN_SUN_USERNAME: ${{ secrets.FUN_SUN_USERNAME }}
-      FUN_SUN_PASSWORD: ${{ secrets.FUN_SUN_PASSWORD }}
-      KAZUNION_USERNAME: ${{ secrets.KAZUNION_USERNAME }}
-      KAZUNION_PASSWORD: ${{ secrets.KAZUNION_PASSWORD }}
-      KOMPAS_USERNAME: ${{ secrets.KOMPAS_USERNAME }}
-      KOMPAS_PASSWORD: ${{ secrets.KOMPAS_PASSWORD }}
-      ANEX_USERNAME: ${{ secrets.ANEX_USERNAME }}
-      ANEX_PASSWORD: ${{ secrets.ANEX_PASSWORD }}
-      SELFIE_USERNAME: ${{ secrets.SELFIE_USERNAME }}
-      SELFIE_PASSWORD: ${{ secrets.SELFIE_PASSWORD }}
-      JOINUP_USERNAME: ${{ secrets.JOINUP_USERNAME }}
-      JOINUP_PASSWORD: ${{ secrets.JOINUP_PASSWORD }}
-      PEGAS_USERNAME: ${{ secrets.PEGAS_USERNAME }}
-      PEGAS_PASSWORD: ${{ secrets.PEGAS_PASSWORD }}
-      CRYSTAL_BAY_USERNAME: ${{ secrets.CRYSTAL_BAY_USERNAME }}
-      CRYSTAL_BAY_PASSWORD: ${{ secrets.CRYSTAL_BAY_PASSWORD }}
-      ABK_USERNAME: ${{ secrets.ABK_USERNAME }}
-      ABK_PASSWORD: ${{ secrets.ABK_PASSWORD }}
-      SPACE_USERNAME: ${{ secrets.SPACE_USERNAME }}
-      SPACE_PASSWORD: ${{ secrets.SPACE_PASSWORD }}
-      VIETRA_USERNAME: ${{ secrets.VIETRA_USERNAME }}
-      VIETRA_PASSWORD: ${{ secrets.VIETRA_PASSWORD }}
-      SANAT_USERNAME: ${{ secrets.SANAT_USERNAME }}
-      SANAT_PASSWORD: ${{ secrets.SANAT_PASSWORD }}
-      TG_API_ID: ${{ secrets.TG_API_ID }}
-      TG_API_HASH: ${{ secrets.TG_API_HASH }}
-      TG_SESSION: ${{ secrets.TG_SESSION }}
-      TELEGRAM_SESSION_POSTS_PATH: /tmp/telegram-session-posts.json
-      TELEGRAM_SESSION_SOURCES_PATH: config/telegram-session-sources.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,18 +30,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Collect Telegram user-session sources
-        if: ${{ env.TG_API_ID != '' && env.TG_API_HASH != '' && env.TG_SESSION != '' }}
-        run: |
-          python -m pip install -r collector/requirements.txt
-          python collector/session_collector.py
-
-      - name: Sync charter sources
+      - name: Sync public Telegram charter channels
         run: npm run sync:flights
 
       - name: Commit updated customer feed
@@ -83,5 +43,5 @@ jobs:
           git config user.name "charter-flight-sync"
           git config user.email "actions@users.noreply.github.com"
           git add public/flights.json
-          git commit -m "data: refresh charter flight feed"
+          git commit -m "data: refresh Telegram charter flight feed"
           git push

@@ -1,12 +1,9 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { ingestSources, monitoredSources } from "./source-registry.mjs";
-import { resolveSourceCurrency } from "./source-currency.mjs";
+import { ingestSources } from "./source-registry.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
-import { fetchSamoTicketOffers } from "./samo-ticket-adapter.mjs";
 import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
-import { fetchTelegramSessionFileOffers } from "./telegram-session-file-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
@@ -24,151 +21,38 @@ import {
   savePublicationState
 } from "./telegram-publication-state.mjs";
 
-const AIRLINES = [
-  "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
-  "Fly Arystan", "FlyArystan", "Pegasus", "Sunday Airlines", "Air Cairo", "Red Sea", "Neos", "Neos Air", "Sun Phu Quoc"
-];
-
-const IATA = {
-  ALA: "Алматы",
-  NQZ: "Астана",
-  MXP: "Милан",
-  CXR: "Нячанг",
-  PQC: "Фукуок",
-  BKK: "Бангкок",
-  DAD: "Дананг",
-  PRG: "Прага",
-  SYX: "Санья",
-  HKT: "Пхукет"
-};
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-function decodeHtml(value) {
-  return value
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
-    .replace(/\u00a0/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n[ \t]+/g, "\n")
-    .trim();
-}
-
-function extractMessages(html) {
-  const messages = [];
-  const re = /<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-  for (const match of html.matchAll(re)) {
-    const text = decodeHtml(match[1]);
-    if (text) messages.push(text);
-  }
-  return messages;
-}
-
-function cleanCity(value) {
-  return value
-    .replace(/^✈️\s*/u, "")
-    .replace(/[,.]+$/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLocaleLowerCase("ru-RU")
-    .replace(/(^|[\s(])-?([а-яёa-z])/giu, (m, prefix, letter) => prefix + letter.toLocaleUpperCase("ru-RU"));
+function envNumber(name) {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return null;
+  const value = Number(String(raw).replace(",", "."));
+  return Number.isFinite(value) ? value : null;
 }
 
 function normalizeCity(value) {
-  return value.toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, "");
-}
-
-function parseRoute(line) {
-  const cleaned = line.replace(/^[-•]+\s*/, "").trim();
-  if (/^\d{1,2}\.\d{1,2}/.test(cleaned)) return null;
-  if (/^(туда|в одну|ow|rt|вылет|последн|багаж|эконом|бизнес)/iu.test(cleaned)) return null;
-  const parts = cleaned
-    .replace(/^✈️\s*/u, "")
-    .replace(/,$/, "")
-    .split(/\s*(?:→|->)\s*|\s+[—–-]\s+/u)
-    .map(part => part.trim())
-    .filter(Boolean);
-  if (parts.length < 2 || parts.length > 3) return null;
-  if (parts.some(part => /^\d/.test(part) || part.length < 2)) return null;
-  const from = cleanCity(parts[0]);
-  const to = cleanCity(parts[1]);
-  const isRound = parts.length === 3 && normalizeCity(parts[0]) === normalizeCity(parts[2]);
-  return { from, to, trip: isRound ? "RT" : "OW" };
-}
-
-function inferYear(day, month, now) {
-  let year = now.getFullYear();
-  const candidate = new Date(year, month - 1, day, 12);
-  const diffDays = (candidate.getTime() - now.getTime()) / 86400000;
-  if (diffDays < -120) year += 1;
-  return year;
-}
-
-function toIso(dateText, now) {
-  const parts = String(dateText).trim().split(".");
-  if (parts.length < 2) return null;
-  const day = Number(parts[0]);
-  const month = Number(parts[1]);
-  const explicitYear = Number(parts[2]);
-  if (!day || !month) return null;
-  const year = explicitYear >= 2000 ? explicitYear : inferYear(day, month, now);
-  const d = new Date(year, month - 1, day, 12);
-  if (Number.isNaN(d.getTime())) return null;
-  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+  return String(value || "")
+    .toLocaleLowerCase("ru-RU")
+    .replace(/[^а-яёa-z0-9]/giu, "");
 }
 
 function dayOffset(iso, now) {
-  const target = new Date(iso + "T12:00:00");
-  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+  const target = new Date(iso + "T12:00:00Z");
+  const base = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    12
+  ));
   return Math.round((target.getTime() - base.getTime()) / 86400000);
 }
 
-function parsePriceLine(line, now) {
-  const normalized = line.replace(/\u00a0/g, " ").trim();
-  let match = normalized.match(/^(?:[A-Za-zА-ЯЁ]\s+)?(\d{1,2}\.\d{1,2})(?:\s*(?:—|–|-|→)\s*(\d{1,2}\.\d{1,2}))?\s*(?:=|—|–|-)\s*([\d\s]{4,})/u);
-  let nights = null;
-  if (!match) {
-    match = normalized.match(/^(\d{1,2}\.\d{1,2})\s+на\s+(\d{1,2})(?:-|–|—)?(?:\d{1,2})?\s+ноч(?:ь|и|ей)\s*=\s*([\d\s]{4,})/iu);
-    if (match) {
-      nights = Number(match[2]);
-      match = [match[0], match[1], undefined, match[3]];
-    }
-  }
-  if (!match) return null;
-  const departureDate = toIso(match[1], now);
-  if (!departureDate) return null;
-  let returnDate = match[2] ? toIso(match[2], now) : null;
-  if (!returnDate && nights) {
-    const d = new Date(departureDate + "T12:00:00");
-    d.setDate(d.getDate() + nights);
-    returnDate = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
-  }
-  const price = Number(String(match[3]).replace(/\s/g, ""));
-  if (!Number.isFinite(price) || price < 1000) return null;
-  const countMatch = normalized.match(/\((\d{1,2})\)|\b(\d{1,2})\s*(?:мест|место|места|кресл)/iu);
-  const count = Number(countMatch?.[1] || countMatch?.[2] || 0);
-  const lastSeat = /последн(?:ее|ий|яя)\s+(?:место|кресло)/iu.test(normalized);
-  return {
-    departureDate,
-    returnDate,
-    price,
-    hot: normalized.includes("🔥"),
-    seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется"
-  };
-}
-
-function findAirline(line) {
-  return AIRLINES.find(name => line.toLocaleLowerCase("ru-RU").includes(name.toLocaleLowerCase("ru-RU"))) || null;
-}
-
 function stableId(flight) {
-  const raw = [flight.from, flight.to, flight.departureDate, flight.returnDate || "", flight.trip].join("|");
+  const raw = [
+    flight.from,
+    flight.to,
+    flight.departureDate,
+    flight.returnDate || "",
+    flight.trip
+  ].join("|");
   return createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
 
@@ -193,245 +77,13 @@ function publicFlight(input) {
   return flight;
 }
 
-function parseTelegramMessage(text, now) {
-  const lines = text.split("\n").map(line => line.trim()).filter(Boolean);
-  const flights = [];
-  let route = null;
-  let trip = "OW";
-  let airline = null;
-
-  for (const line of lines) {
-    const maybeRoute = parseRoute(line);
-    if (maybeRoute) {
-      route = maybeRoute;
-      trip = maybeRoute.trip;
-      airline = null;
-      continue;
-    }
-    if (/\b(?:RT|туда[ -]?обратно)\b/iu.test(line)) {
-      trip = "RT";
-      continue;
-    }
-    if (/\b(?:OW|в одну сторону)\b/iu.test(line)) {
-      trip = "OW";
-      continue;
-    }
-    const foundAirline = findAirline(line);
-    if (foundAirline && !/^\d/.test(line)) {
-      airline = foundAirline;
-      continue;
-    }
-    const offer = parsePriceLine(line, now);
-    if (!offer || !route) continue;
-    const effectiveTrip = offer.returnDate ? "RT" : trip;
-    const offset = dayOffset(offer.departureDate, now);
-    if (offset < 0 || offset > 365) continue;
-    flights.push(publicFlight({
-      from: route.from,
-      to: route.to,
-      offset,
-      price: offer.price,
-      trip: effectiveTrip,
-      hot: offer.hot,
-      seats: offer.seats,
-      airline,
-      departureDate: offer.departureDate,
-      returnDate: offer.returnDate
-    }));
-  }
-  return flights;
-}
-
-async function fetchText(url, timeoutMs = 20000) {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; CharterFlightSync/2.0; +https://github.com/vrempel90-dev/kazakh-vietnam-ai)",
-      "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.7"
-    },
-    redirect: "follow",
-    signal: AbortSignal.timeout(timeoutMs)
-  });
-  if (!response.ok) throw new Error("HTTP " + response.status);
-  return { text: await response.text(), finalUrl: response.url, contentType: response.headers.get("content-type") || "" };
-}
-
-async function fetchDisplayRates() {
-  try {
-    const { text } = await fetchText("https://online.sanat.kz:9000/TourSearchOwin/CurrencyRates", 12000);
-    const rows = JSON.parse(text);
-    if (!Array.isArray(rows)) throw new Error("Unexpected currency response");
-    const usd = rows.find(row => Number(row?.CurrencyId) === 1);
-    const eur = rows.find(row => Number(row?.CurrencyId) === 2);
-    const USD_KZT = Number(usd?.Rate);
-    const EUR_KZT = Number(eur?.Rate);
-    if (!Number.isFinite(USD_KZT) || USD_KZT <= 0 || !Number.isFinite(EUR_KZT) || EUR_KZT <= 0) {
-      throw new Error("USD/EUR rates missing");
-    }
-    return {
-      USD_KZT,
-      EUR_KZT,
-      updatedAt: new Date().toISOString(),
-      source: "SANAT public currency rates"
-    };
-  } catch (error) {
-    console.warn("Display currency rates unavailable:", error instanceof Error ? error.message : String(error));
-    return null;
-  }
-}
-
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let field = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') {
-        field += '"';
-        i += 1;
-      } else if (ch === '"') {
-        quoted = false;
-      } else {
-        field += ch;
-      }
-    } else if (ch === '"') {
-      quoted = true;
-    } else if (ch === ",") {
-      row.push(field);
-      field = "";
-    } else if (ch === "\n") {
-      row.push(field.replace(/\r$/, ""));
-      rows.push(row);
-      row = [];
-      field = "";
-    } else {
-      field += ch;
-    }
-  }
-  if (field.length || row.length) {
-    row.push(field.replace(/\r$/, ""));
-    rows.push(row);
-  }
-  return rows;
-}
-
-function routeFromIata(raw) {
-  const normalized = String(raw || "").toUpperCase().replace(/[^A-Z]/g, "");
-  if (normalized.length !== 6) return null;
-  const fromCode = normalized.slice(0, 3);
-  const toCode = normalized.slice(3, 6);
-  return {
-    from: IATA[fromCode] || fromCode,
-    to: IATA[toCode] || toCode
-  };
-}
-
-function envNumber(name) {
-  const value = process.env[name];
-  if (value == null || value === "") return null;
-  const number = Number(String(value).replace(",", "."));
-  return Number.isFinite(number) ? number : null;
-}
-
-function parseNeosCsv(csv, source, now, pricingConfig, pricingRates) {
-  const rows = parseCsv(csv);
-  const currencyResolution = resolveSourceCurrency({
-    configured: process.env[source.currencyEnv],
-    sourceText: csv
-  });
-  const currency = currencyResolution.currency;
-  const parsed = [];
-  let usableRows = 0;
-  for (const row of rows.slice(1)) {
-    const [dateText, routeText, timeText, priceText, noteText] = row;
-    const departureDate = toIso(dateText, now);
-    const route = routeFromIata(routeText);
-    if (!departureDate || !route) continue;
-    const offset = dayOffset(departureDate, now);
-    if (offset < 0 || offset > 550) continue;
-    const price = Number(String(priceText || "").replace(/\s/g, "").replace(",", "."));
-    if (!Number.isFinite(price) || price <= 0 || /мест\s*нет/iu.test(String(priceText) + " " + String(noteText))) continue;
-    usableRows += 1;
-    if (!currency) continue;
-    const priced = calculateSalePrice({
-      sourcePrice: price,
-      currency,
-      sourceId: source.id,
-      from: route.from,
-      to: route.to,
-      trip: "OW",
-      rates: pricingRates,
-      config: pricingConfig,
-      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
-    });
-    if (!priced) continue;
-    parsed.push({
-      ...publicFlight({
-        from: route.from,
-        to: route.to,
-        offset,
-        price: priced.salePrice,
-        trip: "OW",
-        hot: false,
-        seats: "Наличие уточняется",
-        airline: "Neos Air",
-        departureDate
-      }),
-      sourceIds: [source.id]
-    });
-  }
-  return {
-    flights: parsed,
-    rows: Math.max(0, rows.length - 1),
-    usableRows,
-    pricingReady: Boolean(currency) && parsed.length > 0,
-    currencyConfigured: Boolean(currency),
-    currencySource: currencyResolution.source
-  };
-}
-
-function classifyB2BPage(html, finalUrl) {
-  const text = decodeHtml(html).slice(0, 12000);
-  const publicSearch = /name=["']TOWNFROMINC["']/i.test(html)
-    && /name=["']TOWNTOINC["']/i.test(html)
-    && /name=["']CHECKIN["']/i.test(html);
-  const login = /(?:\bвход\b|авторизац|log\s*on|sign\s*in|пароль|password)/iu.test(text) || /\/Account\/Login/i.test(finalUrl);
-  const needsJs = /(?:включить javascript|turn on ["']?javascript|doesn.?t work properly without JavaScript)/iu.test(text);
-  return { publicSearch, login, needsJs };
-}
-
-// Telegram channels are publication destinations only. They are intentionally not an ingestion adapter.
-async function syncNeos(source, now, pricingConfig, pricingRates) {
-  const { text } = await fetchText(source.url);
-  const result = parseNeosCsv(text, source, now, pricingConfig, pricingRates);
-  let status = "ok";
-  let reason;
-  if (!result.currencyConfigured) {
-    status = "configuration_required";
-    reason = source.currencyEnv + " is not configured and the source has no single explicit currency marker";
-  } else if (!result.pricingReady) {
-    status = "configuration_required";
-    reason = "No enabled pricing rule matches this cost feed, or FX is not configured";
-  }
-  return {
-    flights: result.flights,
-    status: {
-      id: source.id,
-      kind: source.kind,
-      status,
-      rows: result.rows,
-      usableRows: result.usableRows,
-      offers: result.flights.length,
-      currencySource: result.currencySource,
-      reason
-    }
-  };
-}
-
-async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
+async function syncTelegramSource(source, now, pricingConfig) {
   const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
-  const maxPages = Math.max(1, Math.min(20, Math.floor(envNumber("TELEGRAM_SOURCE_MAX_PAGES") || 6)));
+  const maxPages = Math.max(
+    1,
+    Math.min(20, Math.floor(envNumber("TELEGRAM_SOURCE_MAX_PAGES") || 6))
+  );
+
   const result = await fetchTelegramSourceOffers({
     source,
     now,
@@ -452,10 +104,11 @@ async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
       from: offer.from,
       to: offer.to,
       trip: offer.trip,
-      rates: pricingRates,
+      rates: {},
       config: pricingConfig,
       roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
     });
+
     if (!priced) {
       pricingSkipped += 1;
       continue;
@@ -492,177 +145,25 @@ async function syncTelegramSource(source, now, pricingConfig, pricingRates) {
       pricingSkipped
     }
   };
-}
-
-async function syncTelegramSessionSource(source, now, pricingConfig, pricingRates) {
-  const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
-  const result = await fetchTelegramSessionFileOffers({
-    source,
-    now,
-    ttlHours,
-    shouldSkipText: shouldSkipParsedTelegramMessage
-  });
-
-  const flights = [];
-  let pricingSkipped = 0;
-
-  for (const offer of result.offers || []) {
-    const effectiveSourceId = offer.sourceId || source.id;
-    const priced = calculateSalePrice({
-      sourcePrice: offer.sourcePrice,
-      currency: "KZT",
-      sourceId: effectiveSourceId,
-      offerId: offer.externalId,
-      from: offer.from,
-      to: offer.to,
-      trip: offer.trip,
-      rates: pricingRates,
-      config: pricingConfig,
-      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
-    });
-    if (!priced) {
-      pricingSkipped += 1;
-      continue;
-    }
-
-    const offset = dayOffset(offer.departureDate, now);
-    if (offset <= 0 || offset > 365) continue;
-
-    flights.push({
-      ...publicFlight({
-        from: offer.from,
-        to: offer.to,
-        offset,
-        price: priced.salePrice,
-        trip: offer.trip,
-        hot: offer.hot,
-        seats: offer.seats,
-        airline: offer.airline,
-        baggage: offer.baggage,
-        departureDate: offer.departureDate,
-        returnDate: offer.returnDate,
-        sourcePostedAt: offer.postedAt
-      }),
-      sourceIds: [effectiveSourceId]
-    });
-  }
-
-  return {
-    flights,
-    status: {
-      ...result.status,
-      rawOffers: (result.offers || []).length,
-      offers: flights.length,
-      pricingSkipped
-    }
-  };
-}
-
-async function syncSamo(source, now, pricingConfig, pricingRates) {
-  const token = source.apiTokenEnv ? process.env[source.apiTokenEnv] : "";
-  const result = await fetchSamoTicketOffers({
-    source,
-    token,
-    now
-  });
-
-  if (result.status.status !== "ok") {
-    return { flights: [], status: result.status };
-  }
-
-  const flights = [];
-  let pricingSkipped = 0;
-
-  for (const offer of result.offers) {
-    const from = IATA[offer.fromIata] || offer.from;
-    const to = IATA[offer.toIata] || offer.to;
-    const priced = calculateSalePrice({
-      sourcePrice: offer.sourcePrice,
-      currency: offer.currency,
-      sourceId: source.id,
-      offerId: offer.externalId,
-      from,
-      to,
-      trip: offer.trip,
-      rates: pricingRates,
-      config: pricingConfig,
-      roundingStep: envNumber("SALE_PRICE_ROUNDING") || 1000
-    });
-
-    if (!priced) {
-      pricingSkipped += 1;
-      continue;
-    }
-
-    const offset = dayOffset(offer.departureDate, now);
-    if (offset < 0 || offset > 365) continue;
-
-    flights.push({
-      ...publicFlight({
-        from,
-        to,
-        offset,
-        price: priced.salePrice,
-        trip: offer.trip,
-        hot: false,
-        seats: offer.seats,
-        airline: offer.airline,
-        baggage: offer.baggage,
-        departureDate: offer.departureDate,
-        returnDate: offer.returnDate,
-        sourcePostedAt: offer.postedAt
-      }),
-      sourceIds: [source.id]
-    });
-  }
-
-  return {
-    flights,
-    status: {
-      ...result.status,
-      rawOffers: result.offers.length,
-      offers: flights.length,
-      pricingSkipped
-    }
-  };
-}
-
-async function probeB2B(source) {
-  try {
-    const { text, finalUrl } = await fetchText(source.url);
-    const page = classifyB2BPage(text, finalUrl);
-    const credentialsConfigured = Boolean(source.usernameEnv && source.passwordEnv && process.env[source.usernameEnv] && process.env[source.passwordEnv]);
-    let status = "reachable";
-    let reason = "Public landing page is reachable; fare extraction adapter still requires validated browser/network flow.";
-    if (page.publicSearch) {
-      status = "public_search_accessible";
-      reason = "Public ticket-search controls are available, but fare-result extraction is not yet implemented and validated.";
-    } else if (page.login && !credentialsConfigured) {
-      status = "credentials_required";
-      reason = "Partner login is required before fare extraction.";
-    } else if (page.login && credentialsConfigured) {
-      status = "credentials_configured";
-      reason = "Credentials are configured; authenticated fare parser must be validated for this source.";
-    } else if (page.needsJs) {
-      status = "browser_required";
-      reason = "The ticket page requires JavaScript; browser/network adapter is required.";
-    }
-    return { id: source.id, kind: source.kind, status, reason, finalUrl };
-  } catch (error) {
-    return { id: source.id, kind: source.kind, status: "error", reason: error instanceof Error ? error.message : String(error) };
-  }
 }
 
 function dedupeFlights(flights) {
   const map = new Map();
-  for (const flight of flights) {
-    const key = [normalizeCity(flight.from), normalizeCity(flight.to), flight.departureDate, flight.returnDate || "", flight.trip].join("|");
-    const current = map.get(key);
 
+  for (const flight of flights) {
+    const key = [
+      normalizeCity(flight.from),
+      normalizeCity(flight.to),
+      flight.departureDate,
+      flight.returnDate || "",
+      flight.trip
+    ].join("|");
+
+    const current = map.get(key);
     if (!current) {
       map.set(key, {
         ...flight,
-        sourceIds: Array.isArray(flight.sourceIds) ? [...new Set(flight.sourceIds)] : []
+        sourceIds: [...new Set(flight.sourceIds || [])]
       });
       continue;
     }
@@ -670,17 +171,25 @@ function dedupeFlights(flights) {
     const flightStamp = Date.parse(flight.sourcePostedAt || flight.updatedAt || "") || 0;
     const currentStamp = Date.parse(current.sourcePostedAt || current.updatedAt || "") || 0;
     const newer = flightStamp > currentStamp;
-    const winner = flight.price < current.price || (flight.price === current.price && newer)
-      ? { ...flight }
-      : { ...current };
-    const freshest = newer ? flight : current;
 
+    const winner =
+      flight.price < current.price || (flight.price === current.price && newer)
+        ? { ...flight }
+        : { ...current };
+
+    const freshest = newer ? flight : current;
     winner.seats = freshest.seats || winner.seats;
     winner.sourcePostedAt = freshest.sourcePostedAt || winner.sourcePostedAt;
-    winner.sourceIds = [...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])];
+    winner.sourceIds = [
+      ...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])
+    ];
+
     map.set(key, winner);
   }
-  return [...map.values()].sort((a, b) => a.offset - b.offset || a.price - b.price).slice(0, 300);
+
+  return [...map.values()]
+    .sort((a, b) => a.offset - b.offset || a.price - b.price)
+    .slice(0, 300);
 }
 
 function offerTtlHours() {
@@ -688,69 +197,63 @@ function offerTtlHours() {
   return configured != null && configured >= 1 ? configured : 24;
 }
 
+function sanitizePublicFlight(flight) {
+  const {
+    sourceIds: _sourceIds,
+    sourcePostedAt: _sourcePostedAt,
+    ...publicFields
+  } = flight;
+  return publicFields;
+}
+
 function comparablePayload(payload) {
-  return JSON.stringify({ mode: payload.mode, note: payload.note, rates: payload.rates, flights: payload.flights });
+  return JSON.stringify({
+    mode: payload.mode,
+    note: payload.note,
+    flights: payload.flights
+  });
 }
 
 const now = new Date();
 const collected = [];
 const statuses = [];
-const displayRates = await fetchDisplayRates();
+const sources = ingestSources();
 const pricingConfig = await loadPricingConfig();
-const pricingRates = {
-  USD_KZT: displayRates?.USD_KZT || envNumber("FX_USD_KZT"),
-  EUR_KZT: displayRates?.EUR_KZT || envNumber("FX_EUR_KZT")
-};
 
-for (const source of ingestSources()) {
+for (const source of sources) {
   try {
-    let result;
-    if (source.kind === "google_sheet_csv") {
-      result = await syncNeos(source, now, pricingConfig, pricingRates);
-    } else if (source.adapter === "telegram_public_feed") {
-      result = await syncTelegramSource(source, now, pricingConfig, pricingRates);
-    } else if (source.adapter === "telegram_session_file") {
-      result = await syncTelegramSessionSource(source, now, pricingConfig, pricingRates);
-    } else if (source.adapter === "samo_ticket_api") {
-      result = await syncSamo(source, now, pricingConfig, pricingRates);
-    } else {
-      result = {
-        flights: [],
-        status: {
-          id: source.id,
-          kind: source.kind,
-          status: "adapter_missing",
-          reason: "Source is marked for ingestion but no production adapter is implemented."
-        }
-      };
-    }
+    const result = await syncTelegramSource(source, now, pricingConfig);
     collected.push(...result.flights);
     statuses.push(result.status);
   } catch (error) {
-    statuses.push({ id: source.id, kind: source.kind, status: "error", reason: error instanceof Error ? error.message : String(error) });
+    statuses.push({
+      id: source.id,
+      kind: source.kind,
+      status: "error",
+      reason: error instanceof Error ? error.message : String(error)
+    });
   }
-  await sleep(250);
-}
-
-for (const source of monitoredSources()) {
-  try {
-    statuses.push(await probeB2B(source));
-  } catch (error) {
-    statuses.push({ id: source.id, kind: source.kind, status: "error", reason: error instanceof Error ? error.message : String(error) });
-  }
-  await sleep(250);
 }
 
 const freshFlights = dedupeFlights(collected);
 const outputPath = resolve(process.env.FLIGHT_FEED_OUTPUT || "public/flights.json");
+
 let existing = null;
 try {
   existing = JSON.parse(await readFile(outputPath, "utf8"));
 } catch {
-  // A missing previous feed is allowed on first run.
+  // First run may not have an existing customer feed.
 }
-let flights = reconcileLifecycle(freshFlights, existing, now, offerTtlHours());
-const cachedFallbackEnabled = String(process.env.ALLOW_CACHED_FALLBACK || "false").toLowerCase() === "true";
+
+let flights = reconcileLifecycle(
+  freshFlights,
+  existing,
+  now,
+  offerTtlHours()
+);
+
+const cachedFallbackEnabled =
+  String(process.env.ALLOW_CACHED_FALLBACK || "false").toLowerCase() === "true";
 let cachedFallbackMode = false;
 
 if (!flights.length && cachedFallbackEnabled && existing) {
@@ -769,7 +272,7 @@ if (!flights.length && cachedFallbackEnabled && existing) {
       kind: "cached_fallback",
       status: "fallback_active",
       offers: fallbackFlights.length,
-      reason: "Previously observed future offers are shown temporarily and require price/availability confirmation."
+      reason: "Previously observed future Telegram offers are shown temporarily and require availability confirmation."
     });
   }
 }
@@ -780,8 +283,8 @@ try {
     {
       statuses,
       summary: {
-        ingestionSources: ingestSources().length,
-        monitoredSources: monitoredSources().length,
+        mode: "telegram_public_only",
+        ingestionSources: sources.length,
         rawOffers: collected.length,
         deduplicatedOffers: freshFlights.length,
         publishableOffers: flights.length,
@@ -790,74 +293,93 @@ try {
     }
   );
 } catch (error) {
-  console.warn("Could not persist source diagnostics:", error instanceof Error ? error.message : String(error));
+  console.warn(
+    "Could not persist source diagnostics:",
+    error instanceof Error ? error.message : String(error)
+  );
 }
 
-const republishTelegramSources = String(process.env.TELEGRAM_REPUBLISH_SOURCE_FEEDS || "false").toLowerCase() === "true";
-const telegramPublishCandidates = republishTelegramSources
-  ? flights
-  : flights.filter(
-      flight => !(flight.sourceIds || []).some(sourceId => String(sourceId).startsWith("telegram:"))
-    );
+const publicFlights = flights.map(sanitizePublicFlight);
 
-if (!flights.length) {
-  console.error("Source status:", JSON.stringify(statuses, null, 2));
+if (!publicFlights.length) {
   const emptyPayload = {
     generatedAt: new Date().toISOString(),
-    mode: "live-sale-price",
-    note: "No currently verified publishable offers. Stale or non-source offers are not retained.",
-    rates: displayRates ? {
-      USD_KZT: displayRates.USD_KZT,
-      EUR_KZT: displayRates.EUR_KZT,
-      updatedAt: displayRates.updatedAt
-    } : undefined,
+    mode: "telegram-public-only",
+    note: "No fresh charter offers were found in the configured public Telegram channels.",
     flights: []
   };
+
   await mkdir(resolve("public"), { recursive: true });
-  await writeFile(outputPath, JSON.stringify(emptyPayload, null, 2) + "\n", "utf8");
-  console.warn("No fresh publishable offers; cleared the public feed instead of retaining stale offers.");
+  await writeFile(
+    outputPath,
+    JSON.stringify(emptyPayload, null, 2) + "\n",
+    "utf8"
+  );
+
+  console.warn("No fresh Telegram charter offers; cleared the public feed.");
+  console.log("Source status:", JSON.stringify(statuses, null, 2));
   process.exit(0);
 }
 
 const payload = {
   generatedAt: new Date().toISOString(),
-  mode: cachedFallbackMode ? "cached-sale-price" : "live-sale-price",
+  mode: cachedFallbackMode
+    ? "telegram-public-cached"
+    : "telegram-public-only",
   note: cachedFallbackMode
-    ? "Previously observed customer prices are shown temporarily. Price and availability must be confirmed before booking."
-    : "Only customer-facing sale prices are persisted. Supplier cost prices and credentials are never written to the public feed.",
-  rates: displayRates ? {
-    USD_KZT: displayRates.USD_KZT,
-    EUR_KZT: displayRates.EUR_KZT,
-    updatedAt: displayRates.updatedAt
-  } : existing?.rates,
-  flights
+    ? "Previously observed public Telegram offers are shown temporarily. Price and availability must be confirmed before booking."
+    : "Offers are collected only from configured public Telegram charter channels. Source channel identifiers are not exposed to customers.",
+  flights: publicFlights
 };
 
-const feedChanged = !(existing && comparablePayload(existing) === comparablePayload(payload));
+const feedChanged =
+  !(existing && comparablePayload(existing) === comparablePayload(payload));
+
 if (feedChanged) {
   await mkdir(resolve("public"), { recursive: true });
-  await writeFile(outputPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
-  console.log("Published", flights.length, cachedFallbackMode ? "cached customer-visible offers" : "customer-visible offers");
+  await writeFile(
+    outputPath,
+    JSON.stringify(payload, null, 2) + "\n",
+    "utf8"
+  );
+  console.log(
+    "Published",
+    publicFlights.length,
+    cachedFallbackMode ? "cached Telegram offers" : "fresh Telegram offers"
+  );
 } else {
   console.log("No customer-visible flight changes.");
 }
 
-if (telegramPublishCandidates.length && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
+if (flights.length && process.env.TELEGRAM_PUBLISH_ENABLED !== "false") {
   try {
     const targets = parsePublishTargets(process.env.TELEGRAM_PUBLISH_CHATS);
-    const statePath = process.env.TELEGRAM_PUBLISH_STATE_PATH || "/data/telegram-publications.json";
-    const retentionDays = Math.max(1, Number(process.env.TELEGRAM_PUBLICATION_RETENTION_DAYS || 30));
+    const statePath =
+      process.env.TELEGRAM_PUBLISH_STATE_PATH ||
+      "/data/telegram-publications.json";
+    const retentionDays = Math.max(
+      1,
+      Number(process.env.TELEGRAM_PUBLICATION_RETENTION_DAYS || 30)
+    );
+
     const publicationState = await loadPublicationState(statePath);
     let publishedFlights = 0;
     let publishedPosts = 0;
     const targetResults = [];
 
     for (const target of targets) {
-      const eligibleFlights = filterFlightsForTarget(telegramPublishCandidates, target);
-      const pendingFlights = eligibleFlights.filter(flight => isPublicationPending(publicationState, target, flight));
+      const eligibleFlights = filterFlightsForTarget(flights, target);
+      const pendingFlights = eligibleFlights.filter(flight =>
+        isPublicationPending(publicationState, target, flight)
+      );
 
       if (!pendingFlights.length) {
-        targetResults.push({ target, pendingFlights: 0, sent: 0, sentFlightIds: [] });
+        targetResults.push({
+          target,
+          pendingFlights: 0,
+          sent: 0,
+          sentFlightIds: []
+        });
         continue;
       }
 
@@ -865,9 +387,12 @@ if (telegramPublishCandidates.length && process.env.TELEGRAM_PUBLISH_ENABLED !==
         token: process.env.TELEGRAM_BOT_TOKEN,
         targets: [target],
         flights: pendingFlights,
-        publicAppUrl: process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN,
+        publicAppUrl:
+          process.env.PUBLIC_APP_URL ||
+          process.env.RAILWAY_PUBLIC_DOMAIN,
         managerPhone: process.env.VITE_MANAGER_WHATSAPP
       });
+
       const result = publishResult.targets?.[0] || {
         target,
         sent: 0,
@@ -876,7 +401,10 @@ if (telegramPublishCandidates.length && process.env.TELEGRAM_PUBLISH_ENABLED !==
       };
 
       const sentIds = new Set(result.sentFlightIds || []);
-      const sentFlights = pendingFlights.filter(flight => sentIds.has(flight.id));
+      const sentFlights = pendingFlights.filter(flight =>
+        sentIds.has(flight.id)
+      );
+
       if (sentFlights.length) {
         markFlightsPublished(publicationState, target, sentFlights);
         prunePublicationState(publicationState, { retentionDays });
@@ -891,20 +419,30 @@ if (telegramPublishCandidates.length && process.env.TELEGRAM_PUBLISH_ENABLED !==
       });
     }
 
-    console.log("Telegram fresh-flight publishing:", JSON.stringify({
-      eligibleFlights: telegramPublishCandidates.length,
-      publishedFlights,
-      publishedPosts,
-      targets: targetResults
-    }, null, 2));
+    console.log(
+      "Telegram publishing:",
+      JSON.stringify(
+        {
+          eligibleFlights: flights.length,
+          publishedFlights,
+          publishedPosts,
+          targets: targetResults
+        },
+        null,
+        2
+      )
+    );
   } catch (error) {
-    console.error("Telegram fresh-flight publishing failed:", error instanceof Error ? error.message : String(error));
+    console.error(
+      "Telegram publishing failed:",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 } else {
   console.log(
-    telegramPublishCandidates.length
+    flights.length
       ? "Telegram publishing is disabled."
-      : "No verified flights are eligible for Telegram publication."
+      : "No Telegram charter offers are eligible for publication."
   );
 }
 

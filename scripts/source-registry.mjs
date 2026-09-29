@@ -1,217 +1,51 @@
 import { parseTelegramSourceList, sourceFromHandle } from "./telegram-source-adapter.mjs";
 
-export const sourceRegistry = [
-  {
-    id: "charter_forever_travel",
-    label: "Forever Travel Telegram",
-    kind: "telegram_public",
-    priceKind: "sale",
-    url: "https://t.me/s/charter_forever_travel",
-    enabled: true,
-    ingest: false,
-    note: "Reference feed only. Telegram must never be used as the production source of charter offers."
-  },
-  {
-    id: "charterkaz",
-    label: "Чартерные авиабилеты Telegram",
-    kind: "telegram_public",
-    priceKind: "sale",
-    url: "https://t.me/s/charterkaz",
-    enabled: true,
-    ingest: false,
-    note: "Publication/community channel only. Manual Telegram posts must never re-enter the offer ingestion pipeline."
-  },
-  {
-    id: "neos",
-    label: "NEOS / Google Sheets",
-    kind: "google_sheet_csv",
-    priceKind: "cost",
-    url: "https://docs.google.com/spreadsheets/d/1On4MmRaa6JOK8KPud8oLN_Rsd7cm5r3p-_ft3JDDCuw/gviz/tq?tqx=out:csv&gid=0",
-    spreadsheetId: "1On4MmRaa6JOK8KPud8oLN_Rsd7cm5r3p-_ft3JDDCuw",
-    enabled: true,
-    currencyEnv: "NEOS_SOURCE_CURRENCY",
-    ingest: true
-  },
-  {
-    id: "fun_sun",
-    label: "FUN&SUN",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://b2b.fstravel.asia/tickets",
-    enabled: true,
-    auth: "optional_or_required_by_results",
-    usernameEnv: "FUN_SUN_USERNAME",
-    passwordEnv: "FUN_SUN_PASSWORD"
-  },
-  {
-    id: "kazunion",
-    label: "KAZUNION",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://online.kazunion.com/tickets",
-    enabled: true,
-    ingest: true,
-    adapter: "samo_ticket_api",
-    apiBaseUrl: "https://online.kazunion.com/export/default.php",
-    apiTokenEnv: "KAZUNION_SAMO_API_TOKEN",
-    auth: "public_search",
-    usernameEnv: "KAZUNION_USERNAME",
-    passwordEnv: "KAZUNION_PASSWORD"
-  },
-  {
-    id: "kompas",
-    label: "KOMPAS",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://online.kz.kompastour.com/tickets",
-    enabled: true,
-    auth: "required",
-    usernameEnv: "KOMPAS_USERNAME",
-    passwordEnv: "KOMPAS_PASSWORD"
-  },
-  {
-    id: "anex",
-    label: "ANEX",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://agent.anextour.kz/search/avia",
-    enabled: true,
-    auth: "required",
-    usernameEnv: "ANEX_USERNAME",
-    passwordEnv: "ANEX_PASSWORD"
-  },
-  {
-    id: "selfie",
-    label: "SELFIE",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://b2b.selfietravel.kz/tickets",
-    enabled: true,
-    auth: "required",
-    usernameEnv: "SELFIE_USERNAME",
-    passwordEnv: "SELFIE_PASSWORD"
-  },
-  {
-    id: "joinup",
-    label: "JOINUP",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://online.joinup.kz/tickets",
-    enabled: true,
-    auth: "optional_or_required_by_results",
-    usernameEnv: "JOINUP_USERNAME",
-    passwordEnv: "JOINUP_PASSWORD"
-  },
-  {
-    id: "pegas",
-    label: "PEGAS Touristik",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://kz.pegast.asia/FlightSearch",
-    enabled: true,
-    auth: "required",
-    usernameEnv: "PEGAS_USERNAME",
-    passwordEnv: "PEGAS_PASSWORD"
-  },
-  {
-    id: "crystal_bay",
-    label: "Crystal Bay",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://booking-kz.crystalbay.com/tickets",
-    enabled: true,
-    ingest: true,
-    adapter: "samo_ticket_api",
-    apiBaseUrl: "https://booking-kz.crystalbay.com/export/default.php",
-    apiTokenEnv: "CRYSTAL_BAY_SAMO_API_TOKEN",
-    auth: "public_search",
-    usernameEnv: "CRYSTAL_BAY_USERNAME",
-    passwordEnv: "CRYSTAL_BAY_PASSWORD"
-  },
-  {
-    id: "abk",
-    label: "ABK Tourism",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://b2b.abktourism.kz/tickets",
-    enabled: true,
-    ingest: true,
-    adapter: "samo_ticket_api",
-    apiBaseUrl: "https://b2b.abktourism.kz/export/default.php",
-    apiTokenEnv: "ABK_SAMO_API_TOKEN",
-    auth: "public_search",
-    usernameEnv: "ABK_USERNAME",
-    passwordEnv: "ABK_PASSWORD"
-  },
-  {
-    id: "space",
-    label: "SPACE / Travel Luxe",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://online.travelluxe.kz/tickets",
-    enabled: true,
-    auth: "required",
-    usernameEnv: "SPACE_USERNAME",
-    passwordEnv: "SPACE_PASSWORD"
-  },
-  {
-    id: "vietra",
-    label: "VIETRA",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://b2b.vietratour.com/tickets",
-    enabled: true,
-    auth: "required",
-    usernameEnv: "VIETRA_USERNAME",
-    passwordEnv: "VIETRA_PASSWORD"
-  },
-  {
-    id: "sanat",
-    label: "SANAT",
-    kind: "b2b_web",
-    priceKind: "cost",
-    url: "https://online.sanat.kz/TourSearchClient#/Individuals/Avia/",
-    enabled: true,
-    auth: "unknown",
-    usernameEnv: "SANAT_USERNAME",
-    passwordEnv: "SANAT_PASSWORD"
-  }
+const DEFAULT_PUBLIC_TELEGRAM_CHANNELS = [
+  "charter_forever_travel",
+  "charterkaz"
 ];
+
+function uniqueById(sources) {
+  const seen = new Set();
+  return sources.filter(source => {
+    if (!source?.id || seen.has(source.id)) return false;
+    seen.add(source.id);
+    return true;
+  });
+}
+
+export const sourceRegistry = DEFAULT_PUBLIC_TELEGRAM_CHANNELS.map(handle => ({
+  ...sourceFromHandle(handle),
+  enabled: true,
+  ingest: true,
+  priceKind: "cost",
+  note: "Public Telegram charter source"
+}));
 
 export function configuredTelegramSources(env = process.env) {
   return parseTelegramSourceList(env.TELEGRAM_SOURCE_CHANNELS)
     .map(sourceFromHandle)
-    .filter(source => source.enabled);
-}
-
-export function configuredTelegramSessionSources(env = process.env) {
-  const filePath = String(env.TELEGRAM_SESSION_POSTS_PATH || "").trim();
-  if (!filePath) return [];
-  return [{
-    id: "telegram-session",
-    label: "Telegram user-session collector",
-    kind: "telegram_session",
-    adapter: "telegram_session_file",
-    priceKind: "cost",
-    filePath,
-    enabled: true,
-    ingest: true
-  }];
+    .map(source => ({
+      ...source,
+      enabled: true,
+      ingest: true,
+      priceKind: "cost"
+    }));
 }
 
 export function ingestSources(env = process.env) {
-  return [
-    ...sourceRegistry.filter(source => source.enabled && source.ingest === true),
-    ...configuredTelegramSessionSources(env),
+  return uniqueById([
+    ...sourceRegistry,
     ...configuredTelegramSources(env)
-  ];
+  ]);
 }
 
+// Kept as an empty compatibility export so older diagnostics/tests do not break.
+// The production pipeline is Telegram-only and does not probe websites.
 export function monitoredSources() {
-  return sourceRegistry.filter(source => source.enabled && source.kind === "b2b_web" && source.ingest !== true);
+  return [];
 }
 
-// Backward-compatible alias used by older code/tests.
 export function enabledSources(env = process.env) {
   return ingestSources(env);
 }
