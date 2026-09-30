@@ -7,6 +7,7 @@ import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
+import { validateFlightsForPublication } from "./flight-validator.mjs";
 import {
   filterFlightsForTarget,
   parsePublishTargets,
@@ -236,6 +237,30 @@ for (const source of sources) {
 }
 
 const freshFlights = dedupeFlights(collected);
+const mirroredRouteMinSources = Math.max(
+  1,
+  Math.floor(envNumber("MIRRORED_ROUTE_MIN_SOURCES") || 2)
+);
+const validation = validateFlightsForPublication(freshFlights, {
+  now,
+  mirroredRouteMinSources
+});
+const validatedFreshFlights = validation.verified;
+
+statuses.push({
+  id: "flight_validator",
+  kind: "validation",
+  status:
+    validation.needsReview.length || validation.rejected.length
+      ? "review_required"
+      : "ok",
+  checked: validation.summary.checked,
+  verified: validation.summary.verified,
+  needsReview: validation.summary.needsReview,
+  rejected: validation.summary.rejected,
+  reasons: validation.summary.reasons
+});
+
 const outputPath = resolve(process.env.FLIGHT_FEED_OUTPUT || "public/flights.json");
 
 let existing = null;
@@ -246,7 +271,7 @@ try {
 }
 
 let flights = reconcileLifecycle(
-  freshFlights,
+  validatedFreshFlights,
   existing,
   now,
   offerTtlHours()
@@ -265,14 +290,22 @@ if (!flights.length && cachedFallbackEnabled && existing) {
   });
 
   if (fallbackFlights.length) {
-    flights = fallbackFlights;
-    cachedFallbackMode = true;
+    const fallbackValidation = validateFlightsForPublication(fallbackFlights, {
+      now,
+      mirroredRouteMinSources
+    });
+    flights = fallbackValidation.verified;
+    cachedFallbackMode = flights.length > 0;
     statuses.push({
       id: "cached_customer_feed",
       kind: "cached_fallback",
-      status: "fallback_active",
-      offers: fallbackFlights.length,
-      reason: "Previously observed future Telegram offers are shown temporarily and require availability confirmation."
+      status: flights.length ? "fallback_active" : "fallback_blocked",
+      offers: flights.length,
+      needsReview: fallbackValidation.needsReview.length,
+      rejected: fallbackValidation.rejected.length,
+      reason: flights.length
+        ? "Previously observed future Telegram offers are shown temporarily and require availability confirmation."
+        : "Cached offers were blocked by flight validation."
     });
   }
 }
@@ -287,6 +320,9 @@ try {
         ingestionSources: sources.length,
         rawOffers: collected.length,
         deduplicatedOffers: freshFlights.length,
+        validatedOffers: validatedFreshFlights.length,
+        needsReviewOffers: validation.needsReview.length,
+        rejectedOffers: validation.rejected.length,
         publishableOffers: flights.length,
         fallbackOffers: cachedFallbackMode ? flights.length : 0
       }
