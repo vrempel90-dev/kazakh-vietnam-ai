@@ -57,10 +57,14 @@ test("additional public Telegram channels can be configured without duplicates",
 
 test("publication channel cannot be re-added as an ingestion source", () => {
   const ingestion = ingestSources({
-    TELEGRAM_SOURCE_CHANNELS: "charter_forever_travel,bilettu"
+    TELEGRAM_SOURCE_CHANNELS: "charter_forever_travel,charterkaz,bilettu"
   });
   assert.equal(
     ingestion.some(source => source.handle === "charter_forever_travel"),
+    false
+  );
+  assert.equal(
+    ingestion.some(source => source.handle === "charterkaz"),
     false
   );
   assert.equal(
