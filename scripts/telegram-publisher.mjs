@@ -1,69 +1,73 @@
 const AUTO_MARKER = "🤖 Автообновление";
 
 const COUNTRY_BY_CITY = new Map([
-  ["алматы", ["Казахстан", "🇰🇿"]],
-  ["астана", ["Казахстан", "🇰🇿"]],
-  ["шымкент", ["Казахстан", "🇰🇿"]],
-  ["атырау", ["Казахстан", "🇰🇿"]],
-  ["актобе", ["Казахстан", "🇰🇿"]],
-  ["актау", ["Казахстан", "🇰🇿"]],
-  ["костанай", ["Казахстан", "🇰🇿"]],
-  ["кызылорда", ["Казахстан", "🇰🇿"]],
-  ["тараз", ["Казахстан", "🇰🇿"]],
-  ["уральск", ["Казахстан", "🇰🇿"]],
-  ["петропавловск", ["Казахстан", "🇰🇿"]],
-  ["караганда", ["Казахстан", "🇰🇿"]],
+  ["алматы", ["Казахстан", "🇰🇿"]], ["астана", ["Казахстан", "🇰🇿"]],
+  ["шымкент", ["Казахстан", "🇰🇿"]], ["атырау", ["Казахстан", "🇰🇿"]],
+  ["актобе", ["Казахстан", "🇰🇿"]], ["актау", ["Казахстан", "🇰🇿"]],
+  ["костанай", ["Казахстан", "🇰🇿"]], ["кызылорда", ["Казахстан", "🇰🇿"]],
+  ["тараз", ["Казахстан", "🇰🇿"]], ["уральск", ["Казахстан", "🇰🇿"]],
+  ["петропавловск", ["Казахстан", "🇰🇿"]], ["караганда", ["Казахстан", "🇰🇿"]],
 
-  ["пхукет", ["Таиланд", "🇹🇭"]],
-  ["бангкок", ["Таиланд", "🇹🇭"]],
-
-  ["нячанг", ["Вьетнам", "🇻🇳"]],
-  ["камрань", ["Вьетнам", "🇻🇳"]],
-  ["дананг", ["Вьетнам", "🇻🇳"]],
-  ["фукуок", ["Вьетнам", "🇻🇳"]],
-
-  ["анталия", ["Турция", "🇹🇷"]],
-  ["анталья", ["Турция", "🇹🇷"]],
-  ["аланья", ["Турция", "🇹🇷"]],
-  ["алания", ["Турция", "🇹🇷"]],
-  ["газипаша", ["Турция", "🇹🇷"]],
-  ["газипашааланья", ["Турция", "🇹🇷"]],
+  ["пхукет", ["Таиланд", "🇹🇭"]], ["бангкок", ["Таиланд", "🇹🇭"]],
+  ["нячанг", ["Вьетнам", "🇻🇳"]], ["камрань", ["Вьетнам", "🇻🇳"]],
+  ["дананг", ["Вьетнам", "🇻🇳"]], ["фукуок", ["Вьетнам", "🇻🇳"]],
+  ["анталия", ["Турция", "🇹🇷"]], ["анталья", ["Турция", "🇹🇷"]],
+  ["аланья", ["Турция", "🇹🇷"]], ["алания", ["Турция", "🇹🇷"]],
+  ["газипаша", ["Турция", "🇹🇷"]], ["газипашааланья", ["Турция", "🇹🇷"]],
   ["стамбул", ["Турция", "🇹🇷"]],
-
-  ["шармэшшейх", ["Египет", "🇪🇬"]],
-  ["шармэльшейх", ["Египет", "🇪🇬"]],
-  ["хургада", ["Египет", "🇪🇬"]],
-  ["каир", ["Египет", "🇪🇬"]],
-
-  ["дубай", ["ОАЭ", "🇦🇪"]],
-  ["шарджа", ["ОАЭ", "🇦🇪"]],
+  ["шармэшшейх", ["Египет", "🇪🇬"]], ["шармэльшейх", ["Египет", "🇪🇬"]],
+  ["хургада", ["Египет", "🇪🇬"]], ["каир", ["Египет", "🇪🇬"]],
+  ["дубай", ["ОАЭ", "🇦🇪"]], ["шарджа", ["ОАЭ", "🇦🇪"]],
   ["абудаби", ["ОАЭ", "🇦🇪"]],
-
-  ["санья", ["Китай", "🇨🇳"]],
-  ["мале", ["Мальдивы", "🇲🇻"]],
-  ["коломбо", ["Шри-Ланка", "🇱🇰"]],
-  ["маттала", ["Шри-Ланка", "🇱🇰"]],
-  ["гоа", ["Индия", "🇮🇳"]],
-  ["тбилиси", ["Грузия", "🇬🇪"]],
-  ["батуми", ["Грузия", "🇬🇪"]],
-  ["баку", ["Азербайджан", "🇦🇿"]],
-  ["ереван", ["Армения", "🇦🇲"]],
-  ["доха", ["Катар", "🇶🇦"]],
-  ["джидда", ["Саудовская Аравия", "🇸🇦"]],
-  ["белград", ["Сербия", "🇷🇸"]],
-  ["милан", ["Италия", "🇮🇹"]],
-  ["рим", ["Италия", "🇮🇹"]],
-  ["мюнхен", ["Германия", "🇩🇪"]],
-  ["барселона", ["Испания", "🇪🇸"]],
-  ["париж", ["Франция", "🇫🇷"]],
-  ["прага", ["Чехия", "🇨🇿"]],
-  ["вена", ["Австрия", "🇦🇹"]],
-  ["ларнака", ["Кипр", "🇨🇾"]],
-  ["бишкек", ["Кыргызстан", "🇰🇬"]],
-  ["ташкент", ["Узбекистан", "🇺🇿"]],
-  ["москва", ["Россия", "🇷🇺"]],
-  ["санктпетербург", ["Россия", "🇷🇺"]],
+  ["санья", ["Китай", "🇨🇳"]], ["мале", ["Мальдивы", "🇲🇻"]],
+  ["коломбо", ["Шри-Ланка", "🇱🇰"]], ["маттала", ["Шри-Ланка", "🇱🇰"]],
+  ["гоа", ["Индия", "🇮🇳"]], ["тбилиси", ["Грузия", "🇬🇪"]],
+  ["батуми", ["Грузия", "🇬🇪"]], ["баку", ["Азербайджан", "🇦🇿"]],
+  ["ереван", ["Армения", "🇦🇲"]], ["доха", ["Катар", "🇶🇦"]],
+  ["джидда", ["Саудовская Аравия", "🇸🇦"]], ["белград", ["Сербия", "🇷🇸"]],
+  ["милан", ["Италия", "🇮🇹"]], ["рим", ["Италия", "🇮🇹"]],
+  ["мюнхен", ["Германия", "🇩🇪"]], ["барселона", ["Испания", "🇪🇸"]],
+  ["париж", ["Франция", "🇫🇷"]], ["прага", ["Чехия", "🇨🇿"]],
+  ["вена", ["Австрия", "🇦🇹"]], ["ларнака", ["Кипр", "🇨🇾"]],
+  ["бишкек", ["Кыргызстан", "🇰🇬"]], ["ташкент", ["Узбекистан", "🇺🇿"]],
+  ["москва", ["Россия", "🇷🇺"]], ["санктпетербург", ["Россия", "🇷🇺"]],
   ["сочи", ["Россия", "🇷🇺"]]
+]);
+
+const COUNTRY_DISPLAY = new Map([
+  ["Казахстан", "Kazakhstan"], ["Таиланд", "Thailand"], ["Вьетнам", "Vietnam"],
+  ["Турция", "Turkiye"], ["Египет", "Egypt"], ["ОАЭ", "UAE"],
+  ["Китай", "Hainan"], ["Мальдивы", "Maldives"], ["Шри-Ланка", "Sri Lanka"],
+  ["Индия", "India"], ["Грузия", "Georgia"], ["Азербайджан", "Azerbaijan"],
+  ["Армения", "Armenia"], ["Катар", "Qatar"], ["Саудовская Аравия", "Saudi Arabia"],
+  ["Сербия", "Serbia"], ["Италия", "Italy"], ["Германия", "Germany"],
+  ["Испания", "Spain"], ["Франция", "France"], ["Чехия", "Czech Republic"],
+  ["Австрия", "Austria"], ["Кипр", "Cyprus"], ["Кыргызстан", "Kyrgyzstan"],
+  ["Узбекистан", "Uzbekistan"], ["Россия", "Russia"],
+  ["Другие направления", "Other destinations"]
+]);
+
+const CITY_DISPLAY = new Map([
+  ["алматы", "Almaty"], ["астана", "Astana"], ["шымкент", "Shymkent"],
+  ["атырау", "Atyrau"], ["актобе", "Aktobe"], ["актау", "Aktau"],
+  ["костанай", "Kostanay"], ["кызылорда", "Kyzylorda"], ["тараз", "Taraz"],
+  ["уральск", "Uralsk"], ["петропавловск", "Petropavlovsk"], ["караганда", "Karaganda"],
+  ["пхукет", "Phuket"], ["бангкок", "Bangkok"], ["нячанг", "Nha Trang"],
+  ["камрань", "Cam Ranh"], ["дананг", "Da Nang"], ["фукуок", "Phu Quoc"],
+  ["анталия", "Antalya"], ["анталья", "Antalya"], ["аланья", "Alanya"],
+  ["алания", "Alanya"], ["газипаша", "Gazipasa"], ["газипашааланья", "Gazipasa"],
+  ["стамбул", "Istanbul"], ["шармэшшейх", "Sharm El Sheikh"],
+  ["шармэльшейх", "Sharm El Sheikh"], ["хургада", "Hurghada"], ["каир", "Cairo"],
+  ["дубай", "Dubai"], ["шарджа", "Sharjah"], ["абудаби", "Abu Dhabi"],
+  ["санья", "Sanya"], ["мале", "Male"], ["коломбо", "Colombo"],
+  ["маттала", "Mattala"], ["гоа", "Goa"], ["тбилиси", "Tbilisi"],
+  ["батуми", "Batumi"], ["баку", "Baku"], ["ереван", "Yerevan"],
+  ["доха", "Doha"], ["джидда", "Jeddah"], ["белград", "Belgrade"],
+  ["милан", "Milan"], ["рим", "Rome"], ["мюнхен", "Munich"],
+  ["барселона", "Barcelona"], ["париж", "Paris"], ["прага", "Prague"],
+  ["вена", "Vienna"], ["ларнака", "Larnaca"], ["бишкек", "Bishkek"],
+  ["ташкент", "Tashkent"], ["москва", "Moscow"], ["санктпетербург", "Saint Petersburg"],
+  ["сочи", "Sochi"]
 ]);
 
 function cityKey(value) {
@@ -75,10 +79,24 @@ function cityKey(value) {
     .replace(/[^а-яёa-z0-9]/giu, "");
 }
 
+function cleanCity(value) {
+  return String(value || "")
+    .replace(/^\s*(?:OW|RT)\s+/i, "")
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/[*_~`]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s,.;:|/\\-]+|[\s,.;:|/\\-]+$/g, "")
+    .trim();
+}
+
+function displayCity(value) {
+  return CITY_DISPLAY.get(cityKey(value)) || cleanCity(value);
+}
+
 function cityCountry(value) {
   const found = COUNTRY_BY_CITY.get(cityKey(value));
-  if (!found) return null;
-  return { name: found[0], flag: found[1] };
+  return found ? { name: found[0], flag: found[1] } : null;
 }
 
 function sameCountry(a, b) {
@@ -92,7 +110,6 @@ function countryKey(country) {
 export function countryForFlight(flight) {
   const fromCountry = cityCountry(flight?.from);
   const toCountry = cityCountry(flight?.to);
-  const kazakhstan = { name: "Казахстан", flag: "🇰🇿" };
 
   if (fromCountry?.name === "Казахстан" && toCountry?.name !== "Казахстан") {
     return toCountry || { name: "Другие направления", flag: "🌍" };
@@ -105,19 +122,6 @@ export function countryForFlight(flight) {
   return sameCountry(fromCountry, toCountry)
     ? fromCountry
     : (fromCountry || toCountry || { name: "Другие направления", flag: "🌍" });
-}
-
-function directionInfo(flight, country) {
-  const fromCountry = cityCountry(flight?.from);
-  const toCountry = cityCountry(flight?.to);
-
-  if (fromCountry?.name === "Казахстан" && toCountry?.name === country?.name) {
-    return { order: 0, key: "outbound", label: "🇰🇿 → " + country.flag + " <b>Из Казахстана</b>" };
-  }
-  if (toCountry?.name === "Казахстан" && fromCountry?.name === country?.name) {
-    return { order: 1, key: "inbound", label: country.flag + " → 🇰🇿 <b>В Казахстан</b>" };
-  }
-  return { order: 2, key: "other", label: "✈️ <b>Другие направления</b>" };
 }
 
 export function parsePublishTargets(value) {
@@ -150,58 +154,69 @@ function esc(value) {
 function fmtDate(value) {
   if (!value) return "дата уточняется";
   const date = new Date(value + "T12:00:00");
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 }
 
 function fmtPrice(value) {
-  return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " ₸";
+  return new Intl.NumberFormat("ru-RU").format(Number(value || 0));
 }
 
-function cleanCity(value) {
-  return String(value || "")
-    .replace(/^\s*(?:OW|RT)\s+/i, "")
-    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
-    .replace(/\p{Extended_Pictographic}/gu, "")
-    .replace(/[*_~`]/g, "")
-    .replace(/\s+/g, " ")
-    .replace(/^[\s,.;:|/\\-]+|[\s,.;:|/\\-]+$/g, "")
-    .trim();
+function seatSuffix(value) {
+  if (!value || value === "Наличие уточняется") return "";
+  const match = String(value).match(/\b(\d{1,2})\b/);
+  return match ? " (" + match[1] + ")" : "";
 }
 
-function flightRoute(flight) {
-  const from = cleanCity(flight.from);
-  const to = cleanCity(flight.to);
-  const route = flight.trip === "RT" ? from + " → " + to + " → " + from : from + " → " + to;
-  return esc(route);
+function routeKey(flight) {
+  return [
+    cityKey(flight?.from),
+    cityKey(flight?.to),
+    String(flight?.trip || "OW"),
+    flight?.trip === "RT" ? "rt" : "ow"
+  ].join("|");
 }
 
-function flightBlock(flight) {
-  const details = [
-    fmtDate(flight.departureDate)
-      + (flight.returnDate ? "–" + fmtDate(flight.returnDate) : ""),
-    fmtPrice(flight.price),
-    flight.airline ? esc(flight.airline) : null,
-    flight.seats && flight.seats !== "Наличие уточняется" ? esc(flight.seats) : null
-  ].filter(Boolean);
-
-  return (flight.hot ? "🔥 " : "✈️ ")
-    + flightRoute(flight)
-    + "\n"
-    + details.join(" · ");
+function routeTitle(flight) {
+  const from = esc(displayCity(flight?.from));
+  const to = esc(displayCity(flight?.to));
+  return flight?.trip === "RT"
+    ? from + " " + to + " " + from
+    : from + " " + to;
 }
 
-function sortFlightsForCountry(items, country) {
-  return [...items].sort((a, b) => {
-    const da = directionInfo(a, country).order;
-    const db = directionInfo(b, country).order;
-    if (da !== db) return da - db;
-    const date = String(a.departureDate || "").localeCompare(String(b.departureDate || ""));
-    if (date !== 0) return date;
-    const route = flightRoute(a).localeCompare(flightRoute(b), "ru");
-    if (route !== 0) return route;
-    return Number(a.price || 0) - Number(b.price || 0);
-  });
+function offerLine(flight) {
+  const date = flight?.trip === "RT" && flight?.returnDate
+    ? fmtDate(flight.departureDate) + " - " + fmtDate(flight.returnDate)
+    : fmtDate(flight.departureDate);
+  const separator = flight?.trip === "RT" && flight?.returnDate ? " = " : " - ";
+  return date
+    + separator
+    + fmtPrice(flight.price)
+    + seatSuffix(flight.seats)
+    + (flight.hot ? " 🔥" : "");
+}
+
+function routeMetadata(items) {
+  const lines = [];
+  const seen = new Set();
+
+  for (const flight of items) {
+    const airline = String(flight?.airline || "").trim();
+    const baggage = String(flight?.baggage || "").trim();
+    if (!airline && !baggage) continue;
+
+    const line = airline
+      ? esc(airline) + (baggage ? " - " + esc(baggage) : "")
+      : esc(baggage);
+
+    if (!seen.has(line)) {
+      seen.add(line);
+      lines.push(line);
+    }
+  }
+
+  return lines;
 }
 
 function groupFlightsByCountry(flights) {
@@ -214,80 +229,145 @@ function groupFlightsByCountry(flights) {
   }
 
   return [...groups.values()].sort((a, b) => {
-    if (a.country.name === "Другие направления") return 1;
-    if (b.country.name === "Другие направления") return -1;
     const firstA = [...a.flights].sort((x, y) => String(x.departureDate || "").localeCompare(String(y.departureDate || "")))[0];
     const firstB = [...b.flights].sort((x, y) => String(x.departureDate || "").localeCompare(String(y.departureDate || "")))[0];
-    const byDate = String(firstA?.departureDate || "").localeCompare(String(firstB?.departureDate || ""));
-    return byDate || a.country.name.localeCompare(b.country.name, "ru");
+    return String(firstA?.departureDate || "").localeCompare(String(firstB?.departureDate || ""))
+      || a.country.name.localeCompare(b.country.name, "ru");
   });
+}
+
+function routeSections(items) {
+  const routes = new Map();
+
+  for (const flight of items) {
+    const key = routeKey(flight);
+    if (!routes.has(key)) routes.set(key, []);
+    routes.get(key).push(flight);
+  }
+
+  return [...routes.values()]
+    .map(routeFlights => {
+      routeFlights.sort((a, b) =>
+        String(a.departureDate || "").localeCompare(String(b.departureDate || ""))
+        || String(a.returnDate || "").localeCompare(String(b.returnDate || ""))
+        || Number(a.price || 0) - Number(b.price || 0)
+      );
+
+      const sample = routeFlights[0];
+      const rows = [
+        "<b>" + routeTitle(sample) + "</b>",
+        ...(sample?.trip === "RT" ? ["-туда обратно-"] : []),
+        "",
+        ...routeFlights.map(offerLine)
+      ];
+
+      const metadata = routeMetadata(routeFlights);
+      if (metadata.length) rows.push("", ...metadata);
+
+      return {
+        text: rows.join("\n"),
+        flightIds: routeFlights.map(flight => flight.id).filter(Boolean),
+        firstDate: String(sample?.departureDate || "")
+      };
+    })
+    .sort((a, b) => a.firstDate.localeCompare(b.firstDate) || a.text.localeCompare(b.text, "ru"));
+}
+
+function countryHeader(country) {
+  const display = COUNTRY_DISPLAY.get(country.name) || country.name;
+  return "<b>" + country.flag + " " + esc(display) + "</b>";
+}
+
+function footerFor(items) {
+  return items.some(flight => Boolean(flight?.cachedFallback))
+    ? "Цены указаны в KZT\nЦены и наличие указаны по последним полученным данным."
+    : "Цены указаны в KZT\nЦены и наличие актуальны на момент публикации";
+}
+
+function packCountryPosts(group, maxChars) {
+  const header = countryHeader(group.country);
+  const footer = footerFor(group.flights);
+  const sections = routeSections(group.flights);
+  const posts = [];
+  let currentSections = [];
+  let currentIds = [];
+
+  const emit = () => {
+    if (!currentSections.length) return;
+    posts.push({
+      text: header + "\n\n" + currentSections.join("\n\n") + "\n\n" + footer,
+      flightIds: [...new Set(currentIds)],
+      country: group.country.name
+    });
+    currentSections = [];
+    currentIds = [];
+  };
+
+  for (const section of sections) {
+    const candidateSections = [...currentSections, section.text];
+    const candidate = header + "\n\n" + candidateSections.join("\n\n") + "\n\n" + footer;
+
+    if (candidate.length <= maxChars) {
+      currentSections = candidateSections;
+      currentIds.push(...section.flightIds);
+      continue;
+    }
+
+    emit();
+
+    const fullSingle = header + "\n\n" + section.text + "\n\n" + footer;
+    if (fullSingle.length <= maxChars) {
+      currentSections = [section.text];
+      currentIds = [...section.flightIds];
+      continue;
+    }
+
+    const lines = section.text.split("\n");
+    const routeHead = lines.slice(0, lines[1] === "-туда обратно-" ? 3 : 2);
+    const metadataStart = lines.findIndex((line, index) =>
+      index >= routeHead.length && /(?:багаж|Air|air|SCAT|Scat|Fly|fly|Viet|Pegasus|Turkish|Sunday|Cairo|NEOS)/i.test(line)
+    );
+    const offerLines = metadataStart >= 0
+      ? lines.slice(routeHead.length, metadataStart).filter(Boolean)
+      : lines.slice(routeHead.length).filter(Boolean);
+    const metadata = metadataStart >= 0 ? lines.slice(metadataStart).filter(Boolean) : [];
+
+    let chunk = [...routeHead];
+    let chunkIds = [];
+    let flightIndex = 0;
+
+    const flushChunk = () => {
+      if (chunk.length <= routeHead.length) return;
+      const suffix = metadata.length ? "\n\n" + metadata.join("\n") : "";
+      posts.push({
+        text: header + "\n\n" + chunk.join("\n") + suffix + "\n\n" + footer,
+        flightIds: [...chunkIds],
+        country: group.country.name
+      });
+      chunk = [...routeHead];
+      chunkIds = [];
+    };
+
+    for (const line of offerLines) {
+      const suffix = metadata.length ? "\n\n" + metadata.join("\n") : "";
+      const candidateChunk = header + "\n\n" + [...chunk, line].join("\n") + suffix + "\n\n" + footer;
+      if (candidateChunk.length > maxChars && chunk.length > routeHead.length) flushChunk();
+      chunk.push(line);
+      if (section.flightIds[flightIndex]) chunkIds.push(section.flightIds[flightIndex]);
+      flightIndex += 1;
+    }
+    flushChunk();
+  }
+
+  emit();
+  return posts;
 }
 
 export function buildFlightPostBatches(flights, maxChars = 4050) {
   const posts = [];
-
   for (const group of groupFlightsByCountry(flights)) {
-    const items = sortFlightsForCountry(group.flights, group.country);
-    const intro = group.country.flag + " <b>" + esc(group.country.name) + " — все актуальные чартеры</b>\n\n";
-    const hasCached = items.some(flight => Boolean(flight?.cachedFallback));
-    const footer = hasCached
-      ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
-      : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
-
-    let body = "";
-    let currentDirection = null;
-    const flightIds = [];
-
-    for (const flight of items) {
-      const direction = directionInfo(flight, group.country);
-      const needsHeading = currentDirection !== direction.key;
-      const heading = needsHeading
-        ? (body ? "\n\n" : "") + direction.label + "\n"
-        : "\n";
-      const piece = heading + flightBlock(flight);
-      body += piece;
-      currentDirection = direction.key;
-      if (flight?.id) flightIds.push(flight.id);
-    }
-
-    let text = intro + body + footer;
-
-    if (text.length > maxChars) {
-      const compactBody = [];
-      let lastDirection = null;
-      for (const flight of items) {
-        const direction = directionInfo(flight, group.country);
-        if (direction.key !== lastDirection) {
-          compactBody.push((compactBody.length ? "\n" : "") + direction.label);
-          lastDirection = direction.key;
-        }
-        compactBody.push(
-          (flight.hot ? "🔥 " : "• ")
-          + flightRoute(flight)
-          + " · "
-          + fmtDate(flight.departureDate)
-          + (flight.returnDate ? "–" + fmtDate(flight.returnDate) : "")
-          + " · "
-          + fmtPrice(flight.price)
-        );
-      }
-      text = intro + compactBody.join("\n") + footer;
-    }
-
-    if (text.length > maxChars) {
-      throw new Error(
-        "Country post exceeds Telegram limit for " + group.country.name
-        + ": " + text.length + " chars"
-      );
-    }
-
-    posts.push({
-      text,
-      flightIds,
-      country: group.country.name
-    });
+    posts.push(...packCountryPosts(group, maxChars));
   }
-
   return posts;
 }
 
@@ -359,7 +439,10 @@ export async function publishFreshFlights({
   const buyUrl = phone
     ? "https://wa.me/" + phone + "?text=" + encodeURIComponent("Здравствуйте! Хочу купить билет на чартерный рейс из публикации.")
     : "";
-  if (!botToken) return { published: 0, skipped: true, reason: "TELEGRAM_BOT_TOKEN missing", targets: [] };
+
+  if (!botToken) {
+    return { published: 0, skipped: true, reason: "TELEGRAM_BOT_TOKEN missing", targets: [] };
+  }
 
   const targetList = parsePublishTargets(targets);
   const results = [];
@@ -386,6 +469,7 @@ export async function publishFreshFlights({
             inline_keyboard: [[{ text: "✈️ Посмотреть рейсы", url: appUrl }]]
           } : undefined)
         }, fetchImpl);
+
         sent += 1;
         published += 1;
         sentFlightIds.push(...post.flightIds);
