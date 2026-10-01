@@ -16,6 +16,7 @@ import {
   telegramPublicationWindowStatus
 } from "./telegram-publisher.mjs";
 import {
+  bootstrapPublicationTarget,
   initializePublicationState,
   isDailyDigestPublished,
   isPublicationPending,
@@ -442,11 +443,36 @@ if (
     let publishedPosts = 0;
     const targetResults = [];
 
-    if (!isPublicationStateInitialized(publicationState)) {
-      initializePublicationState(publicationState, now.toISOString());
+    const stateWasFresh = !isPublicationStateInitialized(publicationState);
+    if (stateWasFresh) {
+      const initializedAt = now.toISOString();
+      for (const target of targets) {
+        const eligibleFlights = filterFlightsForTarget(flights, target);
+        bootstrapPublicationTarget(
+          publicationState,
+          target,
+          eligibleFlights,
+          localClock.date,
+          initializedAt
+        );
+        targetResults.push({
+          target,
+          mode: "bootstrap_no_replay",
+          pendingFlights: 0,
+          sent: 0,
+          sentFlightIds: [],
+          bootstrappedFlights: eligibleFlights.length
+        });
+      }
+      prunePublicationState(publicationState, { now, retentionDays });
       await savePublicationState(statePath, publicationState);
+      console.log(
+        "Telegram publication state bootstrapped without replaying existing flights:",
+        JSON.stringify({ localDate: localClock.date, targets: targetResults }, null, 2)
+      );
     }
 
+    if (!stateWasFresh) {
     for (const target of targets) {
       const eligibleFlights = filterFlightsForTarget(flights, target);
       const digestWindowOpen =
@@ -559,6 +585,7 @@ if (
         mode: "hot_only",
         pendingFlights: hotFlights.length
       });
+    }
     }
 
     console.log(
