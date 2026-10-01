@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { readFile } from "node:fs/promises";
+import { atomicWriteJson } from "./atomic-json.mjs";
 
 function cleanOptionalNumber(value) {
   return Number.isFinite(Number(value)) ? Number(value) : undefined;
@@ -35,8 +35,7 @@ export async function writeSourceStatus(path, { statuses, summary }) {
     sources: Array.isArray(statuses) ? statuses.map(sanitizeSourceStatus) : [],
     summary: summary && typeof summary === "object" ? summary : {}
   };
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
+  await atomicWriteJson(path, payload);
   return payload;
 }
 
