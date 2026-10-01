@@ -35,7 +35,9 @@ const CITY_FORMS = {
   "sharm el sheikh": "Шарм-эль-Шейх", "hurghada": "Хургада",
   "mattala": "Маттала", "jeddah": "Джидда", "aktau": "Актау",
   "aktobe": "Актобе", "atyrau": "Атырау", "kostanay": "Костанай",
-  "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми"
+  "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми",
+  "dubai": "Дубай", "дубая": "Дубай", "пхукета": "Пхукет",
+  "нячанга": "Нячанг", "анталии": "Анталия", "хургады": "Хургада"
 };
 
 const MONTHS = {
@@ -44,15 +46,23 @@ const MONTHS = {
 };
 
 function decodeHtml(value) {
+  const codePoint = (value, radix) => {
+    const number = parseInt(value, radix);
+    return number >= 0 && number <= 0x10ffff && !(number >= 0xd800 && number <= 0xdfff)
+      ? String.fromCodePoint(number) : "�";
+  };
   return String(value || "")
     .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:div|p|blockquote)>|<(?:div|p|blockquote)\b[^>]*>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;|&#160;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, code) => codePoint(code, 10))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => codePoint(code, 16))
     .replace(/\u00a0/g, " ")
     .replace(/[ \t]+/g, " ")
     .replace(/\n[ \t]+/g, "\n")
@@ -60,12 +70,13 @@ function decodeHtml(value) {
 }
 
 function cleanHandle(value) {
-  return String(value || "")
+  const handle = String(value || "")
     .trim()
     .replace(/^https?:\/\/t\.me\/(?:s\/)?/i, "")
     .replace(/^@/, "")
     .replace(/[/?#].*$/, "")
     .toLowerCase();
+  return /^[a-z0-9_]{1,32}$/.test(handle) ? handle : "";
 }
 
 export function parseTelegramSourceList(value) {
@@ -96,17 +107,39 @@ function postIdFromDataPost(value) {
   return match ? Number(match[1]) : null;
 }
 
+function messageTextBlocks(html) {
+  const result = [];
+  const opening = /<div\b[^>]*\bclass=["'][^"']*\btgme_widget_message_text\b[^"']*["'][^>]*>/gi;
+  let match;
+  while ((match = opening.exec(html))) {
+    const contentStart = opening.lastIndex;
+    const tags = /<\/?div\b[^>]*>/gi;
+    tags.lastIndex = contentStart;
+    let depth = 1;
+    let tag;
+    while ((tag = tags.exec(html))) {
+      depth += /^<\//.test(tag[0]) ? -1 : 1;
+      if (depth === 0) {
+        result.push(decodeHtml(html.slice(contentStart, tag.index)));
+        opening.lastIndex = tags.lastIndex;
+        break;
+      }
+    }
+    if (depth !== 0) break;
+  }
+  return result;
+}
+
 export function extractPublicTelegramPosts(html) {
   const posts = [];
-  const blockRe = /<div class="tgme_widget_message_wrap[^"]*"[^>]*>([\s\S]*?)(?=<div class="tgme_widget_message_wrap|<div class="tgme_channel_info|<\/body>|$)/gi;
-
-  for (const blockMatch of String(html || "").matchAll(blockRe)) {
-    const block = blockMatch[1];
-    const dataPost = block.match(/data-post="([^"]+)"/i)?.[1] || "";
-    const datetime = block.match(/<time[^>]*datetime="([^"]+)"/i)?.[1] || null;
-    const textMatch = block.match(/<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    const text = textMatch ? decodeHtml(textMatch[1]) : "";
-    if (!text) continue;
+  const page = String(html || "");
+  const starts = [...page.matchAll(/<div\b[^>]*\bclass=["'][^"']*\btgme_widget_message_wrap\b[^"']*["'][^>]*>/gi)];
+  for (let index = 0; index < starts.length; index += 1) {
+    const block = page.slice(starts[index].index + starts[index][0].length, starts[index + 1]?.index ?? page.length);
+    const dataPost = block.match(/data-post=["']([^"']+)["']/i)?.[1] || "";
+    const datetime = block.match(/<time[^>]*datetime=["']([^"']+)["']/i)?.[1] || null;
+    const text = messageTextBlocks(block)[0] || "";
+    if (!text && !dataPost && !datetime) continue;
     posts.push({
       dataPost,
       id: postIdFromDataPost(dataPost),
@@ -116,10 +149,8 @@ export function extractPublicTelegramPosts(html) {
   }
 
   if (!posts.length) {
-    const textRe = /<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
     let index = 0;
-    for (const match of String(html || "").matchAll(textRe)) {
-      const text = decodeHtml(match[1]);
+    for (const text of messageTextBlocks(page)) {
       if (text) posts.push({ dataPost: "", id: null, postedAt: null, text, fallbackIndex: index++ });
     }
   }
@@ -155,41 +186,53 @@ function isRouteNoise(value) {
 
 export function parseRouteLine(line) {
   const raw = String(line || "")
+    .replace(/[*_~`]+/g, "")
     .replace(/^[-•]+\s*/, "")
     .replace(/^✈️?\s*/u, "")
     .replace(/,+$/g, "")
     .trim();
-  if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
+  const hint = raw.match(/^(OW|RT)(?=\s|:)/i)?.[1]?.toUpperCase()
+    || raw.match(/\s(OW|RT)$/i)?.[1]?.toUpperCase();
+  const routeText = raw.replace(/^(?:OW|RT)\s*:?\s*/i, "").replace(/\s+(?:OW|RT)$/i, "");
+  if (!routeText || /^\d{1,2}[./]\d{1,2}/.test(routeText) || isRouteNoise(routeText)) return null;
 
-  const iataRoute = raw.match(/^([A-Z]{3})\s*[-–—→]\s*([A-Z]{3})(?:\s*[-–—→]\s*([A-Z]{3}))?$/);
+  const iataRoute = routeText.match(/^([A-Z]{3})\s*[-–—→]\s*([A-Z]{3})(?:\s*[-–—→]\s*([A-Z]{3}))?$/i);
   let parts;
   if (iataRoute) {
     parts = [iataRoute[1], iataRoute[2], iataRoute[3]].filter(Boolean).map(normalizeCity);
   } else {
-    const prose = raw.match(/^из\s+(.+?)\s+(?:в|во)\s+(.+)$/iu);
+    const prose = routeText.match(/^из\s+(.+?)\s+(?:в|во)\s+(.+)$/iu);
     parts = prose
       ? [normalizeCity(prose[1]), normalizeCity(prose[2])]
-      : raw
+      : routeText
           .split(/\s*(?:→|->|⟶|➡|➔|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
           .map(normalizeCity)
           .filter(Boolean);
   }
 
   if (parts.length < 2 || parts.length > 3) return null;
-  if (parts.some(part => /^\d/.test(part) || part.length < 2 || /^(?:₸|тенге)$/iu.test(part))) return null;
+  if (parts.some(part => /\d|[<>:=]|₸|\bhttps?\b/iu.test(part) || part.length < 2 || part.length > 80)) return null;
 
   const from = parts[0];
   const to = parts[1];
   const roundTrip = parts.length === 3 && sameCity(parts[0], parts[2]);
-  return { from, to, trip: roundTrip ? "RT" : "OW" };
+  if (sameCity(from, to) || (parts.length === 3 && !roundTrip)) return null;
+  return { from, to, trip: roundTrip || /⇄|⇆|↔/u.test(routeText) ? "RT" : (hint || "OW") };
+}
+
+function flightCalendarDay(now) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Almaty", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(now);
+  const value = type => Number(parts.find(part => part.type === type)?.value);
+  return new Date(Date.UTC(value("year"), value("month") - 1, value("day"), 12));
 }
 
 function inferYear(day, month, now) {
-  let year = now.getUTCFullYear();
-  const candidate = new Date(Date.UTC(year, month - 1, day, 12));
-  const diffDays = (candidate.getTime() - now.getTime()) / 86400000;
-  if (diffDays < -7) year += 1;
-  return year;
+  // A yearless stale date must not turn into a new offer eleven months later.
+  // Only infer the common winter rollover; other next-year dates need a year.
+  const calendar = flightCalendarDay(now);
+  return calendar.getUTCFullYear() + (calendar.getUTCMonth() >= 9 && month <= 3 ? 1 : 0);
 }
 
 function toIso(day, month, explicitYear, now) {
@@ -206,17 +249,43 @@ function toIso(day, month, explicitYear, now) {
 
 function dateFromText(value, now) {
   const text = String(value || "");
-  const numeric = text.match(/(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/);
+  const iso = text.match(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/);
+  if (iso) return toIso(iso[3], iso[2], iso[1], now);
+  const numeric = text.match(/(?<![\d.,])(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?(?![\d.,])/);
   if (numeric) return toIso(numeric[1], numeric[2], numeric[3], now);
-  const word = text.match(/(\d{1,2})\s*(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-яё]*\.?/iu);
+  const word = text.match(/(?<!\d)(\d{1,2})\s*(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-яё]*\.?(?:\s+(\d{4}))?/iu);
   if (!word) return null;
-  return toIso(word[1], MONTHS[word[2].toLocaleLowerCase("ru-RU").slice(0, 3)], null, now);
+  return toIso(word[1], MONTHS[word[2].toLocaleLowerCase("ru-RU").slice(0, 3)], word[3], now);
 }
 
 function compactRangeFromText(value, now) {
   const match = String(value || "").match(/(?<![\d./])(\d{1,2})\s*[-–—]\s*(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/u);
   if (!match) return null;
   return [toIso(match[1], match[3], match[4], now), toIso(match[2], match[3], match[4], now)];
+}
+
+function datesFromText(text, now) {
+  const range = text.match(/(?<![\d./])(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:→|->|—|–|-)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)(?![\d./])/u);
+  if (range) {
+    const departureDate = dateFromText(range[1], now);
+    const returnDate = departureDate ? dateFromText(range[2], new Date(departureDate + "T12:00:00Z")) : null;
+    return departureDate && returnDate && returnDate > departureDate
+      ? { departureDate, returnDate } : null;
+  }
+  const compact = compactRangeFromText(text, now);
+  if (compact) {
+    return compact[0] && compact[1] && compact[1] > compact[0]
+      ? { departureDate: compact[0], returnDate: compact[1] } : null;
+  }
+  const nights = text.match(/(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s+на\s+(\d{1,2})(\s*[-–—]\s*\d{1,2})?\s+ноч(?:ь|и|ей)/iu);
+  if (nights) {
+    const departureDate = dateFromText(nights[1], now);
+    // A range of nights is not one exact return date.
+    return departureDate && !nights[3] && Number(nights[2]) > 0
+      ? { departureDate, returnDate: addDays(departureDate, Number(nights[2])) } : null;
+  }
+  const departureDate = dateFromText(text, now);
+  return departureDate ? { departureDate, returnDate: null } : null;
 }
 
 function addDays(iso, days) {
@@ -230,11 +299,22 @@ function numericPrice(value, multiplier = 1) {
   return Number.isFinite(n) && n >= 5000 && n <= 5000000 ? n : null;
 }
 
+function hasForeignCurrency(value) {
+  return /[$€₽]|(?:^|[\s\d])(?:USD|EUR|RUB|CNY|RMB|AED|руб(?:лей|ля|ль|\.)?|доллар[а-яё]*|евро|дирхам[а-яё]*)(?=\s|$|[.,])/iu.test(String(value || ""));
+}
+
+function soldOut(value) {
+  return /(?:^|\s)(?:мест\s+(?:нет|не\s+осталось)|нет\s+мест|(?:0|ноль)\s+мест|sold\s*out|распродан[а-яё]*)(?=\s|$|[.!])|\(0\)/iu.test(String(value || ""));
+}
+
 function priceFromText(value) {
   const text = String(value || "");
-  if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(text)) return null;
-  const thousands = text.match(/(?<![\d.,])(\d{1,4})\s*(?:тыс\.?|к)(?![а-яё\w])/iu);
-  if (thousands) return numericPrice(thousands[1], 1000);
+  if (hasForeignCurrency(text)) return null;
+  const thousands = text.match(/(?<![\d.,])(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:тыс\.?|к)(?![а-яё\w])/iu);
+  if (thousands) {
+    const number = Number(thousands[1].replace(",", ".")) * 1000;
+    return Number.isFinite(number) && number >= 5000 && number <= 5000000 ? number : null;
+  }
   const currency = text.match(/(?<!\d)(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{4,7})\s*(?:₸|тг\.?|тенге|kzt\b)/iu);
   if (currency) return numericPrice(currency[1]);
   const label = text.match(/(?:цена|стоимость|price)\s*[:\-–—]?\s*(?:от\s*)?(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{4,7})/iu);
@@ -254,44 +334,16 @@ function detectBaggage(value) {
 }
 
 export function parseOfferLine(line, now) {
-  const text = String(line || "").replace(/\u00a0/g, " ").trim();
-  if (!text || /\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(text)) return null;
+  const text = String(line || "").replace(/\u00a0/g, " ").replace(/[*_~`]+/g, "").trim();
+  if (!text || hasForeignCurrency(text) || soldOut(text)) return null;
 
-  let departureDate = null;
-  let returnDate = null;
-  let price = null;
-
-  const range = text.match(/(?:^|\s)(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s*(?:→|->|—|–|-)\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/u);
-  if (range) {
-    departureDate = dateFromText(range[1], now);
-    returnDate = dateFromText(range[2], now);
-    price = priceFromText(text);
-  }
-
-  if (!departureDate) {
-    const compact = compactRangeFromText(text, now);
-    if (compact?.[0] && compact?.[1]) {
-      departureDate = compact[0];
-      returnDate = compact[1];
-      price = priceFromText(text);
-    }
-  }
-
-  if (!departureDate) {
-    const nights = text.match(/(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\s+на\s+(\d{1,2})(?:\s*[-–—]\s*\d{1,2})?\s+ноч(?:ь|и|ей)/iu);
-    if (nights) {
-      departureDate = dateFromText(nights[1], now);
-      if (departureDate) returnDate = addDays(departureDate, Number(nights[2]));
-      price = priceFromText(text);
-    }
-  }
-
-  if (!departureDate) {
-    departureDate = dateFromText(text, now);
-    price = priceFromText(text);
-  }
-
-  if (!departureDate || !price) return null;
+  const dates = datesFromText(text, now);
+  const price = priceFromText(text);
+  if (!dates || !price) return null;
+  const { departureDate, returnDate } = dates;
+  const dateList = !returnDate && text.match(/(?<![\d.])(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?(?:\s*[,;]\s*\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)+)/u);
+  const departureDates = dateList ? dateList[1].split(/\s*[,;]\s*/).map(value => dateFromText(value, now)) : null;
+  if (departureDates?.some(value => !value)) return null;
 
   const seatMatch = text.match(/\((\d{1,3})\)|\b(\d{1,3})\s*(?:мест|место|места|кресл)/iu);
   const count = Number(seatMatch?.[1] || seatMatch?.[2] || 0);
@@ -304,6 +356,7 @@ export function parseOfferLine(line, now) {
     price,
     hot: /🔥/u.test(text),
     seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется",
+    ...(departureDates ? { departureDates } : {}),
     ...(baggage ? { baggage } : {})
   };
 }
@@ -311,20 +364,34 @@ export function parseOfferLine(line, now) {
 function detectAirline(line) {
   const text = String(line || "").trim();
   const direct = AIRLINES.find(name => text.toLocaleLowerCase("ru-RU").includes(name.toLocaleLowerCase("ru-RU")));
-  if (direct) return direct === "Charter" ? "Чартер" : direct;
+  const canonical = name => ({
+    "эйр астана": "Air Astana", "вьетжет эйр": "VietJet Air", "скат": "SCAT", charter: "Чартер"
+  })[String(name).toLocaleLowerCase("ru-RU")] || name;
+  if (direct) return canonical(direct);
   const tagged = text.match(/(?:а\/к|airline)\s*[:\-]?\s*([A-Za-zА-ЯЁ][A-Za-zА-ЯЁ0-9 .-]{1,40})/iu);
-  return tagged ? tagged[1].trim() : null;
+  return tagged ? canonical(tagged[1].trim()) : null;
 }
 
 function daysUntil(iso, now) {
   const target = new Date(iso + "T12:00:00Z");
-  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+  const base = flightCalendarDay(now);
   return Math.round((target.getTime() - base.getTime()) / 86400000);
+}
+
+function flightMetadata(line) {
+  const flightNumber = String(line).match(/(?:рейс|flight)\s*:?\s*([A-Z0-9]{2,3}\s?\d{1,4}[A-Z]?)(?![A-Z0-9])/iu)?.[1]?.replace(/\s/g, "").toUpperCase();
+  const departureTime = String(line).match(/(?:время\s+вылета|departure\s+time)\s*:?\s*([0-2]?\d:[0-5]\d)/iu)?.[1]
+    || String(line).match(/(?:вылет|departure)\s*:?\s*\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?\s+([0-2]?\d:[0-5]\d)/iu)?.[1];
+  const [hour] = String(departureTime || "").split(":");
+  return {
+    ...(flightNumber ? { flightNumber } : {}),
+    ...(departureTime && Number(hour) < 24 ? { departureTime: departureTime.padStart(5, "0") } : {})
+  };
 }
 
 function stableExternalId(sourceId, postId, index, offer) {
   if (postId != null) return sourceId + ":" + postId + ":" + index;
-  const raw = [sourceId, offer.from, offer.to, offer.departureDate, offer.returnDate || "", offer.trip, offer.price].join("|");
+  const raw = [sourceId, offer.from, offer.to, offer.departureDate, offer.returnDate || "", offer.trip, offer.airline || "", offer.sourcePrice].join("|");
   return sourceId + ":" + createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
 
@@ -334,21 +401,30 @@ export function parseTelegramPost(text, {
   postedAt = null,
   now = new Date()
 } = {}) {
-  const lines = String(text || "").split("\n").map(line => line.trim()).filter(Boolean);
-  if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(String(text || ""))) return [];
+  const lines = String(text || "").split("\n").map(line => line.replace(/[*_~`]+/g, "").trim()).filter(Boolean);
 
   const offers = [];
   let route = null;
   let tripHint = "OW";
   let airline = null;
   let baggage = null;
+  let defaultAirline = null;
+  let defaultBaggage = null;
+  let blockStart = 0;
+  let metadata = {};
+  let metadataDefaults = {};
   let pendingDeparture = null;
   let pendingReturn = null;
 
   const appendOffer = parsed => {
     if (!route || !parsed?.departureDate || !parsed?.price) return;
+    if (parsed.departureDates) {
+      for (const departureDate of parsed.departureDates) appendOffer({ ...parsed, departureDate, departureDates: null });
+      return;
+    }
     const offset = daysUntil(parsed.departureDate, now);
     if (offset <= 0 || offset > 365) return;
+    if (parsed.returnDate && parsed.returnDate <= parsed.departureDate) return;
     const offer = {
       sourceId,
       externalId: "",
@@ -363,29 +439,72 @@ export function parseTelegramPost(text, {
       currency: "KZT",
       seats: parsed.seats || "Наличие уточняется",
       hot: Boolean(parsed.hot),
-      postedAt
+      postedAt,
+      ...metadata
     };
     offer.externalId = stableExternalId(sourceId, postId, offers.length, offer);
     offers.push(offer);
   };
 
-  for (const line of lines) {
-    const maybeRoute = parseRouteLine(line);
+  for (const rawLine of lines) {
+    let line = rawLine;
+    // Price currency is scoped to one offer; an unrelated USD advert must not
+    // discard all the KZT offers in a supplier's message.
+    if (hasForeignCurrency(line) || soldOut(line)) {
+      pendingDeparture = null;
+      pendingReturn = null;
+      continue;
+    }
+    const inlineDate = line.match(/(?<!\d)(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/u);
+    const inlineRoute = inlineDate && parseRouteLine(line.slice(0, inlineDate.index).trim());
+    const maybeRoute = parseRouteLine(line) || inlineRoute;
     if (maybeRoute) {
       route = maybeRoute;
       tripHint = maybeRoute.trip;
+      airline = defaultAirline;
+      baggage = defaultBaggage;
+      metadata = {};
+      metadataDefaults = {};
+      blockStart = offers.length;
+      pendingDeparture = null;
+      pendingReturn = null;
+      if (!inlineRoute) continue;
+      line = line.slice(inlineDate.index);
+    } else if (/(?:→|->|⟶|➡|➔|⇄|⇆|↔)/u.test(line) && !inlineDate) {
+      // An unsupported multi-leg or broken header must not inherit the last route.
+      route = null;
       pendingDeparture = null;
       pendingReturn = null;
       continue;
     }
 
     const foundAirline = detectAirline(line);
-    if (foundAirline) airline = foundAirline;
+    if (foundAirline) {
+      airline = foundAirline;
+      if (!route) defaultAirline = foundAirline;
+    }
     const foundBaggage = detectBaggage(line);
-    if (foundBaggage) baggage = foundBaggage;
+    if (foundBaggage) {
+      baggage = foundBaggage;
+      if (!route) defaultBaggage = foundBaggage;
+    }
+    const foundMetadata = flightMetadata(line);
+    if (inlineDate) {
+      metadata = { ...metadataDefaults, ...foundMetadata };
+    } else {
+      metadataDefaults = { ...metadataDefaults, ...foundMetadata };
+      metadata = { ...metadata, ...foundMetadata };
+    }
+    // Metadata on a dated row describes that row or its split price, rather
+    // than changing the physical identity of previously parsed flights.
+    for (const offer of inlineDate ? [] : offers.slice(blockStart)) {
+      if (foundAirline) offer.airline = foundAirline;
+      if (foundBaggage) offer.baggage = foundBaggage;
+      Object.assign(offer, foundMetadata);
+    }
 
-    if (/\b(?:RT|туда[ -]?(?:и\s*)?обратно|т\/о)\b/iu.test(line)) tripHint = "RT";
-    if (/\b(?:OW|в одну сторону)\b/iu.test(line)) tripHint = "OW";
+    if (/(?:^|\s)(?:RT|туда[ -]?(?:и\s*)?обратно|т\/о)(?=\s|$|[:,])/iu.test(line)) tripHint = "RT";
+    if (/(?:^|\s)(?:OW|в одну сторону)(?=\s|$|[:,])/iu.test(line)) tripHint = "OW";
 
     const parsed = parseOfferLine(line, now);
     if (parsed && route) {
@@ -395,13 +514,18 @@ export function parseTelegramPost(text, {
       continue;
     }
 
-    const compact = compactRangeFromText(line, now);
-    if (compact?.[0]) {
-      pendingDeparture = compact[0];
-      pendingReturn = compact[1] || null;
-    } else {
-      const oneDate = dateFromText(line, now);
-      if (oneDate && !priceFromText(line)) pendingDeparture = oneDate;
+    const dates = datesFromText(line, now);
+    if (dates && !priceFromText(line)) {
+      if (/^(?:обратно|возврат|return)\s*:/iu.test(line)) {
+        pendingReturn = dates.departureDate;
+      } else {
+        pendingDeparture = dates.departureDate;
+        pendingReturn = dates.returnDate;
+      }
+    } else if (inlineDate && !dates) {
+      pendingDeparture = null;
+      pendingReturn = null;
+      continue;
     }
 
     const standalonePrice = priceFromText(line);
@@ -423,9 +547,9 @@ export function parseTelegramPost(text, {
 }
 
 function isWithinTtl(postedAt, now, ttlHours) {
-  if (!postedAt) return true;
+  if (!postedAt) return false;
   const stamp = new Date(postedAt);
-  if (Number.isNaN(stamp.getTime())) return true;
+  if (Number.isNaN(stamp.getTime())) return false;
   const ageMs = now.getTime() - stamp.getTime();
   return ageMs >= -3600000 && ageMs <= ttlHours * 3600000;
 }
@@ -453,10 +577,13 @@ export async function fetchTelegramSourceOffers({
   shouldSkipText = () => false
 }) {
   const allPosts = new Map();
+  const visitedPages = new Set();
   let pageUrl = source.url;
   let pages = 0;
 
   while (pageUrl && pages < maxPages) {
+    if (visitedPages.has(pageUrl)) break;
+    visitedPages.add(pageUrl);
     const html = await fetchPage(pageUrl, fetchImpl, timeoutMs);
     pages += 1;
     const posts = extractPublicTelegramPosts(html);
@@ -482,10 +609,12 @@ export async function fetchTelegramSourceOffers({
   let postsRead = 0;
   let skippedOld = 0;
   let skippedAuto = 0;
+  let skippedUndated = 0;
   const offers = [];
 
   for (const post of allPosts.values()) {
     if (!isWithinTtl(post.postedAt, now, ttlHours)) {
+      if (!post.postedAt || Number.isNaN(Date.parse(post.postedAt))) skippedUndated += 1;
       skippedOld += 1;
       continue;
     }
@@ -512,6 +641,7 @@ export async function fetchTelegramSourceOffers({
       posts: postsRead,
       offers: offers.length,
       skippedOld,
+      skippedUndated,
       skippedAuto
     }
   };
