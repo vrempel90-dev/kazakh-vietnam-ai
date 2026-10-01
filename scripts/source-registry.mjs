@@ -1,7 +1,8 @@
 import { parseTelegramSourceList, sourceFromHandle } from "./telegram-source-adapter.mjs";
 
 const OWN_PUBLICATION_CHANNEL_HANDLES = new Set([
-  "charter_forever_travel"
+  "charter_forever_travel",
+  "charterkaz"
 ]);
 
 const DEFAULT_PUBLIC_TELEGRAM_CHANNELS = [
