@@ -129,15 +129,16 @@ export function extractPublicTelegramPosts(html) {
 
 function normalizeCity(value) {
   const clean = String(value || "")
-    .replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, "")
-    .replace(/^\p{Extended_Pictographic}+\s*/u, "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
     .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/[\uFE0E\uFE0F\u200D]/g, "")
+    .replace(/[*_~`]+/g, " ")
     .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка)\)\s*/giu, " ")
     .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
     .replace(/^\(+|\)+$/g, "")
     .replace(/\s+/g, " ")
-    .replace(/[,.]+$/g, "")
+    .replace(/^[\s,.;:|/\\-]+|[\s,.;:|/\\-]+$/g, "")
     .trim();
   const code = clean.toUpperCase();
   if (/^[A-Z]{3}$/.test(code) && IATA[code]) return IATA[code];
