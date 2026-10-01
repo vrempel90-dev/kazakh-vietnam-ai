@@ -131,7 +131,7 @@ test("unreadable or corrupt pricing state is a 500 and is preserved", async () =
 });
 
 test("invalid synchronization interval cannot create a one millisecond schedule", () => {
-  for (const value of ["NaN", "Infinity", "oops", "-1", "0"]) assert.equal(syncIntervalFromEnv(value), 15);
+  for (const value of ["NaN", "Infinity", "oops", "-1", "0", "40000", "1e100"]) assert.equal(syncIntervalFromEnv(value), 15);
   assert.equal(syncIntervalFromEnv("2"), 5);
   assert.equal(syncIntervalFromEnv("20"), 20);
 });

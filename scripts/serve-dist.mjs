@@ -20,7 +20,7 @@ const adminToken = String(process.env.ADMIN_PRICING_TOKEN || "");
 const adminTelegramIds = parseAdminTelegramIds(process.env.ADMIN_TELEGRAM_IDS);
 export function syncIntervalFromEnv(value) {
   const minutes = Number(value || 15);
-  return Number.isFinite(minutes) && minutes > 0 ? Math.max(5, minutes) : 15;
+  return Number.isFinite(minutes) && minutes > 0 && minutes * 60_000 <= 2_147_483_647 ? Math.max(5, minutes) : 15;
 }
 const syncIntervalMinutes = syncIntervalFromEnv(process.env.SYNC_INTERVAL_MINUTES);
 const sourceStatusPath = process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json";
