@@ -126,8 +126,8 @@ export function parsePublishTargets(value) {
 
 export function sourceIdForTarget(target) {
   const normalized = String(target || "").trim().replace(/^@/, "").toLowerCase();
-  if (normalized === "charterkaz") return "charterkaz";
-  if (normalized === "charter_forever_travel") return "charter_forever_travel";
+  if (normalized === "charterkaz") return "telegram:charterkaz";
+  if (normalized === "charter_forever_travel") return "telegram:charter_forever_travel";
   return null;
 }
 
