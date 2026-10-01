@@ -43,4 +43,15 @@ assert.equal(created.publishedAt, now.toISOString());
 assert.equal(created.updatedAt, now.toISOString());
 assert.equal(created.expiresAt, "2026-09-27T03:30:00.000Z");
 
-console.log("Offer lifecycle refreshes TTL for every offer that is still present in a live source: passed");
+for (const invalidTtl of [Infinity, -Infinity, NaN, 0, -1, "invalid", 1e300]) {
+  const [flight] = reconcileLifecycle([stableFlight], existing, now, invalidTtl);
+  assert.equal(flight.expiresAt, "2026-09-27T15:30:00.000Z", `Invalid TTL ${String(invalidTtl)} uses the existing 24h default`);
+}
+const [migrated] = reconcileLifecycle([{ ...stableFlight, id: "new-identity", legacyId: "stable" }], existing, now, 24);
+assert.equal(migrated.publishedAt, existing.flights[0].publishedAt, "Identity migration preserves observed publication timestamp");
+const [repairedTimestamps] = reconcileLifecycle([stableFlight], { flights: [{ ...stableFlight, publishedAt: "invalid", updatedAt: "2099-01-01T00:00:00Z" }] }, now, 24);
+assert.equal(repairedTimestamps.publishedAt, now.toISOString());
+assert.equal(repairedTimestamps.updatedAt, now.toISOString());
+assert.deepEqual(reconcileLifecycle([], existing, now, 24), [], "Offers absent from live sources do not persist through lifecycle reconciliation");
+
+console.log("Offer lifecycle live re-observation TTL, price updates, identity migration, invalid TTL/timestamps, and absent-offer expiry: passed");

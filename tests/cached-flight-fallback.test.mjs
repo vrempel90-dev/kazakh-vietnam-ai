@@ -53,4 +53,30 @@ assert.equal(flights[0].verificationNote, "Цена и наличие требу
 assert.equal(flights[0].offset, 2);
 assert.equal(flights[0].expiresAt, "2026-09-27T13:30:00.000Z");
 
-console.log("Cached fallback keeps only recent future customer offers and marks them for confirmation: passed");
+const valid = { ...existing.flights[0], lastSeenAt: "2026-09-27T06:30:00.000Z", expiresAt: "2026-09-27T09:30:00.000Z" };
+const select = (flight, options = {}) => selectCachedFallbackFlights({ generatedAt: now.toISOString(), flights: [flight] }, { now, ...options });
+assert.deepEqual(select({ ...valid, expiresAt: now.toISOString() }), [], "Expired offers cannot be resurrected from cache");
+assert.deepEqual(select({ ...valid, expiresAt: "invalid" }), [], "Malformed explicit expiry fails closed");
+assert.deepEqual(select({ ...valid, departureDate: "2026-09-26" }), []);
+assert.deepEqual(select({ ...valid, departureDate: "2099-01-01" }), [], "Fallback must apply validator's departure horizon");
+assert.deepEqual(select({ ...valid, departureDate: "2026-02-30" }), [], "Invalid calendar date must not normalize into a real date");
+assert.deepEqual(select({ ...valid, from: "Алматы", to: "Алматы" }), [], "Fallback cannot bypass route validation");
+assert.deepEqual(select({ ...valid, trip: "UNKNOWN" }), [], "Fallback cannot bypass trip validation");
+assert.deepEqual(select({ ...valid, price: true }), []);
+assert.deepEqual(select({ ...valid, price: Infinity }), []);
+assert.deepEqual(select({ ...valid, lastSeenAt: "2026-09-27T08:30:00.000Z" }), [], "Future observation timestamps must not extend cache lifetime");
+const [recentUnchanged] = select({ ...valid, updatedAt: "2026-09-01T00:00:00.000Z" });
+assert.equal(recentUnchanged.id, valid.id, "lastSeenAt keeps genuinely re-observed unchanged offers available");
+assert.equal(recentUnchanged.expiresAt, valid.expiresAt, "Fallback cannot extend original fresh expiry");
+assert.equal(select({ ...valid, price: "179000" })[0].price, 179000);
+
+const [firstFallback] = select(existing.flights[0]);
+const [secondFallback] = selectCachedFallbackFlights({ generatedAt: "2026-09-27T09:30:00.000Z", flights: [firstFallback] }, { now: new Date("2026-09-27T09:30:00.000Z") });
+assert.equal(secondFallback.expiresAt, firstFallback.expiresAt, "Repeated fallback reads cannot renew fallback TTL");
+assert.equal(secondFallback.lastSeenAt, firstFallback.lastSeenAt, "Repeated fallback reads preserve source observation time");
+assert.deepEqual(selectCachedFallbackFlights({ flights: [secondFallback] }, { now: new Date(firstFallback.expiresAt) }), [], "Cache stops precisely at its first fallback deadline");
+const [ageBounded] = select({ ...valid, expiresAt: undefined, lastSeenAt: "2026-09-24T08:00:00.000Z" });
+assert.equal(ageBounded.expiresAt, "2026-09-27T08:00:00.000Z", "Cache expiry cannot exceed max observation age");
+assert.equal(select(valid, { maxAgeHours: Infinity, ttlHours: Infinity, maxFlights: Infinity }).length, 1, "Invalid configuration cannot crash fallback or generate infinite expiry");
+
+console.log("Cached fallback validation, original expiry, observation age, immutable fallback deadline, invalid dates/prices/options: passed");

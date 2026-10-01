@@ -1,5 +1,6 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { atomicWriteJson } from "./atomic-json.mjs";
 
 export const DEFAULT_PRICING_CONFIG = {
   version: 1,
@@ -33,7 +34,9 @@ function stringOrUndefined(value) {
 }
 
 function numberOr(value, fallback = 0) {
-  const number = Number(value);
+  const number = typeof value === "number" || (typeof value === "string" && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim()))
+    ? Number(value)
+    : NaN;
   return Number.isFinite(number) ? number : fallback;
 }
 
@@ -49,10 +52,15 @@ export function normalizePricingConfig(input) {
       const calculation = raw?.calculation && typeof raw.calculation === "object" ? raw.calculation : {};
       const type = TYPES.has(calculation.type) ? calculation.type : "fixed_kzt";
       const trip = TRIPS.has(scope.trip) ? scope.trip : undefined;
+      const value = numberOr(calculation.value, NaN);
+      const validCalculation = TYPES.has(calculation.type)
+        && Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER
+        && (calculation.type !== "sale_price_kzt" || value > 0);
+      const validTripScope = scope.trip == null || scope.trip === "" || TRIPS.has(scope.trip);
       return {
         id: stringOrUndefined(raw?.id) || "rule-" + (index + 1),
         name: stringOrUndefined(raw?.name) || "Правило " + (index + 1),
-        enabled: Boolean(raw?.enabled),
+        enabled: raw?.enabled === true && validCalculation && validTripScope,
         priority: Math.round(numberOr(raw?.priority, 0)),
         scope: {
           offerId: stringOrUndefined(scope.offerId),
@@ -63,7 +71,7 @@ export function normalizePricingConfig(input) {
         },
         calculation: {
           type,
-          value: Math.max(0, numberOr(calculation.value, 0))
+          value: validCalculation ? value : 0
         }
       };
     })
@@ -73,17 +81,30 @@ export function normalizePricingConfig(input) {
 export async function loadPricingConfig(path = process.env.PRICING_RULES_PATH || resolve("config/pricing-rules.default.json")) {
   try {
     const parsed = JSON.parse(await readFile(path, "utf8"));
-    return normalizePricingConfig(parsed);
-  } catch {
-    return normalizePricingConfig(DEFAULT_PRICING_CONFIG);
+    return validatedPricingConfig(parsed);
+  } catch (error) {
+    if (error?.code === "ENOENT") return normalizePricingConfig(DEFAULT_PRICING_CONFIG);
+    throw new Error("Could not load pricing configuration", { cause: error });
   }
 }
 
 export async function savePricingConfig(path, config) {
-  const normalized = normalizePricingConfig(config);
+  const normalized = validatedPricingConfig(config);
   normalized.updatedAt = new Date().toISOString();
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(normalized, null, 2) + "\n", "utf8");
+  await atomicWriteJson(path, normalized);
+  return normalized;
+}
+
+function validatedPricingConfig(config) {
+  if (!config || typeof config !== "object" || Array.isArray(config) || !Array.isArray(config.rules)) {
+    throw new TypeError("Pricing configuration must contain a rules array");
+  }
+  const normalized = normalizePricingConfig(config);
+  for (const [index, rule] of normalized.rules.entries()) {
+    if (config.rules[index]?.enabled === true && !rule.enabled) {
+      throw new TypeError("Enabled pricing rule has an invalid calculation or trip scope");
+    }
+  }
   return normalized;
 }
 
@@ -124,24 +145,35 @@ export function selectPricingRule(config, context) {
 function envRate(currency) {
   if (currency === "KZT") return 1;
   const key = "FX_" + currency + "_KZT";
-  const number = Number(process.env[key]);
+  const number = numberOr(process.env[key], NaN);
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
 export function convertCostToKzt(sourcePrice, currency, rates = {}) {
-  const numeric = Number(sourcePrice);
-  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  const numeric = numberOr(sourcePrice, NaN);
+  if (!Number.isFinite(numeric) || numeric <= 0 || numeric > Number.MAX_SAFE_INTEGER) return null;
   const code = String(currency || "KZT").trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) return null;
+  const rateKey = code + "_KZT";
   const rate = code === "KZT"
     ? 1
-    : Number(rates[code + "_KZT"]) || envRate(code);
+    : Object.hasOwn(rates || {}, rateKey)
+      ? numberOr(rates[rateKey], NaN)
+      : envRate(code);
   if (!Number.isFinite(rate) || rate <= 0) return null;
-  return numeric * rate;
+  const costKzt = numeric * rate;
+  return Number.isFinite(costKzt) && costKzt > 0 && costKzt <= Number.MAX_SAFE_INTEGER ? costKzt : null;
 }
 
 export function roundSalePrice(value, step = Number(process.env.SALE_PRICE_ROUNDING) || 1000) {
-  const safeStep = Number.isFinite(step) && step > 0 ? step : 1000;
-  return Math.ceil(value / safeStep) * safeStep;
+  const amount = numberOr(value, NaN);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > Number.MAX_SAFE_INTEGER) return null;
+  const configuredStep = numberOr(step, NaN);
+  const safeStep = configuredStep > 0 && configuredStep <= Number.MAX_SAFE_INTEGER ? configuredStep : 1000;
+  const increments = Math.ceil(amount / safeStep);
+  if (!Number.isSafeInteger(increments)) return null;
+  const rounded = Math.max(amount, increments * safeStep);
+  return Number.isFinite(rounded) && rounded > 0 && rounded <= Number.MAX_SAFE_INTEGER ? rounded : null;
 }
 
 export function calculateSalePrice({ sourcePrice, currency, sourceId, offerId, from, to, trip, rates, config, roundingStep }) {
@@ -161,8 +193,10 @@ export function calculateSalePrice({ sourcePrice, currency, sourceId, offerId, f
   }
 
   if (!Number.isFinite(raw) || raw <= 0) return null;
+  const salePrice = roundSalePrice(raw, roundingStep);
+  if (salePrice == null) return null;
   return {
-    salePrice: roundSalePrice(raw, roundingStep),
+    salePrice,
     costKzt,
     ruleId: rule.id,
     ruleName: rule.name
