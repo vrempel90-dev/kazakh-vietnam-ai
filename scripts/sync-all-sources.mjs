@@ -238,7 +238,9 @@ async function runUnlocked({ now = new Date(), sources = ingestSources(), fetchS
   const retained = observationState.flights.filter(flight => !observedIds.has(flight.id)
     && flight.sourceIds.every(id => failedSources.has(id))
     && Number.isFinite(Date.parse(flight.expiresAt)) && Date.parse(flight.expiresAt) > now.getTime());
-  flights.push(...validateFlightsForPublication(retained, { now }).verified.map(flight => ({ ...flight, cachedFallback: true })));
+  flights.push(...validateFlightsForPublication(retained, { now }).verified.map(flight => ({
+    ...flight, offset: dayOffset(flight.departureDate, now), cachedFallback: true
+  })));
   if (observationStorageAvailable) {
     await atomicWriteJson(observationPath, { version: 1, observedAt: now.toISOString(), flights });
   }

@@ -173,3 +173,37 @@ test("Railway ingestion continues without pretending ephemeral observations are 
     for (const [key, value] of Object.entries(old)) { if (value == null) delete process.env[key]; else process.env[key] = value; }
   }
 });
+
+test("partial outage refreshes retained offsets at Almaty midnight without extending observation expiry", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "partial-outage-midnight-"));
+  const overrides = { FLIGHT_FEED_OUTPUT: join(dir, "flights.json"), SOURCE_STATUS_PATH: join(dir, "status.json"),
+    FLIGHT_SYNC_LOCK_PATH: join(dir, "sync.lock"), FLIGHT_OBSERVATION_STATE_PATH: join(dir, "observations.json"),
+    TELEGRAM_PUBLISH_ENABLED: "false", ALLOW_CACHED_FALLBACK: "false", OFFER_TTL_HOURS: "24" };
+  const old = Object.fromEntries(Object.keys(overrides).map(key => [key, process.env[key]]));
+  Object.assign(process.env, overrides);
+  try {
+    let phase = 0;
+    const options = { sources: [{ id: "telegram:a" }, { id: "telegram:b" }], pricingConfig: DEFAULT_PRICING_CONFIG,
+      fetchSource: async ({ source }) => {
+        if (phase > 0 && source.id === "telegram:a") throw new Error("outage a");
+        return { status: { id: source.id, status: "ok" }, offers: [{
+          ...flight({ to: source.id === "telegram:a" ? "Дубай" : "Пхукет", departureDate: source.id === "telegram:a" ? "2026-10-10" : "2026-10-11" }),
+          sourcePrice: source.id === "telegram:a" ? 100000 : 70000, currency: "KZT", postedAt: "2026-10-01T18:59:00Z"
+        }] };
+      } };
+    await runFlightSync({ ...options, now: new Date("2026-10-01T18:59:00Z") });
+    const before = JSON.parse(await readFile(overrides.FLIGHT_FEED_OUTPUT, "utf8")).flights.find(f => f.to === "Дубай");
+    assert.equal(before.offset, 9);
+    phase = 1;
+    await runFlightSync({ ...options, now: new Date("2026-10-01T19:01:00Z") });
+    const after = JSON.parse(await readFile(overrides.FLIGHT_FEED_OUTPUT, "utf8")).flights;
+    const retained = after.find(f => f.to === "Дубай");
+    assert.equal(retained.offset, 8, "Cached source observations must follow the same current calendar as fresh flights");
+    assert.equal(retained.cachedFallback, true);
+    assert.equal(retained.expiresAt, before.expiresAt);
+    assert.equal(retained.lastSeenAt, before.lastSeenAt);
+    assert.deepEqual(after.sort((a, b) => a.offset - b.offset || a.price - b.price).map(f => f.departureDate), ["2026-10-10", "2026-10-11"], "Client date ordering cannot place a later cheaper live flight ahead of an earlier cached flight");
+  } finally {
+    for (const [key, value] of Object.entries(old)) { if (value == null) delete process.env[key]; else process.env[key] = value; }
+  }
+});

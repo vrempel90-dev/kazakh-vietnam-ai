@@ -79,4 +79,13 @@ const [ageBounded] = select({ ...valid, expiresAt: undefined, lastSeenAt: "2026-
 assert.equal(ageBounded.expiresAt, "2026-09-27T08:00:00.000Z", "Cache expiry cannot exceed max observation age");
 assert.equal(select(valid, { maxAgeHours: Infinity, ttlHours: Infinity, maxFlights: Infinity }).length, 1, "Invalid configuration cannot crash fallback or generate infinite expiry");
 
-console.log("Cached fallback validation, original expiry, observation age, immutable fallback deadline, invalid dates/prices/options: passed");
+const midnightOffer = { ...valid, departureDate: "2026-10-03", lastSeenAt: "2026-10-01T18:50:00Z", expiresAt: "2026-10-02T10:00:00Z" };
+const [beforeMidnight] = selectCachedFallbackFlights({ flights: [midnightOffer] }, { now: new Date("2026-10-01T18:59:00Z") });
+assert.equal(beforeMidnight.offset, 2, "At Almaty 23:59 the cached flight departs in two calendar days");
+const [afterMidnight] = selectCachedFallbackFlights({ flights: [beforeMidnight] }, { now: new Date("2026-10-01T19:01:00Z") });
+assert.equal(afterMidnight.offset, 1, "At Almaty 00:01 cached offsets advance with the business calendar, before UTC midnight");
+assert.equal(afterMidnight.expiresAt, beforeMidnight.expiresAt, "Calendar offset refresh does not renew fallback expiry");
+assert.equal(afterMidnight.lastSeenAt, beforeMidnight.lastSeenAt);
+assert.deepEqual(selectCachedFallbackFlights({ flights: [{ ...midnightOffer, departureDate: "2026-10-02" }] }, { now: new Date("2026-10-01T19:01:00Z") }), [], "Same business-day departure is no longer a future fallback");
+
+console.log("Cached fallback validation, original expiry, observation age, immutable fallback deadline, Almaty midnight offsets, invalid dates/prices/options: passed");

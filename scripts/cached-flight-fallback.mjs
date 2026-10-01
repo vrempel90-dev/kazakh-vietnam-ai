@@ -1,11 +1,11 @@
 import { validateFlightsForPublication } from "./flight-validator.mjs";
 
 function isoDate(date) {
-  return [
-    date.getUTCFullYear(),
-    String(date.getUTCMonth() + 1).padStart(2, "0"),
-    String(date.getUTCDate()).padStart(2, "0")
-  ].join("-");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Almaty", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(date);
+  const value = type => parts.find(part => part.type === type)?.value || "";
+  return [value("year"), value("month"), value("day")].join("-");
 }
 
 function obviousParseArtifact(value) {
@@ -61,7 +61,7 @@ export function selectCachedFallbackFlights(existing, {
     .slice(0, limit)
     .map(flight => {
       const target = new Date(String(flight.departureDate) + "T12:00:00Z");
-      const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+      const base = new Date(today + "T12:00:00Z");
       const offset = Math.max(0, Math.round((target.getTime() - base.getTime()) / 86400000));
       const observedAt = flight.lastSeenAt || flight.updatedAt || flight.publishedAt || existing?.generatedAt;
       // Cached reads never renew source observations or an existing expiry.
