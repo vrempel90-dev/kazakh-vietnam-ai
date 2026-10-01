@@ -52,7 +52,7 @@ assert.deepEqual(countryForFlight(flights[0]), { name: "Вьетнам", flag: "
 
 const posts = buildFlightPosts(flights);
 assert.equal(posts.length, 1);
-assert.ok(posts[0].includes("🇻🇳 <b>Вьетнам — чартерные рейсы</b>"));
+assert.ok(posts[0].includes("🇻🇳 <b>Вьетнам — все актуальные чартеры</b>"));
 assert.ok(posts[0].includes("🇰🇿 → 🇻🇳 <b>Из Казахстана</b>"));
 assert.ok(posts[0].includes("Алматы → Камрань → Алматы"));
 assert.ok(posts[0].includes("218"));
