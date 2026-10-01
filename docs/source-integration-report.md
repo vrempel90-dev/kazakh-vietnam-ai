@@ -1,3 +1,5 @@
+> Историческая проектная запись от 2026-09-24. Текущий Telegram-only production pipeline и состояние интеграций описаны в [CHARTER_SOURCES.md](CHARTER_SOURCES.md).
+
 # Отчёт о техническом исследовании источников
 
 > Обновление 27.09.2026: для **KAZUNION, Crystal Bay и ABK Tourism** в коде реализован адаптер официального SAMO ticket API (`Tickets_SOURCES`, `Tickets_TARGETS`, `Tickets_CURRENCIES`, `Tickets_CLASSES`, `Tickets_PRICES`). Production-получение тарифов активируется только после добавления выданного партнёром API token и, если этого требует оператор, whitelist IP сервера. До этого источники возвращают `configuration_required` и не публикуют цены. Историческая таблица ниже отражает состояние исследования на 24.09.2026 и сохранена как аудит исходных проверок.

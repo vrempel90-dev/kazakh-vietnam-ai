@@ -1,14 +1,16 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { extname, join, normalize } from "node:path";
+import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { loadPricingConfig, savePricingConfig } from "./pricing-engine.mjs";
-import { createTelegramRuntime } from "./telegram-bot.mjs";
+import { createTelegramRuntime, redactTelegramError } from "./telegram-bot.mjs";
 import { isTelegramAdmin, parseAdminTelegramIds, verifyTelegramInitData } from "./telegram-admin-auth.mjs";
 import { readSourceStatus } from "./source-status.mjs";
+import { ingestSources } from "./source-registry.mjs";
+import { assertDurableStateStorage } from "./production-storage.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
@@ -16,7 +18,11 @@ const port = Number(process.env.PORT || 3000);
 const pricingPath = process.env.PRICING_RULES_PATH || "/data/pricing-rules.json";
 const adminToken = String(process.env.ADMIN_PRICING_TOKEN || "");
 const adminTelegramIds = parseAdminTelegramIds(process.env.ADMIN_TELEGRAM_IDS);
-const syncIntervalMinutes = Math.max(5, Number(process.env.SYNC_INTERVAL_MINUTES || 15));
+export function syncIntervalFromEnv(value) {
+  const minutes = Number(value || 15);
+  return Number.isFinite(minutes) && minutes > 0 && minutes * 60_000 <= 2_147_483_647 ? Math.max(5, minutes) : 15;
+}
+const syncIntervalMinutes = syncIntervalFromEnv(process.env.SYNC_INTERVAL_MINUTES);
 const sourceStatusPath = process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json";
 
 const publicAppUrl = String(
@@ -56,14 +62,23 @@ const contentTypes = {
   ".woff2": "font/woff2"
 };
 
-function safePath(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split("?")[0] || "/");
-  const clean = normalize(decoded).replace(/^([/\\])+/, "");
-  if (clean.startsWith("..")) return null;
-  return join(root, clean || "index.html");
+class RequestError extends Error {
+  constructor(message, statusCode = 400) {
+    super(message);
+    this.statusCode = statusCode;
+  }
 }
 
-async function sendFile(res, path) {
+function safePath(urlPath, staticRoot) {
+  const decoded = decodeURIComponent(urlPath.split("?")[0] || "/");
+  if (decoded.includes("\0")) throw new RequestError("invalid_path");
+  const path = resolve(staticRoot, "." + decoded.replaceAll("\\", "/"));
+  const inside = relative(staticRoot, path);
+  if (inside === ".." || inside.startsWith(".." + sep) || isAbsolute(inside)) return null;
+  return inside ? path : join(staticRoot, "index.html");
+}
+
+async function sendFile(res, path, head = false) {
   try {
     const info = await stat(path);
     if (!info.isFile()) return false;
@@ -72,7 +87,18 @@ async function sendFile(res, path) {
     res.setHeader("Cache-Control", extname(path) === ".html" || extname(path) === ".json"
       ? "no-cache"
       : "public, max-age=31536000, immutable");
-    createReadStream(path).pipe(res);
+    res.setHeader("Content-Length", info.size);
+    if (head) {
+      res.end();
+      return true;
+    }
+    const stream = createReadStream(path);
+    stream.once("error", () => {
+      if (res.headersSent) res.destroy();
+      else sendJson(res, 500, { error: "static_file_unavailable" });
+    });
+    res.once("close", () => stream.destroy());
+    stream.pipe(res);
     return true;
   } catch {
     return false;
@@ -81,6 +107,7 @@ async function sendFile(res, path) {
 
 function sendJson(res, statusCode, body) {
   res.statusCode = statusCode;
+  res.removeHeader("Content-Length");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.end(JSON.stringify(body));
@@ -104,13 +131,15 @@ function signAdminSession(userId, ttlSeconds = 3600) {
 
 function verifyAdminSession(token) {
   if (!adminToken || !token || !token.includes(".")) return false;
-  const [payload, signature] = token.split(".", 2);
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [payload, signature] = parts;
   const expected = createHmac("sha256", adminToken).update(payload).digest("base64url");
   if (!safeEqualText(signature, expected)) return false;
   try {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    if (!parsed?.uid || !parsed?.exp) return false;
-    if (Number(parsed.exp) < Math.floor(Date.now() / 1000)) return false;
+    if (!parsed?.uid || !Number.isSafeInteger(parsed.exp)) return false;
+    if (parsed.exp <= Math.floor(Date.now() / 1000)) return false;
     return isTelegramAdmin(String(parsed.uid), adminTelegramIds);
   } catch {
     return false;
@@ -126,12 +155,19 @@ function isAuthorized(req) {
 }
 
 async function readJsonBody(req) {
-  let raw = "";
-  for await (const chunk of req) {
-    raw += chunk;
-    if (raw.length > 100_000) throw new Error("Request body is too large");
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+    size += chunk.length;
+    if (size > 100_000) throw new RequestError("request_body_too_large", 413);
+    chunks.push(chunk);
   }
-  return raw ? JSON.parse(raw) : {};
+  const raw = Buffer.concat(chunks).toString("utf8");
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new RequestError("invalid_json");
+  }
 }
 
 function runFlightSync(reason = "scheduled") {
@@ -171,44 +207,57 @@ function runFlightSync(reason = "scheduled") {
   return true;
 }
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url || "/", "http://localhost");
+export function createAppServer({ staticRoot = root, telegramRuntime = telegram, startSync = runFlightSync } = {}) {
+  async function handleRequest(req, res) {
+    let url;
+    try {
+      url = new URL(req.url || "/", "http://localhost");
+      // Validate percent encoding for API paths as well as static paths.
+      decodeURIComponent(url.pathname);
+    } catch {
+      throw new RequestError("invalid_path");
+    }
 
-  if (url.pathname === "/health") {
-    sendJson(res, 200, {
-      ok: true,
-      sync: syncState,
-      telegram: {
-        enabled: telegram.status.enabled,
-        configured: telegram.status.configured,
-        username: telegram.status.username,
-        lastConfiguredAt: telegram.status.lastConfiguredAt,
-        lastError: telegram.status.lastError
-      }
-    });
-    return;
-  }
-
-  if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
-    const secretHeader = req.headers["x-telegram-bot-api-secret-token"];
-    if (!telegram.isWebhookAuthorized(secretHeader)) {
-      sendJson(res, 401, { error: "unauthorized" });
+    if (url.pathname === "/health") {
+      sendJson(res, 200, {
+        ok: true,
+        sync: syncState,
+        telegram: {
+          enabled: telegramRuntime.status.enabled,
+          configured: telegramRuntime.status.configured,
+          username: telegramRuntime.status.username,
+          lastConfiguredAt: telegramRuntime.status.lastConfiguredAt,
+          lastError: telegramRuntime.status.lastError
+        }
+      });
       return;
     }
-    try {
+
+    if (url.pathname === "/ready") {
+      const build = await stat(join(staticRoot, "index.html")).catch(error => {
+        if (error?.code === "ENOENT") return null;
+        throw error;
+      });
+      const ready = Boolean(build?.isFile());
+      sendJson(res, ready ? 200 : 503, { ok: ready, buildAvailable: ready });
+      return;
+    }
+
+    if (url.pathname === "/api/telegram/webhook" && req.method === "POST") {
+      const secretHeader = req.headers["x-telegram-bot-api-secret-token"];
+      if (!telegramRuntime.isWebhookAuthorized(secretHeader)) {
+        sendJson(res, 401, { error: "unauthorized" });
+        return;
+      }
       const update = await readJsonBody(req);
       sendJson(res, 200, { ok: true });
-      void telegram.handleUpdate(update).catch(error => {
-        console.error("Telegram update failed:", error instanceof Error ? error.message : String(error));
+      void telegramRuntime.handleUpdate(update).catch(error => {
+        console.error("Telegram update failed:", redactTelegramError(error, [process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_WEBHOOK_SECRET, adminToken]));
       });
-    } catch (error) {
-      sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      return;
     }
-    return;
-  }
 
-  if (url.pathname === "/api/admin/telegram-auth" && req.method === "POST") {
-    try {
+    if (url.pathname === "/api/admin/telegram-auth" && req.method === "POST") {
       const body = await readJsonBody(req);
       const verified = verifyTelegramInitData(body?.initData, process.env.TELEGRAM_BOT_TOKEN, 900);
       if (!verified.ok || !isTelegramAdmin(verified.user?.id, adminTelegramIds)) {
@@ -225,19 +274,15 @@ const server = createServer(async (req, res) => {
         expiresIn: 3600,
         admin: verified.user
       });
-    } catch (error) {
-      sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
-    }
-    return;
-  }
-
-  if (url.pathname.startsWith("/api/admin/")) {
-    if (!isAuthorized(req)) {
-      sendJson(res, 401, { error: "unauthorized" });
       return;
     }
 
-    try {
+    if (url.pathname.startsWith("/api/admin/")) {
+      if (!isAuthorized(req)) {
+        sendJson(res, 401, { error: "unauthorized" });
+        return;
+      }
+
       if (url.pathname === "/api/admin/pricing" && req.method === "GET") {
         const config = await loadPricingConfig(pricingPath);
         sendJson(res, 200, { config, sync: syncState });
@@ -245,15 +290,22 @@ const server = createServer(async (req, res) => {
       }
 
       if (url.pathname === "/api/admin/pricing" && req.method === "PUT") {
+        assertDurableStateStorage(pricingPath, process.env, "Pricing rules");
         const body = await readJsonBody(req);
-        const config = await savePricingConfig(pricingPath, body?.config ?? body);
-        const syncStarted = runFlightSync("pricing-updated");
+        let config;
+        try {
+          config = await savePricingConfig(pricingPath, body?.config ?? body);
+        } catch (error) {
+          if (error instanceof TypeError) throw new RequestError("invalid_pricing_config");
+          throw error;
+        }
+        const syncStarted = startSync("pricing-updated");
         sendJson(res, 200, { config, syncStarted, sync: syncState });
         return;
       }
 
       if (url.pathname === "/api/admin/sync" && req.method === "POST") {
-        const syncStarted = runFlightSync("manual");
+        const syncStarted = startSync("manual");
         sendJson(res, syncStarted ? 202 : 200, { syncStarted, sync: syncState });
         return;
       }
@@ -272,47 +324,88 @@ const server = createServer(async (req, res) => {
 
       if (url.pathname === "/api/admin/sources" && req.method === "GET") {
         const sourceStatus = await readSourceStatus(sourceStatusPath);
-        sendJson(res, 200, sourceStatus || {
+        sendJson(res, 200, {
+          ...(sourceStatus || {
           generatedAt: null,
           sources: [],
           summary: {},
           status: "not_synced_yet"
+          }),
+          configuredSources: ingestSources().map(({ id, kind, label }) => ({ id, kind, label }))
         });
         return;
       }
 
       sendJson(res, 404, { error: "not_found" });
       return;
-    } catch (error) {
-      sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
+
+    if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+      sendJson(res, 404, { error: "not_found" });
       return;
     }
+    if (!["GET", "HEAD"].includes(req.method)) {
+      res.setHeader("Allow", "GET, HEAD");
+      sendJson(res, 405, { error: "method_not_allowed" });
+      return;
+    }
+
+    const requested = safePath(url.pathname, staticRoot);
+    if (!requested) throw new RequestError("invalid_path", 403);
+    if (await sendFile(res, requested, req.method === "HEAD")) return;
+
+    if (extname(url.pathname)) {
+      sendJson(res, 404, { error: "not_found" });
+      return;
+    }
+    if (await sendFile(res, join(staticRoot, "index.html"), req.method === "HEAD")) return;
+
+    res.statusCode = 503;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end("Build output is unavailable");
   }
+  return createServer((req, res) => {
+    void handleRequest(req, res).catch(error => {
+      if (res.headersSent || res.destroyed) { res.destroy(); return; }
+      if (error?.code === "PERSISTENT_STORAGE_REQUIRED") {
+        sendJson(res, 503, { error: "persistent_storage_required" });
+        return;
+      }
+      if (error instanceof RequestError || error instanceof URIError) {
+        if (error.statusCode === 413) {
+          res.setHeader("Connection", "close");
+          req.resume();
+        }
+        sendJson(res, error.statusCode || 400, { error: error instanceof URIError ? "invalid_path" : error.message });
+        return;
+      }
+      // Filesystem/configuration failures must remain server failures, not client validation errors.
+      console.error("HTTP request failed", {
+        code: error?.code || "internal_error",
+        message: redactTelegramError(error, [process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_WEBHOOK_SECRET, adminToken])
+      });
+      sendJson(res, 500, { error: "internal_error" });
+    });
+  });
+}
 
-  const requested = safePath(url.pathname);
-  if (requested && await sendFile(res, requested)) return;
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const server = createAppServer();
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Charter app listening on 0.0.0.0:${port}`);
+    if (!adminToken) console.warn("ADMIN_PRICING_TOKEN is not configured; pricing admin API is disabled.");
 
-  if (await sendFile(res, join(root, "index.html"))) return;
+    if (telegram.status.enabled) {
+      setTimeout(() => {
+        void telegram.configure()
+          .then(status => console.log("Telegram configured", { username: status.username }))
+          .catch(error => console.error("Telegram configuration failed:", error instanceof Error ? error.message : String(error)));
+      }, 1500);
+    } else {
+      console.warn("Telegram bot is not configured yet; set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET.");
+    }
 
-  res.statusCode = 503;
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.end("Build output is unavailable");
-});
-
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Charter app listening on 0.0.0.0:${port}`);
-  if (!adminToken) console.warn("ADMIN_PRICING_TOKEN is not configured; pricing admin API is disabled.");
-
-  if (telegram.status.enabled) {
-    setTimeout(() => {
-      void telegram.configure()
-        .then(status => console.log("Telegram configured", { username: status.username }))
-        .catch(error => console.error("Telegram configuration failed:", error instanceof Error ? error.message : String(error)));
-    }, 1500);
-  } else {
-    console.warn("Telegram bot is not configured yet; set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET.");
-  }
-
-  setTimeout(() => runFlightSync("startup"), 2500);
-  setInterval(() => runFlightSync("scheduled"), syncIntervalMinutes * 60 * 1000);
-});
+    setTimeout(() => runFlightSync("startup"), 2500);
+    setInterval(() => runFlightSync("scheduled"), syncIntervalMinutes * 60 * 1000);
+  });
+}

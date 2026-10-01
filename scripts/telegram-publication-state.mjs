@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { atomicWriteJson } from "./atomic-json.mjs";
+import { postFingerprint, telegramTextLength } from "./telegram-publisher.mjs";
 
 function emptyState() {
   return {
@@ -8,17 +10,59 @@ function emptyState() {
     targets: {},
     targetBatches: {},
     targetDigests: {},
+    targetPlans: {},
     meta: { initializedAt: null }
   };
 }
 
 function normalizeState(parsed) {
-  if (!parsed || parsed.version !== 1 || typeof parsed.targets !== "object" || Array.isArray(parsed.targets)) {
-    return emptyState();
+  const isRecord = value => value && typeof value === "object" && !Array.isArray(value);
+  if (!parsed || parsed.version !== 1 || !isRecord(parsed.targets)) {
+    throw new Error("Invalid Telegram publication state schema");
+  }
+  for (const key of ["targetBatches", "targetDigests", "targetPlans", "meta"]) {
+    if (parsed[key] != null && !isRecord(parsed[key])) throw new Error("Invalid Telegram publication state " + key);
+  }
+  for (const entries of Object.values(parsed.targets)) {
+    if (!isRecord(entries) || Object.values(entries).some(value => !isRecord(value)
+      || typeof value.fingerprint !== "string" || !Number.isFinite(Date.parse(value.publishedAt)))) {
+      throw new Error("Invalid Telegram publication state entries");
+    }
+  }
+  const validDate = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && Number.isFinite(Date.parse(value + "T12:00:00Z")) && new Date(value + "T12:00:00Z").toISOString().slice(0, 10) === value;
+  for (const entry of Object.values(parsed.targetBatches || {})) {
+    if (!isRecord(entry) || !Number.isFinite(Date.parse(entry.publishedAt))) throw new Error("Invalid Telegram publication state batch");
+  }
+  for (const entry of Object.values(parsed.targetDigests || {})) {
+    if (!isRecord(entry) || !validDate(entry.date) || !Number.isFinite(Date.parse(entry.publishedAt))) throw new Error("Invalid Telegram publication state digest");
+  }
+  for (const target of Object.values(parsed.targetPlans || {})) {
+    if (!isRecord(target)) throw new Error("Invalid Telegram publication state plan target");
+    for (const plan of Object.values(target)) {
+      if (!isRecord(plan) || !validDate(plan.date) || !Number.isFinite(Date.parse(plan.createdAt))
+        || !Array.isArray(plan.flights) || !Array.isArray(plan.posts)) throw new Error("Invalid Telegram publication state plan");
+      const ids = new Set();
+      for (const flight of plan.flights) {
+        if (!isRecord(flight) || typeof flight.id !== "string" || !flight.id || !validDate(flight.departureDate)
+          || typeof flight.from !== "string" || typeof flight.to !== "string" || !["OW", "RT"].includes(flight.trip)
+          || typeof flight.price !== "number" || !Number.isFinite(flight.price) || flight.price <= 0)
+          throw new Error("Invalid Telegram publication state planned flight");
+        ids.add(flight.id);
+      }
+      for (const post of plan.posts) {
+        if (!isRecord(post) || !["pending", "sending", "sent", "expired", "review"].includes(post.status)
+          || typeof post.text !== "string" || !post.text || telegramTextLength(post.text) > 4096
+          || typeof post.country !== "string" || !Array.isArray(post.flightIds) || !post.flightIds.length
+          || post.flightIds.some(id => !ids.has(id)) || post.contentHash !== postFingerprint(post))
+          throw new Error("Invalid Telegram publication state planned post");
+      }
+    }
   }
   return {
     version: 1,
     targets: parsed.targets || {},
+    targetPlans: parsed.targetPlans || {},
     targetBatches:
       parsed.targetBatches && typeof parsed.targetBatches === "object" && !Array.isArray(parsed.targetBatches)
         ? parsed.targetBatches
@@ -54,9 +98,16 @@ export async function loadPublicationState(path) {
   const filePath = resolve(path);
   try {
     return normalizeState(JSON.parse(await readFile(filePath, "utf8")));
-  } catch {
-    return emptyState();
+  } catch (error) {
+    if (error.code === "ENOENT") return emptyState();
+    throw new Error("Could not load Telegram publication state; refusing to reset duplicate protection", { cause: error });
   }
+}
+
+// Hot notifications are once per physical flight, including after price/seat edits.
+export function isHotPublicationPending(state, target, flight) {
+  const entries = state?.targets?.[target] || {};
+  return !entries[flight?.id] && !(flight?.legacyId && entries[flight.legacyId]);
 }
 
 export function isPublicationStateInitialized(state) {
@@ -133,7 +184,8 @@ export function markFlightsPublished(state, target, flights, publishedAt = new D
     if (!flight?.id) continue;
     state.targets[target][flight.id] = {
       fingerprint: publicationFingerprint(flight),
-      publishedAt
+      publishedAt,
+      departureDate: flight.departureDate
     };
   }
   return state;
@@ -150,23 +202,23 @@ export function prunePublicationState(state, {
   const limit = Math.max(100, Math.floor(Number(maxEntriesPerTarget) || 2000));
 
   for (const [target, entries] of Object.entries(state.targets)) {
+    const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const future = Object.entries(entries || {}).filter(([, value]) => value?.departureDate >= localDate);
     const kept = Object.entries(entries || {})
       .filter(([, value]) => {
+        if (value?.departureDate >= localDate) return false;
         const time = new Date(value?.publishedAt || 0).getTime();
         return Number.isFinite(time) && time >= cutoff;
       })
       .sort((a, b) => new Date(b[1]?.publishedAt || 0).getTime() - new Date(a[1]?.publishedAt || 0).getTime())
-      .slice(0, limit);
+      .slice(0, Math.max(0, limit - future.length));
 
-    state.targets[target] = Object.fromEntries(kept);
+    state.targets[target] = Object.fromEntries([...future, ...kept]);
   }
   return state;
 }
 
 export async function savePublicationState(path, state) {
-  const filePath = resolve(path);
-  await mkdir(dirname(filePath), { recursive: true });
-  const tempPath = filePath + ".tmp-" + process.pid + "-" + Date.now();
-  await writeFile(tempPath, JSON.stringify(state, null, 2) + "\n", "utf8");
-  await rename(tempPath, filePath);
+  normalizeState(state);
+  await atomicWriteJson(path, state);
 }

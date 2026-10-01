@@ -1,10 +1,28 @@
 import { parseAdminTelegramIds } from "./telegram-admin-auth.mjs";
+import { timingSafeEqual } from "node:crypto";
 const DEFAULT_MANAGER_PHONE = "77007772414";
 
 export function normalizePublicUrl(value) {
   const raw = String(value || "").trim().replace(/\/$/, "");
   if (!raw) return "";
-  return /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
+  if (raw.includes("://") && !/^https?:\/\//i.test(raw)) return "";
+  try {
+    const url = new URL(/^https?:\/\//i.test(raw) ? raw : "https://" + raw);
+    if (!["http:", "https:"].includes(url.protocol) || !url.hostname || url.username || url.password) return "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
+export function redactTelegramError(error, secrets = []) {
+  let message = error instanceof Error ? error.message : String(error);
+  for (const value of secrets) {
+    const secret = String(value || "");
+    if (!secret) continue;
+    message = message.replaceAll(secret, "[redacted]").replaceAll(encodeURIComponent(secret), "[redacted]");
+  }
+  return message;
 }
 
 export function buildTelegramHomeKeyboard(publicAppUrl, managerPhone = DEFAULT_MANAGER_PHONE) {
@@ -49,22 +67,28 @@ export function createTelegramRuntime({
 
   async function api(method, payload = {}) {
     if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
-    const response = await fetchImpl(base + method, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15000)
-    });
-    const result = await response.json();
-    if (!response.ok || !result?.ok) {
-      throw new Error(result?.description || ("Telegram API " + response.status));
+    try {
+      const response = await fetchImpl(base + method, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000)
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.description || ("Telegram API " + response.status));
+      }
+      return result.result;
+    } catch (error) {
+      throw new Error(redactTelegramError(error, [botToken, secret]));
     }
-    return result.result;
   }
 
   function isWebhookAuthorized(value) {
     if (!secret) return false;
-    return String(value || "") === secret;
+    const supplied = Buffer.from(String(value || ""));
+    const expected = Buffer.from(secret);
+    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
   }
 
   async function sendHome(chatId, firstName = "") {
@@ -117,7 +141,7 @@ export function createTelegramRuntime({
         reply_markup: {
           inline_keyboard: [[{
             text: "Открыть админ-панель",
-            web_app: { url: appUrl + "/?admin=1" }
+            web_app: { url: new URL("/?admin=1", appUrl).toString() }
           }]]
         }
       });
@@ -178,7 +202,7 @@ export function createTelegramRuntime({
       ]);
 
       await api("setWebhook", {
-        url: appUrl + "/api/telegram/webhook",
+        url: new URL("/api/telegram/webhook", appUrl).toString(),
         secret_token: secret,
         allowed_updates: ["message"],
         drop_pending_updates: false
@@ -189,8 +213,8 @@ export function createTelegramRuntime({
       status.lastError = null;
     } catch (error) {
       status.configured = false;
-      status.lastError = error instanceof Error ? error.message : String(error);
-      throw error;
+      status.lastError = redactTelegramError(error, [botToken, secret]);
+      throw new Error(status.lastError);
     }
     return status;
   }

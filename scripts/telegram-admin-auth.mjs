@@ -17,6 +17,7 @@ export function verifyTelegramInitData(initData, botToken, maxAgeSeconds = 900) 
   const params = new URLSearchParams(raw);
   const hash = params.get("hash");
   if (!hash) return { ok: false, reason: "missing_hash" };
+  if (!/^[a-f\d]{64}$/i.test(hash)) return { ok: false, reason: "invalid_hash" };
 
   params.delete("hash");
   const dataCheckString = [...params.entries()]

@@ -53,3 +53,11 @@ test("additional public Telegram channels can be configured without duplicates",
     1
   );
 });
+
+test("malformed public source handles are ignored rather than fetched as channel paths", () => {
+  const sources = configuredTelegramSources({
+    TELEGRAM_SOURCE_CHANNELS: "@supplier_one,https://example.com/not-telegram,@bad handle,../private,@,https://t.me/s/supplier_two?before=123"
+  });
+  assert.deepEqual(sources.map(source => source.handle), ["supplier_one", "supplier_two"]);
+  assert.ok(sources.every(source => source.url === "https://t.me/s/" + source.handle));
+});

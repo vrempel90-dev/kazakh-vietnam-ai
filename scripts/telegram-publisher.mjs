@@ -1,4 +1,11 @@
+import { redactTelegramError } from "./telegram-bot.mjs";
+import { createHash } from "node:crypto";
+
 const AUTO_MARKER = "🤖 Автообновление";
+
+export function postFingerprint(post) {
+  return createHash("sha256").update(JSON.stringify([post.text, post.country, post.flightIds])).digest("hex");
+}
 
 const COUNTRY_BY_CITY = new Map([
   ["алматы", ["Казахстан", "🇰🇿"]],
@@ -70,8 +77,23 @@ function cityKey(value) {
     .replace(/[^а-яёa-z0-9]/giu, "");
 }
 
+// Reuse the parser's canonical cities, with explicit common names and airport aliases
+// for callers that supply feed objects directly.
+const CITY_ALIASES = new Map(Object.entries({
+  almaty: "алматы", ala: "алматы", astana: "астана", nqz: "астана", shymkent: "шымкент",
+  aktau: "актау", sco: "актау", aktobe: "актобе", atyrau: "атырау", karaganda: "караганда",
+  dubai: "дубай", dxb: "дубай", dwc: "дубай", sharjah: "шарджа", shj: "шарджа",
+  abudhabi: "абудаби", auh: "абудаби", phuket: "пхукет", hkt: "пхукет",
+  bangkok: "бангкок", bkk: "бангкок", antalya: "анталия", ayt: "анталия",
+  istanbul: "стамбул", ist: "стамбул", saw: "стамбул", sharmelsheikh: "шармэльшейх",
+  sharmelshaikh: "шармэльшейх", ssh: "шармэльшейх", hurghada: "хургада", hrg: "хургада",
+  nhatrang: "нячанг", camranh: "нячанг", cxr: "нячанг", danang: "дананг", dad: "дананг",
+  phuquoc: "фукуок", pqc: "фукуок", male: "мале", colombo: "коломбо", sanya: "санья"
+}));
+
 function cityCountry(value) {
-  const found = COUNTRY_BY_CITY.get(cityKey(value));
+  const key = cityKey(value);
+  const found = COUNTRY_BY_CITY.get(CITY_ALIASES.get(key) || key);
   if (!found) return null;
   return { name: found[0], flag: found[1] };
 }
@@ -121,13 +143,13 @@ export function parsePublishTargets(value) {
     .split(",")
     .map(item => item.trim())
     .filter(Boolean)
-    .map(chat => chat.startsWith("@") || /^-?\d+$/.test(chat) ? chat : "@" + chat);
+    .map(chat => /^-?\d+$/.test(chat) ? chat : (chat.startsWith("@") ? chat : "@" + chat).toLowerCase())
+    .filter((chat, index, chats) => chats.indexOf(chat) === index);
 }
 
 export function sourceIdForTarget(target) {
   const normalized = String(target || "").trim().replace(/^@/, "").toLowerCase();
-  if (normalized === "charterkaz") return "telegram:charterkaz";
-  if (normalized === "charter_forever_travel") return "telegram:charter_forever_travel";
+  if (normalized && !/^-?\d+$/.test(normalized)) return "telegram:" + normalized;
   return null;
 }
 
@@ -218,75 +240,72 @@ function groupFlightsByCountry(flights) {
   });
 }
 
-export function buildFlightPostBatches(flights, maxChars = 4050) {
-  const posts = [];
-
-  for (const group of groupFlightsByCountry(flights)) {
-    const items = sortFlightsForCountry(group.flights, group.country);
-    const intro = group.country.flag + " <b>" + esc(group.country.name) + " — все актуальные чартеры</b>\n\n";
-    const hasCached = items.some(flight => Boolean(flight?.cachedFallback));
-    const footer = hasCached
-      ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
-      : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
-
-    let body = "";
-    let currentDirection = null;
-    const flightIds = [];
-
-    for (const flight of items) {
-      const direction = directionInfo(flight, group.country);
-      const needsHeading = currentDirection !== direction.key;
-      const heading = needsHeading
-        ? (body ? "\n\n" : "") + direction.label + "\n"
-        : "\n";
-      const piece = heading + flightBlock(flight);
-      body += piece;
-      currentDirection = direction.key;
-      if (flight?.id) flightIds.push(flight.id);
-    }
-
-    let text = intro + body + footer;
-
-    if (text.length > maxChars) {
-      const compactBody = [];
-      let lastDirection = null;
-      for (const flight of items) {
-        const direction = directionInfo(flight, group.country);
-        if (direction.key !== lastDirection) {
-          compactBody.push((compactBody.length ? "\n" : "") + direction.label);
-          lastDirection = direction.key;
-        }
-        compactBody.push(
-          (flight.hot ? "🔥 " : "• ")
-          + flightRoute(flight)
-          + " · "
-          + fmtDate(flight.departureDate)
-          + (flight.returnDate ? "–" + fmtDate(flight.returnDate) : "")
-          + " · "
-          + fmtPrice(flight.price)
-        );
-      }
-      text = intro + compactBody.join("\n") + footer;
-    }
-
-    if (text.length > maxChars) {
-      throw new Error(
-        "Country post exceeds Telegram limit for " + group.country.name
-        + ": " + text.length + " chars"
-      );
-    }
-
-    posts.push({
-      text,
-      flightIds,
-      country: group.country.name
-    });
-  }
-
-  return posts;
+export function telegramTextLength(text) {
+  return String(text).replace(/<\/?b>/g, "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").length;
 }
 
-export function buildFlightPosts(flights, maxChars = 4050) {
+function splitEscapedText(text, limit) {
+  const chunks = [];
+  let chunk = "";
+  let size = 0;
+  for (const token of text.match(/&(?:amp|lt|gt);|[\s\S]/gu) || []) {
+    const length = token.startsWith("&") && token.endsWith(";") ? 1 : token.length;
+    if (size + length > limit && chunk) { chunks.push(chunk); chunk = ""; size = 0; }
+    chunk += token;
+    size += length;
+  }
+  if (chunk) chunks.push(chunk);
+  return chunks;
+}
+
+export function buildFlightPostBatches(flights, maxChars = 4096) {
+  const limit = Math.min(4096, Math.max(256, Math.floor(Number(maxChars) || 4096)));
+  const posts = [];
+  for (const group of groupFlightsByCountry(flights)) {
+    const items = sortFlightsForCountry(group.flights, group.country);
+    const title = group.country.flag + " <b>" + esc(group.country.name) + " — все актуальные чартеры";
+    const footer = items.some(flight => Boolean(flight?.cachedFallback))
+      ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
+      : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
+    const renderBody = entries => {
+      let directionKey;
+      return entries.map(entry => {
+        const heading = directionKey !== entry.direction.key ? entry.direction.label + "\n" : "";
+        directionKey = entry.direction.key;
+        return heading + entry.block;
+      }).join("\n");
+    };
+    const entries = items.map(flight => ({ id: flight.id, block: flightBlock(flight), direction: directionInfo(flight, group.country) }));
+    const whole = title + "</b>\n\n" + renderBody(entries) + footer;
+    if (telegramTextLength(whole) <= limit) {
+      posts.push({ text: whole, flightIds: entries.map(item => item.id).filter(Boolean), country: group.country.name });
+      continue;
+    }
+    // Reserve a bounded part-number suffix. Split complete records wherever possible;
+    // an exceptionally long single record is continued without truncating its fields.
+    const overhead = telegramTextLength(title + " — часть 999999/999999</b>\n\n" + footer);
+    const expanded = entries.flatMap(entry => splitEscapedText(entry.block,
+      limit - overhead - telegramTextLength(entry.direction.label) - 1).map(block => ({ ...entry, block })));
+    const chunks = [];
+    let chunk = [];
+    for (const entry of expanded) {
+      if (chunk.length && overhead + telegramTextLength(renderBody([...chunk, entry])) > limit) {
+        chunks.push(chunk); chunk = [];
+      }
+      chunk.push(entry);
+    }
+    if (chunk.length) chunks.push(chunk);
+    for (const [index, part] of chunks.entries()) {
+      const text = title + ` — часть ${index + 1}/${chunks.length}</b>\n\n` + renderBody(part) + footer;
+      if (telegramTextLength(text) > limit) throw new Error("Country post cannot fit Telegram limit");
+      posts.push({ text, flightIds: [...new Set(part.map(item => item.id).filter(Boolean))], country: group.country.name });
+    }
+  }
+  return posts.map(post => ({ ...post, contentHash: postFingerprint(post) }));
+}
+
+export function buildFlightPosts(flights, maxChars = 4096) {
   return buildFlightPostBatches(flights, maxChars).map(post => post.text);
 }
 
@@ -333,7 +352,9 @@ async function telegramApi(token, method, payload, fetchImpl = fetch) {
   });
   const result = await response.json();
   if (!response.ok || !result?.ok) {
-    throw new Error(result?.description || ("Telegram API " + response.status));
+    const error = new Error(redactTelegramError(result?.description || ("Telegram API " + response.status), [token, process.env.TELEGRAM_WEBHOOK_SECRET]));
+    error.definitive = result?.ok === false;
+    throw error;
   }
   return result.result;
 }
@@ -345,6 +366,10 @@ export async function publishFreshFlights({
   publicAppUrl,
   managerPhone,
   fetchImpl = fetch,
+  postBatches,
+  beforePost,
+  afterPost,
+  onPostFailure,
   delayMs = Math.max(0, Number(process.env.POST_DELAY_SECONDS || 2) * 1000),
   maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 2)))
 }) {
@@ -362,15 +387,18 @@ export async function publishFreshFlights({
 
   for (const target of targetList) {
     const targetFlights = filterFlightsForTarget(flights, target);
-    const allPosts = buildFlightPostBatches(targetFlights);
-    const posts = allPosts.slice(0, maxPostsPerRun);
+    const allPosts = postBatches || buildFlightPostBatches(targetFlights);
+    const availablePosts = allPosts.filter(post => !post.status || post.status === "pending");
+    const posts = availablePosts.slice(0, Math.max(1, Math.floor(Number(maxPostsPerRun) || 2)));
     let sent = 0;
     let error = null;
     const sentFlightIds = [];
 
     for (const post of posts) {
+      await beforePost?.(target, post);
+      let message;
       try {
-        await telegramApi(botToken, "sendMessage", {
+        message = await telegramApi(botToken, "sendMessage", {
           chat_id: target,
           text: post.text,
           parse_mode: "HTML",
@@ -381,22 +409,24 @@ export async function publishFreshFlights({
             inline_keyboard: [[{ text: "✈️ Посмотреть рейсы", url: appUrl }]]
           } : undefined)
         }, fetchImpl);
-        sent += 1;
-        published += 1;
-        sentFlightIds.push(...post.flightIds);
-        if (delayMs > 0) await new Promise(resolve => setTimeout(resolve, delayMs));
       } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
+        await onPostFailure?.(target, post, err);
+        error = redactTelegramError(err, [botToken, process.env.TELEGRAM_WEBHOOK_SECRET]);
         break;
       }
+      await afterPost?.(target, post, message);
+      sent += 1;
+      published += 1;
+      sentFlightIds.push(...post.flightIds);
+      if (delayMs > 0) await new Promise(resolve => setTimeout(resolve, delayMs));
     }
 
     results.push({
       target,
       flights: targetFlights.length,
       posts: posts.length,
-      postsAvailable: allPosts.length,
-      postsSkipped: Math.max(0, allPosts.length - posts.length),
+      postsAvailable: availablePosts.length,
+      postsSkipped: Math.max(0, availablePosts.length - posts.length),
       sent,
       sentFlightIds: [...new Set(sentFlightIds)],
       error

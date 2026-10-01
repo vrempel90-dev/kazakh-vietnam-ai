@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeftIcon,
   BellIcon,
@@ -116,11 +116,12 @@ const fallbackFlights: Flight[] = [
 ];
 
 const cityCountries: Array<[RegExp, Country]> = [
-  [/дананг|да нанг|нячанг|камран|фукуок|хо ши мин|хошимин|ханой/i, { name: "Вьетнам", flag: "🇻🇳" }],
-  [/шарм|хургада|каир/i, { name: "Египет", flag: "🇪🇬" }],
-  [/антал|стамбул|бодрум/i, { name: "Турция", flag: "🇹🇷" }],
-  [/дубай|абу-даби|шардж/i, { name: "ОАЭ", flag: "🇦🇪" }],
-  [/бангкок|пхукет|паттай/i, { name: "Таиланд", flag: "🇹🇭" }],
+  [/^(?:алматы|астана|шымкент|атырау|актобе|актау|костанай|кызылорда|тараз|уральск|петропавловск|караганда|almaty|astana|shymkent)$/i, { name: "Казахстан", flag: "🇰🇿" }],
+  [/дананг|да нанг|нячанг|камран|фукуок|хо ши мин|хошимин|ханой|da\s*nang|nha\s*trang|cam\s*ranh|phu\s*quoc/i, { name: "Вьетнам", flag: "🇻🇳" }],
+  [/шарм|хургада|каир|sharm|hurghada/i, { name: "Египет", flag: "🇪🇬" }],
+  [/антал|стамбул|бодрум|antalya|istanbul/i, { name: "Турция", flag: "🇹🇷" }],
+  [/дубай|абу[-\s]*даби|шардж|dubai|abu[-\s]*dhabi|sharjah/i, { name: "ОАЭ", flag: "🇦🇪" }],
+  [/бангкок|пхукет|паттай|phuket|bangkok/i, { name: "Таиланд", flag: "🇹🇭" }],
   [/мале|мальдив/i, { name: "Мальдивы", flag: "🇲🇻" }],
   [/санья|пекин|шанхай|гуанчжоу/i, { name: "Китай", flag: "🇨🇳" }],
   [/гоа|дели|мумбаи/i, { name: "Индия", flag: "🇮🇳" }],
@@ -129,6 +130,7 @@ const cityCountries: Array<[RegExp, Country]> = [
 ];
 
 const knownCountries: Country[] = [
+  { name: "Казахстан", flag: "🇰🇿" },
   { name: "Вьетнам", flag: "🇻🇳" },
   { name: "Египет", flag: "🇪🇬" },
   { name: "Индия", flag: "🇮🇳" },
@@ -142,26 +144,15 @@ const knownCountries: Country[] = [
 ];
 
 const countryFor = (destination: string): Country =>
-  cityCountries.find(([pattern]) => pattern.test(destination))?.[1] || { name: "Другое", flag: "🌍" };
+  cityCountries.find(([pattern]) => pattern.test(destination.trim()))?.[1] || { name: "Другое", flag: "🌍" };
+
+const countryForFlight = (flight: Flight): Country => {
+  const destination = countryFor(flight.to);
+  return destination.name === "Казахстан" ? countryFor(flight.from) : destination;
+};
 
 const DEFAULT_MANAGER_WHATSAPP = "77007772414";
 const MANAGER_PHONE_DISPLAY = "+7 700 777 24 14";
-
-const PRICING_SOURCES = [
-  ["neos", "NEOS"],
-  ["fun_sun", "FUN&SUN"],
-  ["kazunion", "KAZUNION"],
-  ["kompas", "KOMPAS"],
-  ["anex", "ANEX"],
-  ["selfie", "SELFIE"],
-  ["joinup", "JOINUP"],
-  ["pegas", "PEGAS"],
-  ["crystal_bay", "Crystal Bay"],
-  ["abk", "ABK Tourism"],
-  ["space", "SPACE / Travel Luxe"],
-  ["vietra", "VIETRA"],
-  ["sanat", "SANAT"],
-] as const;
 
 const scopeMode = (scope: PricingScope): ScopeMode => {
   if (scope.offerId) return "offer";
@@ -223,10 +214,17 @@ const offerExpiresAt = (flight: Flight) => {
 };
 
 const isOfferActive = (flight: Flight, nowMs: number) => {
+  const departureDate = flightIso(flight);
+  const parsedDeparture = new Date(departureDate + "T12:00:00Z");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(departureDate) || !Number.isFinite(parsedDeparture.getTime())
+    || parsedDeparture.toISOString().slice(0, 10) !== departureDate) return false;
+  const now = new Date(nowMs);
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  if (departureDate <= today) return false;
   const expiresAt = offerExpiresAt(flight);
-  if (!expiresAt) return true;
+  if (!expiresAt) return !offerPublishedAt(flight);
   const expiry = new Date(expiresAt).getTime();
-  return Number.isNaN(expiry) || expiry > nowMs;
+  return Number.isFinite(expiry) && expiry > nowMs;
 };
 
 const publishedLabel = (flight: Flight) => {
@@ -253,7 +251,8 @@ const expiryLabel = (flight: Flight, nowMs: number) => {
 
 const readList = (key: string): string[] => {
   try {
-    return JSON.parse(localStorage.getItem(key) || "[]") as string[];
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
   } catch {
     return [];
   }
@@ -307,6 +306,8 @@ export default function Prototype() {
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingSaving, setPricingSaving] = useState(false);
   const [adminSyncRunning, setAdminSyncRunning] = useState(false);
+  const [pricingSources, setPricingSources] = useState<Array<[string, string]>>([]);
+  const adminAutoAuthAttempted = useRef(false);
   const previewMode = new URLSearchParams(window.location.search).get("preview") === "1";
 
   const refreshFlights = useCallback(async () => {
@@ -315,11 +316,20 @@ export default function Prototype() {
       if (!response.ok) throw new Error("Flight feed HTTP " + response.status);
       const payload = await response.json() as FlightFeed;
       const next = Array.isArray(payload.flights)
-        ? payload.flights.filter((item): item is Flight => Boolean(item && item.id && item.from && item.to && Number.isFinite(item.price)))
+        ? payload.flights.filter((item): item is Flight => Boolean(item
+          && typeof item.id === "string" && item.id.trim()
+          && typeof item.from === "string" && item.from.trim()
+          && typeof item.to === "string" && item.to.trim()
+          && Number.isFinite(item.price) && item.price > 0
+          && Number.isInteger(item.offset) && item.offset > 0 && item.offset <= 365
+          && ["OW", "RT"].includes(item.trip)
+          && typeof item.seats === "string"
+          && (item.airline == null || typeof item.airline === "string")))
         : [];
       setFlights(next);
-      setRates(payload.rates || {});
-      setFeedMode(payload.mode === "demo" ? "demo" : payload.mode === "cached-sale-price" ? "cached" : "live");
+      const validRate = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+      setRates({ USD_KZT: validRate(payload.rates?.USD_KZT), EUR_KZT: validRate(payload.rates?.EUR_KZT), updatedAt: payload.rates?.updatedAt });
+      setFeedMode(payload.mode === "demo" ? "demo" : ["cached-sale-price", "telegram-public-cached"].includes(payload.mode || "") ? "cached" : "live");
       const generated = payload.generatedAt ? new Date(payload.generatedAt) : new Date();
       setLastUpdated(Number.isNaN(generated.getTime()) ? new Date() : generated);
     } catch {
@@ -349,12 +359,14 @@ export default function Prototype() {
   }, []);
 
   useEffect(() => {
-    if (selected && !isOfferActive(selected, nowTick)) {
+    if (!selected) return;
+    const current = flights.find(flight => flight.id === selected.id);
+    if (!current || !isOfferActive(current, nowTick)) {
       setSelected(null);
       if (screen === "booking") setScreen("flights");
       setToast("Предложение уже ушло из ленты");
-    }
-  }, [selected, nowTick, screen]);
+    } else if (current !== selected) setSelected(current);
+  }, [flights, selected, nowTick, screen]);
 
   useEffect(() => localStorage.setItem("charter-favorites", JSON.stringify(favorites)), [favorites]);
   useEffect(() => localStorage.setItem("charter-route-alerts", JSON.stringify(alerts)), [alerts]);
@@ -403,7 +415,8 @@ export default function Prototype() {
   }, [adminCode, adminRequest, adminSessionToken]);
 
   useEffect(() => {
-    if (screen !== "admin" || adminAuthorized || pricingLoading) return;
+    if (screen !== "admin" || adminAuthorized || pricingLoading || adminAutoAuthAttempted.current) return;
+    adminAutoAuthAttempted.current = true;
 
     const initData = window.Telegram?.WebApp?.initData;
     if (initData && !adminSessionToken) {
@@ -437,6 +450,21 @@ export default function Prototype() {
 
     if (adminCode) void loadPricing(adminCode, true);
   }, [screen, adminAuthorized, pricingLoading, adminSessionToken, adminCode, loadPricing]);
+
+  useEffect(() => {
+    if (!adminAuthorized) return;
+    let cancelled = false;
+    void adminRequest("/api/admin/sources")
+      .then((payload: { configuredSources?: Array<{ id?: string; kind?: string; label?: string }>; sources?: Array<{ id?: string; kind?: string; label?: string }> }) => {
+        const sources = payload.configuredSources || payload.sources || [];
+        const entries: Array<[string, string]> = sources
+          .filter(source => typeof source.id === "string" && source.kind === "telegram_public")
+          .map(source => [source.id!, source.label || source.id!]);
+        if (!cancelled) setPricingSources(entries);
+      })
+      .catch(() => { if (!cancelled) setPricingSources([]); });
+    return () => { cancelled = true; };
+  }, [adminAuthorized, adminRequest]);
 
   const savePricing = async () => {
     if (!pricingConfig) return;
@@ -489,7 +517,7 @@ export default function Prototype() {
 
   const setRuleScopeMode = (rule: PricingRule, mode: ScopeMode): PricingRule => {
     const current = rule.scope;
-    const defaultSource = current.sourceId || "neos";
+    const defaultSource = current.sourceId || pricingSources[0]?.[0] || "telegram:charter_forever_travel";
     if (mode === "global") return { ...rule, scope: {} };
     if (mode === "trip") return { ...rule, scope: { trip: current.trip || "OW" } };
     if (mode === "route") return { ...rule, scope: { from: current.from || "Алматы", to: current.to || "Нячанг" } };
@@ -510,7 +538,7 @@ export default function Prototype() {
   );
 
   const availableCountries = useMemo(() => {
-    const names = new Set(activeFlights.map(flight => countryFor(flight.to).name));
+    const names = new Set(activeFlights.map(flight => countryForFlight(flight).name));
     const dynamic = knownCountries.filter(item => names.has(item.name));
     if (names.has("Другое")) dynamic.push({ name: "Другое", flag: "🌍" });
     return [{ name: "Все", flag: "✓" }, ...dynamic];
@@ -521,7 +549,7 @@ export default function Prototype() {
     return activeFlights
       .filter(flight => tab === "all" || mine.has(flight.id))
       .filter(flight => city === "Все" || flight.from === city)
-      .filter(flight => country === "Все" || countryFor(flight.to).name === country)
+      .filter(flight => country === "Все" || countryForFlight(flight).name === country)
       .sort((a, b) => a.offset - b.offset || a.price - b.price);
   }, [activeFlights, favorites, tab, city, country]);
 
@@ -628,7 +656,7 @@ export default function Prototype() {
   };
 
   const FlightCard = ({ flight }: { flight: Flight }) => {
-    const destination = countryFor(flight.to);
+    const destination = countryForFlight(flight);
     return (
       <article className="deal-card">
         {destination.name === "Вьетнам"
@@ -739,9 +767,9 @@ export default function Prototype() {
             </section>
             {suggestedFlight && <article className="notice-offer">
               <div className="notice-image">
-                {countryFor(suggestedFlight.to).name === "Вьетнам"
+              {countryForFlight(suggestedFlight).name === "Вьетнам"
                   ? <img src="/assets/destinations/vietnam-beach.webp" alt="Побережье Вьетнама" />
-                  : <span aria-hidden="true">{countryFor(suggestedFlight.to).flag}</span>}
+                  : <span aria-hidden="true">{countryForFlight(suggestedFlight).flag}</span>}
                 <span className="notice-label">{notificationFlight ? "Подходит вам" : "Предложение"}</span>
               </div>
               <div className="notice-body">
@@ -773,9 +801,9 @@ export default function Prototype() {
         {screen === "booking" && selected && (
           <main className="charter-page booking-page">
             <article className="booking-flight">
-              {countryFor(selected.to).name === "Вьетнам"
+              {countryForFlight(selected).name === "Вьетнам"
                 ? <img src="/assets/destinations/vietnam-beach.webp" alt="Побережье Вьетнама" />
-                : <span className="destination-placeholder" aria-hidden="true">{countryFor(selected.to).flag}</span>}
+                : <span className="destination-placeholder" aria-hidden="true">{countryForFlight(selected).flag}</span>}
               <div><strong>{flightRoute(selected)}</strong><span><PaperPlaneIcon /> {selected.airline || "Авиакомпания уточняется"}</span><span><CalendarIcon /> {flightDate(selected)} | {flightNights(selected)}</span><b>{displayPrice(selected.price)}</b></div>
             </article>
             <div className="booking-offer-meta">Опубликовано {publishedLabel(selected)} · {urgency(selected)} · доступно ещё {expiryLabel(selected, nowTick)}</div>
@@ -864,7 +892,7 @@ export default function Prototype() {
 
                         <div className="rule-fields">
                           <label>Уровень
-                            <select value={mode} onChange={event => updateRule(rule.id, current => setRuleScopeMode(current, event.target.value as ScopeMode))}>
+                            <select aria-label="Уровень" value={mode} onChange={event => updateRule(rule.id, current => setRuleScopeMode(current, event.target.value as ScopeMode))}>
                               <option value="global">Общее правило</option>
                               <option value="trip">OW / RT</option>
                               <option value="route">Направление</option>
@@ -893,8 +921,9 @@ export default function Prototype() {
 
                           {(mode === "source" || mode === "source_trip") && (
                             <label>Поставщик
-                              <select value={rule.scope.sourceId || "neos"} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { ...current.scope, sourceId: event.target.value } }))}>
-                                {PRICING_SOURCES.map(([id, label]) => <option value={id} key={id}>{label}</option>)}
+                              <select aria-label="Поставщик" value={rule.scope.sourceId || pricingSources[0]?.[0] || "telegram:charter_forever_travel"} onChange={event => updateRule(rule.id, current => ({ ...current, scope: { ...current.scope, sourceId: event.target.value } }))}>
+                                {(pricingSources.length ? pricingSources : [["telegram:charter_forever_travel", "charter_forever_travel"]]).map(([id, label]) => <option value={id} key={id}>{label}</option>)}
+                                {rule.scope.sourceId && !pricingSources.some(([id]) => id === rule.scope.sourceId) && rule.scope.sourceId !== "telegram:charter_forever_travel" && <option value={rule.scope.sourceId}>{rule.scope.sourceId}</option>}
                               </select>
                             </label>
                           )}
