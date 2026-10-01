@@ -160,6 +160,7 @@ export function parseRouteLine(line) {
     .replace(/,+$/g, "")
     .trim();
   if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
+  if (/\b(?:багаж|ручн(?:ая|ой)\s+клад|airline)\b/iu.test(raw)) return null;
 
   const iataRoute = raw.match(/^([A-Z]{3})\s*[-–—→]\s*([A-Z]{3})(?:\s*[-–—→]\s*([A-Z]{3}))?$/);
   let parts;
