@@ -139,6 +139,20 @@ export function markFlightsPublished(state, target, flights, publishedAt = new D
   return state;
 }
 
+export function bootstrapPublicationTarget(
+  state,
+  target,
+  flights,
+  localDate,
+  initializedAt = new Date().toISOString()
+) {
+  initializePublicationState(state, initializedAt);
+  markFlightsPublished(state, target, flights, initializedAt);
+  markDailyDigestPublished(state, target, localDate, initializedAt);
+  markTargetBatchPublished(state, target, initializedAt);
+  return state;
+}
+
 export function prunePublicationState(state, {
   now = new Date(),
   retentionDays = 30,
