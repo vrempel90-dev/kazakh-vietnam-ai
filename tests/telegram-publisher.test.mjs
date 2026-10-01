@@ -49,6 +49,9 @@ const foreverFlights = filterFlightsForTarget(flights, "@charter_forever_travel"
 assert.deepEqual(foreverFlights.map(item => item.id), ["a", "b"]);
 
 assert.deepEqual(countryForFlight(flights[0]), { name: "Вьетнам", flag: "🇻🇳" });
+assert.deepEqual(countryForFlight({ from: "Астана", to: "Аланья" }), { name: "Турция", flag: "🇹🇷" });
+assert.deepEqual(countryForFlight({ from: "Алматы", to: "Газипаша (Аланья" }), { name: "Турция", flag: "🇹🇷" });
+assert.deepEqual(countryForFlight({ from: "Шымкент", to: "Мюнхен" }), { name: "Германия", flag: "🇩🇪" });
 
 const posts = buildFlightPosts(flights);
 assert.equal(posts.length, 1);
