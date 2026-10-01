@@ -9,13 +9,13 @@ import {
 } from "../scripts/source-registry.mjs";
 
 test("production ingestion contains only public Telegram channels", () => {
-  assert.ok(sourceRegistry.length >= 6);
+  assert.ok(sourceRegistry.length >= 5);
   assert.ok(sourceRegistry.every(source => source.kind === "telegram_public"));
   assert.ok(sourceRegistry.every(source => source.adapter === "telegram_public_feed"));
   assert.ok(sourceRegistry.every(source => source.ingest === true));
 
   const enabled = enabledSources();
-  assert.ok(enabled.length >= 6);
+  assert.ok(enabled.length >= 5);
   assert.ok(enabled.every(source => source.kind === "telegram_public"));
   assert.ok(enabled.every(source => source.url.startsWith("https://t.me/s/")));
 
@@ -27,7 +27,8 @@ test("production ingestion contains only public Telegram channels", () => {
 
   assert.deepEqual(monitoredSources(), []);
   const builtIns = sourceRegistry.map(source => source.handle);
-  for (const handle of ["charter_forever_travel", "bilettu", "biletuu", "avia07", "chartersavia", "charter_antalya"]) {
+  assert.equal(builtIns.includes("charter_forever_travel"), false);
+  for (const handle of ["bilettu", "biletuu", "avia07", "chartersavia", "charter_antalya"]) {
     assert.ok(builtIns.includes(handle));
   }
 });
@@ -50,6 +51,20 @@ test("additional public Telegram channels can be configured without duplicates",
   assert.ok(withTelegram.some(source => source.id === "telegram:supplier_one"));
   assert.equal(
     withTelegram.filter(source => source.id === "telegram:bilettu").length,
+    1
+  );
+});
+
+test("publication channel cannot be re-added as an ingestion source", () => {
+  const ingestion = ingestSources({
+    TELEGRAM_SOURCE_CHANNELS: "charter_forever_travel,bilettu"
+  });
+  assert.equal(
+    ingestion.some(source => source.handle === "charter_forever_travel"),
+    false
+  );
+  assert.equal(
+    ingestion.filter(source => source.handle === "bilettu").length,
     1
   );
 });
