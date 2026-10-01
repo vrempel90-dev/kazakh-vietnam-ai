@@ -148,4 +148,12 @@ test("normalizes route formats used by NURADEL and AviaTravel", () => {
     parseRouteLine("🇻🇳 Камрань/Нячанг (Вьетнам) ➔ Алматы 🇰🇿 (Econom)"),
     { from: "Нячанг", to: "Алматы", trip: "OW" }
   );
+  assert.deepEqual(
+    parseRouteLine("*✈️ШЫМКЕНТ → АНТАЛИЯ*"),
+    { from: "ШЫМКЕНТ", to: "АНТАЛИЯ", trip: "OW" }
+  );
+  assert.deepEqual(
+    parseRouteLine("АНТАЛИЯ → АСТАНА🔥"),
+    { from: "АНТАЛИЯ", to: "АСТАНА", trip: "OW" }
+  );
 });

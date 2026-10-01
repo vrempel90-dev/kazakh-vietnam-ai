@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import {
   AUTO_MARKER,
   buildFlightPosts,
+  countryForFlight,
   filterFlightsForTarget,
   parsePublishTargets,
   publishFreshFlights,
-  shouldSkipParsedTelegramMessage
+  shouldSkipParsedTelegramMessage,
+  telegramPublicationWindowStatus
 } from "../scripts/telegram-publisher.mjs";
 
 const flights = [
@@ -17,9 +19,9 @@ const flights = [
     trip: "RT",
     airline: "SCAT",
     seats: "3 места",
-    departureDate: "2026-09-30",
+    departureDate: "2026-10-03",
     returnDate: "2026-10-08",
-    sourceIds: ["charterkaz"]
+    sourceIds: ["telegram:charterkaz"]
   },
   {
     id: "b",
@@ -30,11 +32,14 @@ const flights = [
     airline: "VietJet",
     seats: "Наличие уточняется",
     departureDate: "2026-10-02",
-    sourceIds: ["neos"]
+    sourceIds: ["telegram:neos"]
   }
 ];
 
-assert.deepEqual(parsePublishTargets("charterkaz,@charter_forever_travel"), ["@charterkaz", "@charter_forever_travel"]);
+assert.deepEqual(
+  parsePublishTargets("charterkaz,@charter_forever_travel"),
+  ["@charterkaz", "@charter_forever_travel"]
+);
 assert.equal(shouldSkipParsedTelegramMessage("test " + AUTO_MARKER), true);
 assert.equal(shouldSkipParsedTelegramMessage("manual post"), false);
 
@@ -43,12 +48,60 @@ assert.deepEqual(charterKazFlights.map(item => item.id), ["b"]);
 const foreverFlights = filterFlightsForTarget(flights, "@charter_forever_travel");
 assert.deepEqual(foreverFlights.map(item => item.id), ["a", "b"]);
 
+assert.deepEqual(countryForFlight(flights[0]), { name: "Вьетнам", flag: "🇻🇳" });
+
 const posts = buildFlightPosts(flights);
 assert.equal(posts.length, 1);
-assert.ok(posts[0].includes("Свежие чартерные рейсы"));
+assert.ok(posts[0].includes("🇻🇳 <b>Вьетнам — чартерные рейсы</b>"));
+assert.ok(posts[0].includes("🇰🇿 → 🇻🇳 <b>Из Казахстана</b>"));
 assert.ok(posts[0].includes("Алматы → Камрань → Алматы"));
 assert.ok(posts[0].includes("218"));
 assert.ok(posts[0].includes(AUTO_MARKER));
+
+const mixedCountries = buildFlightPosts([
+  ...flights,
+  {
+    id: "th-out",
+    from: "Алматы",
+    to: "Пхукет",
+    price: 78000,
+    trip: "OW",
+    departureDate: "2026-10-29",
+    sourceIds: ["telegram:partner"]
+  },
+  {
+    id: "th-in",
+    from: "Пхукет",
+    to: "Алматы",
+    price: 79000,
+    trip: "OW",
+    departureDate: "2026-10-30",
+    sourceIds: ["telegram:partner"]
+  }
+]);
+
+assert.equal(mixedCountries.length, 2, "each country must be published in its own post group");
+const thailandPost = mixedCountries.find(text => text.includes("Таиланд"));
+assert.ok(thailandPost);
+assert.ok(thailandPost.includes("🇰🇿 → 🇹🇭 <b>Из Казахстана</b>"));
+assert.ok(thailandPost.includes("🇹🇭 → 🇰🇿 <b>В Казахстан</b>"));
+assert.ok(!thailandPost.includes("Дананг"), "Vietnam flights must not leak into Thailand post");
+
+assert.equal(
+  telegramPublicationWindowStatus(new Date("2026-10-01T05:00:00Z")).open,
+  true,
+  "10:00 Asia/Almaty should be inside the window"
+);
+assert.equal(
+  telegramPublicationWindowStatus(new Date("2026-10-01T14:59:00Z")).open,
+  true,
+  "19:59 Asia/Almaty should be inside the window"
+);
+assert.equal(
+  telegramPublicationWindowStatus(new Date("2026-10-01T15:00:00Z")).open,
+  false,
+  "20:00 Asia/Almaty should stop publication"
+);
 
 const calls = [];
 const fakeFetch = async (url, options) => {
@@ -81,7 +134,6 @@ assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].text, "🎫 К�
 assert.ok(calls[1].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
 assert.ok(!calls[1].payload.text.includes("Цена и наличие требуют подтверждения"));
 
-
 const cachedPosts = buildFlightPosts([{ ...flights[1], cachedFallback: true }]);
 assert.ok(cachedPosts[0].includes("Цены и наличие указаны по последним полученным данным."));
 assert.ok(!cachedPosts[0].includes("Цена и наличие требуют подтверждения"));
@@ -95,7 +147,7 @@ const manyFlights = Array.from({ length: 20 }, (_, index) => ({
   airline: "SCAT",
   seats: "Наличие уточняется",
   departureDate: "2026-10-" + String(1 + (index % 20)).padStart(2, "0"),
-  sourceIds: ["neos"]
+  sourceIds: ["telegram:neos"]
 }));
 
 const cappedCalls = [];
@@ -124,4 +176,4 @@ assert.equal(
   cappedResult.targets[0].postsAvailable - 1
 );
 
-console.log("Telegram fresh-flight publisher batching, source-loop protection, targets, and CTA: passed");
+console.log("Telegram grouping, daytime window, batching, source-loop protection, targets, and CTA: passed");

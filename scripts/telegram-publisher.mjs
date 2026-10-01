@@ -1,5 +1,120 @@
 const AUTO_MARKER = "🤖 Автообновление";
 
+const COUNTRY_BY_CITY = new Map([
+  ["алматы", ["Казахстан", "🇰🇿"]],
+  ["астана", ["Казахстан", "🇰🇿"]],
+  ["шымкент", ["Казахстан", "🇰🇿"]],
+  ["атырау", ["Казахстан", "🇰🇿"]],
+  ["актобе", ["Казахстан", "🇰🇿"]],
+  ["актау", ["Казахстан", "🇰🇿"]],
+  ["костанай", ["Казахстан", "🇰🇿"]],
+  ["кызылорда", ["Казахстан", "🇰🇿"]],
+  ["тараз", ["Казахстан", "🇰🇿"]],
+  ["уральск", ["Казахстан", "🇰🇿"]],
+  ["петропавловск", ["Казахстан", "🇰🇿"]],
+  ["караганда", ["Казахстан", "🇰🇿"]],
+
+  ["пхукет", ["Таиланд", "🇹🇭"]],
+  ["бангкок", ["Таиланд", "🇹🇭"]],
+
+  ["нячанг", ["Вьетнам", "🇻🇳"]],
+  ["камрань", ["Вьетнам", "🇻🇳"]],
+  ["дананг", ["Вьетнам", "🇻🇳"]],
+  ["фукуок", ["Вьетнам", "🇻🇳"]],
+
+  ["анталия", ["Турция", "🇹🇷"]],
+  ["анталья", ["Турция", "🇹🇷"]],
+  ["стамбул", ["Турция", "🇹🇷"]],
+
+  ["шармэшшейх", ["Египет", "🇪🇬"]],
+  ["шармэльшейх", ["Египет", "🇪🇬"]],
+  ["хургада", ["Египет", "🇪🇬"]],
+  ["каир", ["Египет", "🇪🇬"]],
+
+  ["дубай", ["ОАЭ", "🇦🇪"]],
+  ["шарджа", ["ОАЭ", "🇦🇪"]],
+  ["абудаби", ["ОАЭ", "🇦🇪"]],
+
+  ["санья", ["Китай", "🇨🇳"]],
+  ["мале", ["Мальдивы", "🇲🇻"]],
+  ["коломбо", ["Шри-Ланка", "🇱🇰"]],
+  ["маттала", ["Шри-Ланка", "🇱🇰"]],
+  ["гоа", ["Индия", "🇮🇳"]],
+  ["тбилиси", ["Грузия", "🇬🇪"]],
+  ["батуми", ["Грузия", "🇬🇪"]],
+  ["баку", ["Азербайджан", "🇦🇿"]],
+  ["ереван", ["Армения", "🇦🇲"]],
+  ["доха", ["Катар", "🇶🇦"]],
+  ["джидда", ["Саудовская Аравия", "🇸🇦"]],
+  ["белград", ["Сербия", "🇷🇸"]],
+  ["милан", ["Италия", "🇮🇹"]],
+  ["рим", ["Италия", "🇮🇹"]],
+  ["барселона", ["Испания", "🇪🇸"]],
+  ["париж", ["Франция", "🇫🇷"]],
+  ["прага", ["Чехия", "🇨🇿"]],
+  ["вена", ["Австрия", "🇦🇹"]],
+  ["ларнака", ["Кипр", "🇨🇾"]],
+  ["бишкек", ["Кыргызстан", "🇰🇬"]],
+  ["ташкент", ["Узбекистан", "🇺🇿"]],
+  ["москва", ["Россия", "🇷🇺"]],
+  ["санктпетербург", ["Россия", "🇷🇺"]],
+  ["сочи", ["Россия", "🇷🇺"]]
+]);
+
+function cityKey(value) {
+  return String(value || "")
+    .toLocaleLowerCase("ru-RU")
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/[*_~`]/g, "")
+    .replace(/[^а-яёa-z0-9]/giu, "");
+}
+
+function cityCountry(value) {
+  const found = COUNTRY_BY_CITY.get(cityKey(value));
+  if (!found) return null;
+  return { name: found[0], flag: found[1] };
+}
+
+function sameCountry(a, b) {
+  return a?.name && b?.name && a.name === b.name;
+}
+
+function countryKey(country) {
+  return country ? country.name : "Другие направления";
+}
+
+export function countryForFlight(flight) {
+  const fromCountry = cityCountry(flight?.from);
+  const toCountry = cityCountry(flight?.to);
+  const kazakhstan = { name: "Казахстан", flag: "🇰🇿" };
+
+  if (fromCountry?.name === "Казахстан" && toCountry?.name !== "Казахстан") {
+    return toCountry || { name: "Другие направления", flag: "🌍" };
+  }
+  if (toCountry?.name === "Казахстан" && fromCountry?.name !== "Казахстан") {
+    return fromCountry || { name: "Другие направления", flag: "🌍" };
+  }
+  if (toCountry && toCountry.name !== "Казахстан") return toCountry;
+  if (fromCountry && fromCountry.name !== "Казахстан") return fromCountry;
+  return sameCountry(fromCountry, toCountry)
+    ? fromCountry
+    : (fromCountry || toCountry || { name: "Другие направления", flag: "🌍" });
+}
+
+function directionInfo(flight, country) {
+  const fromCountry = cityCountry(flight?.from);
+  const toCountry = cityCountry(flight?.to);
+
+  if (fromCountry?.name === "Казахстан" && toCountry?.name === country?.name) {
+    return { order: 0, key: "outbound", label: "🇰🇿 → " + country.flag + " <b>Из Казахстана</b>" };
+  }
+  if (toCountry?.name === "Казахстан" && fromCountry?.name === country?.name) {
+    return { order: 1, key: "inbound", label: country.flag + " → 🇰🇿 <b>В Казахстан</b>" };
+  }
+  return { order: 2, key: "other", label: "✈️ <b>Другие направления</b>" };
+}
+
 export function parsePublishTargets(value) {
   const raw = String(value || "-1002106608923,-1002285584868");
   return raw
@@ -11,8 +126,8 @@ export function parsePublishTargets(value) {
 
 export function sourceIdForTarget(target) {
   const normalized = String(target || "").trim().replace(/^@/, "").toLowerCase();
-  if (normalized === "charterkaz") return "charterkaz";
-  if (normalized === "charter_forever_travel") return "charter_forever_travel";
+  if (normalized === "charterkaz") return "telegram:charterkaz";
+  if (normalized === "charter_forever_travel") return "telegram:charter_forever_travel";
   return null;
 }
 
@@ -41,8 +156,11 @@ function fmtPrice(value) {
 function cleanCity(value) {
   return String(value || "")
     .replace(/^\s*(?:OW|RT)\s+/i, "")
-    .replace(/^\p{Extended_Pictographic}+\s*/u, "")
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/[*_~`]/g, "")
     .replace(/\s+/g, " ")
+    .replace(/^[\s,.;:|/\\-]+|[\s,.;:|/\\-]+$/g, "")
     .trim();
 }
 
@@ -66,49 +184,98 @@ function flightBlock(flight) {
   return rows.filter(Boolean).join("\n");
 }
 
-export function buildFlightPostBatches(flights, maxChars = 3400, maxFlightsPerPost = 8) {
-  const items = Array.isArray(flights) ? flights : [];
-  const posts = [];
-  let current = "";
-  let currentCount = 0;
-  let currentFlightIds = [];
+function sortFlightsForCountry(items, country) {
+  return [...items].sort((a, b) => {
+    const da = directionInfo(a, country).order;
+    const db = directionInfo(b, country).order;
+    if (da !== db) return da - db;
+    const date = String(a.departureDate || "").localeCompare(String(b.departureDate || ""));
+    if (date !== 0) return date;
+    const route = flightRoute(a).localeCompare(flightRoute(b), "ru");
+    if (route !== 0) return route;
+    return Number(a.price || 0) - Number(b.price || 0);
+  });
+}
 
-  const intro = "✈️ <b>Свежие чартерные рейсы</b>\n\n";
-  const hasCached = items.some(flight => Boolean(flight?.cachedFallback));
-  const footer = hasCached
-    ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
-    : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
-
-  const flush = () => {
-    if (!current) return;
-    posts.push({ text: current + footer, flightIds: [...currentFlightIds] });
-    current = "";
-    currentCount = 0;
-    currentFlightIds = [];
-  };
-
-  for (const flight of items) {
-    const block = flightBlock(flight);
-    const candidate = (current ? current + "\n\n────────\n\n" : intro) + block;
-    const finalLength = candidate.length + footer.length;
-
-    if (current && (finalLength > maxChars || currentCount >= maxFlightsPerPost)) {
-      flush();
-      current = intro + block;
-      currentCount = 1;
-      currentFlightIds = flight?.id ? [flight.id] : [];
-    } else {
-      current = candidate;
-      currentCount += 1;
-      if (flight?.id) currentFlightIds.push(flight.id);
-    }
+function groupFlightsByCountry(flights) {
+  const groups = new Map();
+  for (const flight of Array.isArray(flights) ? flights : []) {
+    const country = countryForFlight(flight);
+    const key = countryKey(country);
+    if (!groups.has(key)) groups.set(key, { country, flights: [] });
+    groups.get(key).flights.push(flight);
   }
 
-  flush();
+  return [...groups.values()].sort((a, b) => {
+    if (a.country.name === "Другие направления") return 1;
+    if (b.country.name === "Другие направления") return -1;
+    const firstA = [...a.flights].sort((x, y) => String(x.departureDate || "").localeCompare(String(y.departureDate || "")))[0];
+    const firstB = [...b.flights].sort((x, y) => String(x.departureDate || "").localeCompare(String(y.departureDate || "")))[0];
+    const byDate = String(firstA?.departureDate || "").localeCompare(String(firstB?.departureDate || ""));
+    return byDate || a.country.name.localeCompare(b.country.name, "ru");
+  });
+}
+
+export function buildFlightPostBatches(flights, maxChars = 3400, maxFlightsPerPost = 10) {
+  const posts = [];
+
+  for (const group of groupFlightsByCountry(flights)) {
+    const items = sortFlightsForCountry(group.flights, group.country);
+    const intro = group.country.flag + " <b>" + esc(group.country.name) + " — чартерные рейсы</b>\n\n";
+    const hasCached = items.some(flight => Boolean(flight?.cachedFallback));
+    const footer = hasCached
+      ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
+      : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
+
+    let body = "";
+    let count = 0;
+    let flightIds = [];
+    let currentDirection = null;
+
+    const flush = () => {
+      if (!body) return;
+      posts.push({
+        text: intro + body + footer,
+        flightIds: [...flightIds],
+        country: group.country.name
+      });
+      body = "";
+      count = 0;
+      flightIds = [];
+      currentDirection = null;
+    };
+
+    for (const flight of items) {
+      const direction = directionInfo(flight, group.country);
+      const block = flightBlock(flight);
+      const needsHeading = currentDirection !== direction.key;
+      const heading = needsHeading ? direction.label + "\n\n" : "";
+      const separator = body ? "\n\n────────\n\n" : "";
+      const piece = separator + heading + block;
+      const candidate = intro + body + piece + footer;
+
+      if (body && (candidate.length > maxChars || count >= maxFlightsPerPost)) {
+        flush();
+        body = direction.label + "\n\n" + block;
+        currentDirection = direction.key;
+        count = 1;
+        flightIds = flight?.id ? [flight.id] : [];
+        continue;
+      }
+
+      body += piece;
+      currentDirection = direction.key;
+      count += 1;
+      if (flight?.id) flightIds.push(flight.id);
+    }
+
+    flush();
+  }
+
   return posts;
 }
 
-export function buildFlightPosts(flights, maxChars = 3400, maxFlightsPerPost = 8) {
+export function buildFlightPosts(flights, maxChars = 3400, maxFlightsPerPost = 10) {
   return buildFlightPostBatches(flights, maxChars, maxFlightsPerPost).map(post => post.text);
 }
 
@@ -116,6 +283,34 @@ export function filterFlightsForTarget(flights, target) {
   const targetSourceId = sourceIdForTarget(target);
   if (!targetSourceId) return [...flights];
   return flights.filter(flight => !Array.isArray(flight.sourceIds) || !flight.sourceIds.includes(targetSourceId));
+}
+
+export function telegramPublicationWindowStatus(now = new Date(), {
+  timeZone = "Asia/Almaty",
+  startHour = 10,
+  endHour = 20
+} = {}) {
+  const start = Math.max(0, Math.min(23, Math.floor(Number(startHour) || 0)));
+  const endRaw = Number(endHour);
+  const end = Math.max(1, Math.min(24, Number.isFinite(endRaw) ? Math.floor(endRaw) : 20));
+
+  let localHour;
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(now);
+    localHour = Number(parts.find(part => part.type === "hour")?.value);
+  } catch {
+    return { open: false, timeZone, startHour: start, endHour: end, localHour: null };
+  }
+
+  const open = start < end
+    ? localHour >= start && localHour < end
+    : localHour >= start || localHour < end;
+
+  return { open, timeZone, startHour: start, endHour: end, localHour };
 }
 
 async function telegramApi(token, method, payload, fetchImpl = fetch) {
@@ -140,7 +335,7 @@ export async function publishFreshFlights({
   managerPhone,
   fetchImpl = fetch,
   delayMs = Math.max(0, Number(process.env.POST_DELAY_SECONDS || 2) * 1000),
-  maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 3)))
+  maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 2)))
 }) {
   const botToken = String(token || "").trim();
   const appUrl = String(publicAppUrl || "").trim();
