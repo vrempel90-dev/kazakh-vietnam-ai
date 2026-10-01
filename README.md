@@ -16,10 +16,14 @@ Production ingestion работает **только с открытыми Teleg
 
 Открытые каналы читаются напрямую через публичные страницы `https://t.me/s/<channel>`.
 
-В проекте есть два базовых публичных источника:
+В проекте есть шесть базовых публичных источников:
 
 - `charter_forever_travel`
-- `charterkaz`
+- `bilettu`
+- `biletuu`
+- `avia07`
+- `chartersavia`
+- `charter_antalya`
 
 Дополнительные каналы задаются через `TELEGRAM_SOURCE_CHANNELS`, например:
 
@@ -85,7 +89,17 @@ npm run test:pricing
 npm run test:lifecycle
 npm run test:telegram
 npm run test:publisher
+npm run test:sync
+npm run test:server
+npm run test:admin-auth
+npm test
+npm run test:runtime
+npm run test:sites
 npm run typecheck
 npm run lint
 npm run build
 ```
+
+Перед включением публикаций на Railway подключите один persistent volume к `/data` и перенесите текущие pricing/publication state. Обычный каталог `/data` внутри container не обеспечивает сохранность после redeploy. Новая версия блокирует публикации без `RAILWAY_VOLUME_MOUNT_PATH`, сохраняя обновление feed.
+
+[Текущие источники, pipeline и хранение](docs/CHARTER_SOURCES.md), [безопасная миграция и восстановление после сбоев](docs/production-state-runbook.md).

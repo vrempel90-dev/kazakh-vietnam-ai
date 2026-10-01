@@ -11,7 +11,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +46,12 @@ jobs:
       - name: Telegram publisher tests
         run: npm run test:publisher
 
+      - name: Sync concurrency and persistence tests
+        run: npm run test:sync
+
+      - name: Server API regression tests
+        run: npm run test:server
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -54,3 +60,15 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Sites worker tests
+        run: npm run test:sites
+
+      - name: Install browser for UI and mobile runtime tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Client browser regression tests
+        run: npm test
+
+      - name: Mobile runtime browser tests
+        run: npm run test:runtime
