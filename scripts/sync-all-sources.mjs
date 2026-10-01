@@ -418,7 +418,7 @@ if (
     );
     const minPublishIntervalMinutes = Math.max(
       0,
-      Number(process.env.TELEGRAM_MIN_PUBLISH_INTERVAL_MINUTES || 60)
+      Number(process.env.TELEGRAM_MIN_PUBLISH_INTERVAL_MINUTES || 15)
     );
 
     const publicationState = await loadPublicationState(statePath);
@@ -428,113 +428,99 @@ if (
 
     if (!isPublicationStateInitialized(publicationState)) {
       const initializedAt = now.toISOString();
-      for (const target of targets) {
-        const eligibleFlights = filterFlightsForTarget(flights, target);
-        markFlightsPublished(publicationState, target, eligibleFlights, initializedAt);
+      initializePublicationState(publicationState, initializedAt);
+      await savePublicationState(statePath, publicationState);
+      console.log(
+        "Telegram publishing state initialized; existing flights remain pending for ordered country rollout."
+      );
+    }
+
+    for (const target of targets) {
+      const eligibleFlights = filterFlightsForTarget(flights, target);
+
+      if (!isTargetPublishAllowed(publicationState, target, {
+        now,
+        minIntervalMinutes: minPublishIntervalMinutes
+      })) {
         targetResults.push({
           target,
           pendingFlights: 0,
           sent: 0,
           sentFlightIds: [],
-          bootstrappedFlights: eligibleFlights.length
+          skipped: "publish_interval"
         });
+        continue;
       }
-      initializePublicationState(publicationState, initializedAt);
-      prunePublicationState(publicationState, { now, retentionDays });
-      await savePublicationState(statePath, publicationState);
 
-      console.log(
-        "Telegram publishing state initialized without replaying existing flights:",
-        JSON.stringify({ targets: targetResults }, null, 2)
-      );
-    } else {
-      for (const target of targets) {
-        const eligibleFlights = filterFlightsForTarget(flights, target);
-
-        if (!isTargetPublishAllowed(publicationState, target, {
+      const pendingFlights = eligibleFlights.filter(flight =>
+        isPublicationPending(publicationState, target, flight, {
           now,
-          minIntervalMinutes: minPublishIntervalMinutes
-        })) {
-          targetResults.push({
-            target,
-            pendingFlights: 0,
-            sent: 0,
-            sentFlightIds: [],
-            skipped: "publish_interval"
-          });
-          continue;
-        }
+          cooldownHours: republishCooldownHours
+        })
+      );
 
-        const pendingFlights = eligibleFlights.filter(flight =>
-          isPublicationPending(publicationState, target, flight, {
-            now,
-            cooldownHours: republishCooldownHours
-          })
-        );
-
-        if (!pendingFlights.length) {
-          targetResults.push({
-            target,
-            pendingFlights: 0,
-            sent: 0,
-            sentFlightIds: []
-          });
-          continue;
-        }
-
-        const publishResult = await publishFreshFlights({
-          token: process.env.TELEGRAM_BOT_TOKEN,
-          targets: [target],
-          flights: pendingFlights,
-          publicAppUrl:
-            process.env.PUBLIC_APP_URL ||
-            process.env.RAILWAY_PUBLIC_DOMAIN,
-          managerPhone: process.env.VITE_MANAGER_WHATSAPP
-        });
-
-        const result = publishResult.targets?.[0] || {
-          target,
-          sent: 0,
-          sentFlightIds: [],
-          error: publishResult.reason || null
-        };
-
-        const sentIds = new Set(result.sentFlightIds || []);
-        const sentFlights = pendingFlights.filter(flight =>
-          sentIds.has(flight.id)
-        );
-
-        if (sentFlights.length) {
-          const publishedAt = now.toISOString();
-          markFlightsPublished(publicationState, target, sentFlights, publishedAt);
-          markTargetBatchPublished(publicationState, target, publishedAt);
-          prunePublicationState(publicationState, { now, retentionDays });
-          await savePublicationState(statePath, publicationState);
-        }
-
-        publishedFlights += sentFlights.length;
-        publishedPosts += Number(result.sent || 0);
+      if (!pendingFlights.length) {
         targetResults.push({
-          ...result,
-          pendingFlights: pendingFlights.length
+          target,
+          pendingFlights: 0,
+          sent: 0,
+          sentFlightIds: []
         });
+        continue;
       }
 
-      console.log(
-        "Telegram publishing:",
-        JSON.stringify(
-          {
-            eligibleFlights: flights.length,
-            publishedFlights,
-            publishedPosts,
-            publishWindow,
-            targets: targetResults
-          },
-          null,
-          2
-        )
+      const publishResult = await publishFreshFlights({
+        token: process.env.TELEGRAM_BOT_TOKEN,
+        targets: [target],
+        flights: pendingFlights,
+        publicAppUrl:
+          process.env.PUBLIC_APP_URL ||
+          process.env.RAILWAY_PUBLIC_DOMAIN,
+        managerPhone: process.env.VITE_MANAGER_WHATSAPP
+      });
+
+      const result = publishResult.targets?.[0] || {
+        target,
+        sent: 0,
+        sentFlightIds: [],
+        error: publishResult.reason || null
+      };
+
+      const sentIds = new Set(result.sentFlightIds || []);
+      const sentFlights = pendingFlights.filter(flight =>
+        sentIds.has(flight.id)
       );
+
+      if (sentFlights.length) {
+        const publishedAt = now.toISOString();
+        markFlightsPublished(publicationState, target, sentFlights, publishedAt);
+        markTargetBatchPublished(publicationState, target, publishedAt);
+        prunePublicationState(publicationState, { now, retentionDays });
+        await savePublicationState(statePath, publicationState);
+      }
+
+      publishedFlights += sentFlights.length;
+      publishedPosts += Number(result.sent || 0);
+      targetResults.push({
+        ...result,
+        pendingFlights: pendingFlights.length
+      });
     }
+
+    console.log(
+      "Telegram publishing:",
+      JSON.stringify(
+        {
+          eligibleFlights: flights.length,
+          publishedFlights,
+          publishedPosts,
+          publishWindow,
+          targets: targetResults
+        },
+        null,
+        2
+      )
+    );
   } catch (error) {
     console.error(
       "Telegram publishing failed:",
