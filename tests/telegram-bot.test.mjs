@@ -3,10 +3,13 @@ import {
   buildTelegramHomeKeyboard,
   createTelegramRuntime,
   normalizePublicUrl,
-  parseTelegramCommand
+  parseTelegramCommand,
+  redactTelegramError
 } from "../scripts/telegram-bot.mjs";
 
 assert.equal(normalizePublicUrl("charter-app-production-6bf5.up.railway.app"), "https://charter-app-production-6bf5.up.railway.app");
+assert.equal(normalizePublicUrl("https://[broken"), "");
+assert.equal(normalizePublicUrl("https://user:password@example.com"), "");
 assert.equal(parseTelegramCommand("/start abc"), "/start");
 assert.equal(parseTelegramCommand("/menu@charter_bot"), "/menu");
 assert.equal(parseTelegramCommand("hello"), null);
@@ -92,5 +95,28 @@ await runtime.handleUpdate({
 });
 const deniedMessage = calls.filter(call => call.method === "sendMessage").at(-1);
 assert.ok(deniedMessage.payload.text.includes("запрещён"));
+
+const urlRuntime = createTelegramRuntime({
+  token: "123:test",
+  publicAppUrl: "https://example.com/?source=telegram#launch",
+  webhookSecret: "secret-123",
+  adminTelegramIds: "16815689",
+  fetchImpl: fakeFetch
+});
+await urlRuntime.configure();
+assert.equal(calls.filter(call => call.method === "setWebhook").at(-1).payload.url, "https://example.com/api/telegram/webhook");
+await urlRuntime.handleUpdate({ message: { chat: { id: 16815689, type: "private" }, from: { id: 16815689 }, text: "/admin" } });
+assert.equal(calls.filter(call => call.method === "sendMessage").at(-1).payload.reply_markup.inline_keyboard[0][0].web_app.url, "https://example.com/?admin=1");
+
+const errorRuntime = createTelegramRuntime({
+  token: "123:test-secret",
+  publicAppUrl: "https://example.com",
+  webhookSecret: "private-webhook-secret",
+  fetchImpl: async () => { throw new Error("Failed URL https://api.telegram.org/bot123:test-secret/getMe private-webhook-secret"); }
+});
+await assert.rejects(() => errorRuntime.configure(), error => !error.message.includes("test-secret") && !error.message.includes("private-webhook-secret"));
+assert.ok(!errorRuntime.status.lastError.includes("test-secret"));
+assert.ok(!errorRuntime.status.lastError.includes("private-webhook-secret"));
+assert.equal(redactTelegramError("URL 123%3Atest-secret", ["123:test-secret"]), "URL [redacted]");
 
 console.log("Telegram runtime commands, admin access, WhatsApp purchase CTA, and Mini App keyboard: passed");

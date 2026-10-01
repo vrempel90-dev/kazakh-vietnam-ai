@@ -39,4 +39,17 @@ const tampered = new URLSearchParams(params);
 tampered.set("user", JSON.stringify({ id: 99, first_name: "Intruder" }));
 assert.equal(verifyTelegramInitData(tampered.toString(), botToken, 900).ok, false);
 
+// Buffer.from(value, "hex") silently ignores trailing non-hexadecimal bytes.
+// The wire signature must be exactly one SHA-256 digest.
+for (const suffix of ["zz", ":junk", "0"]) {
+  const malformed = new URLSearchParams(params);
+  malformed.set("hash", hash + suffix);
+  assert.equal(verifyTelegramInitData(malformed.toString(), botToken, 900).ok, false);
+}
+
+const expired = new URLSearchParams({ auth_date: String(authDate - 901), query_id: "AAEAAAE", user });
+const expiredCheck = [...expired.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => key + "=" + value).join("\n");
+expired.set("hash", createHmac("sha256", secretKey).update(expiredCheck).digest("hex"));
+assert.equal(verifyTelegramInitData(expired.toString(), botToken, 900).reason, "expired");
+
 console.log("Telegram Mini App admin signature and allowlist verification: passed");
