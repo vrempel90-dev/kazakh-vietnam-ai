@@ -3,7 +3,30 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 function emptyState() {
-  return { version: 1, targets: {} };
+  return {
+    version: 1,
+    targets: {},
+    targetBatches: {},
+    meta: { initializedAt: null }
+  };
+}
+
+function normalizeState(parsed) {
+  if (!parsed || parsed.version !== 1 || typeof parsed.targets !== "object" || Array.isArray(parsed.targets)) {
+    return emptyState();
+  }
+  return {
+    version: 1,
+    targets: parsed.targets || {},
+    targetBatches:
+      parsed.targetBatches && typeof parsed.targetBatches === "object" && !Array.isArray(parsed.targetBatches)
+        ? parsed.targetBatches
+        : {},
+    meta:
+      parsed.meta && typeof parsed.meta === "object" && !Array.isArray(parsed.meta)
+        ? parsed.meta
+        : { initializedAt: null }
+  };
 }
 
 export function publicationFingerprint(flight) {
@@ -25,19 +48,55 @@ export function publicationFingerprint(flight) {
 export async function loadPublicationState(path) {
   const filePath = resolve(path);
   try {
-    const parsed = JSON.parse(await readFile(filePath, "utf8"));
-    if (!parsed || parsed.version !== 1 || typeof parsed.targets !== "object" || Array.isArray(parsed.targets)) {
-      return emptyState();
-    }
-    return parsed;
+    return normalizeState(JSON.parse(await readFile(filePath, "utf8")));
   } catch {
     return emptyState();
   }
 }
 
-export function isPublicationPending(state, target, flight) {
+export function isPublicationStateInitialized(state) {
+  return Boolean(state?.meta?.initializedAt);
+}
+
+export function initializePublicationState(state, initializedAt = new Date().toISOString()) {
+  if (!state || state.version !== 1) throw new Error("Invalid Telegram publication state");
+  if (!state.meta || typeof state.meta !== "object") state.meta = {};
+  state.meta.initializedAt = initializedAt;
+  return state;
+}
+
+export function isPublicationPending(state, target, flight, {
+  now = new Date(),
+  cooldownHours = 24
+} = {}) {
   const previous = state?.targets?.[target]?.[flight?.id];
-  return !previous || previous.fingerprint !== publicationFingerprint(flight);
+  if (!previous) return true;
+
+  const fingerprint = publicationFingerprint(flight);
+  if (previous.fingerprint === fingerprint) return false;
+
+  const previousTime = new Date(previous.publishedAt || 0).getTime();
+  if (!Number.isFinite(previousTime)) return true;
+
+  const cooldownMs = Math.max(0, Number(cooldownHours) || 0) * 60 * 60 * 1000;
+  return now.getTime() - previousTime >= cooldownMs;
+}
+
+export function isTargetPublishAllowed(state, target, {
+  now = new Date(),
+  minIntervalMinutes = 60
+} = {}) {
+  const previousTime = new Date(state?.targetBatches?.[target]?.publishedAt || 0).getTime();
+  if (!Number.isFinite(previousTime)) return true;
+  const intervalMs = Math.max(0, Number(minIntervalMinutes) || 0) * 60 * 1000;
+  return now.getTime() - previousTime >= intervalMs;
+}
+
+export function markTargetBatchPublished(state, target, publishedAt = new Date().toISOString()) {
+  if (!state || state.version !== 1) throw new Error("Invalid Telegram publication state");
+  if (!state.targetBatches || typeof state.targetBatches !== "object") state.targetBatches = {};
+  state.targetBatches[target] = { publishedAt };
+  return state;
 }
 
 export function markFlightsPublished(state, target, flights, publishedAt = new Date().toISOString()) {
