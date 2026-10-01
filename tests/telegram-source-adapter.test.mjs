@@ -157,3 +157,44 @@ test("normalizes route formats used by NURADEL and AviaTravel", () => {
     { from: "АНТАЛИЯ", to: "АСТАНА", trip: "OW" }
   );
 });
+
+test("does not leak an airline from one route into another country", () => {
+  const offers = parseTelegramPost([
+    "VietJet Air - багаж 20кг + ручная кладь 5кг",
+    "Астана -> Нячанг",
+    "02.10 - 120 000 ₸",
+    "Астана -> Санья",
+    "03.10 - 130 000 ₸"
+  ].join("\n"), {
+    sourceId: "telegram:partner",
+    postId: 900,
+    postedAt: "2026-10-01T06:00:00Z",
+    now: new Date("2026-10-01T07:00:00Z")
+  });
+
+  assert.equal(offers.length, 2);
+  assert.equal(offers[0].airline, "VietJet Air");
+  assert.equal(offers[1].airline, undefined);
+});
+
+test("airline legend after offers does not contaminate the next route", () => {
+  const offers = parseTelegramPost([
+    "Астана -> Санья",
+    "02.10 - 50 000 ₸ (2)",
+    "VietJet Air - багаж 20кг + ручная кладь 5кг",
+    "Астана -> Шарм-эль-Шейх",
+    "03.10 - 91 000 ₸ (1)"
+  ].join("\n"), {
+    sourceId: "telegram:partner",
+    postId: 901,
+    postedAt: "2026-10-01T06:00:00Z",
+    now: new Date("2026-10-01T07:00:00Z")
+  });
+
+  assert.equal(offers.length, 2);
+  assert.equal(offers[0].airline, undefined);
+  assert.equal(offers[1].airline, undefined);
+  assert.equal(offers[0].from, "Астана");
+  assert.equal(offers[0].to, "Санья");
+  assert.equal(offers[1].to, "Шарм-эль-Шейх");
+});

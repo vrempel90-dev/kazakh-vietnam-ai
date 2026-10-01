@@ -18,7 +18,7 @@ const IATA = {
   CXR: "Нячанг", DAD: "Дананг", PQC: "Фукуок", HKT: "Пхукет", BKK: "Бангкок",
   SYX: "Санья", MLE: "Мале", CMB: "Коломбо", GOI: "Гоа", TBS: "Тбилиси",
   BUS: "Батуми", GYD: "Баку", EVN: "Ереван", DOH: "Доха", BEG: "Белград",
-  MXP: "Милан", FCO: "Рим", BCN: "Барселона", CDG: "Париж", PRG: "Прага",
+  MXP: "Милан", FCO: "Рим", BCN: "Барселона", CDG: "Париж", PRG: "Прага", MUC: "Мюнхен", GZP: "Газипаша",
   VIE: "Вена", LCA: "Ларнака", FRU: "Бишкек", TAS: "Ташкент",
   SVO: "Москва", DME: "Москва", VKO: "Москва", LED: "Санкт-Петербург", AER: "Сочи"
 };
@@ -31,9 +31,9 @@ const CITY_FORMS = {
   "nha trang": "Нячанг", "cam ranh": "Нячанг", "camranh": "Нячанг",
   "phu quoc": "Фукуок", "danang": "Дананг", "da nang": "Дананг",
   "phuket": "Пхукет", "bangkok": "Бангкок", "sanya": "Санья",
-  "antalya": "Анталия", "sharjah": "Шарджа", "abu dhabi": "Абу-Даби",
+  "antalya": "Анталия", "alanya": "Аланья", "gazipasa": "Газипаша", "gazipaşa": "Газипаша", "sharjah": "Шарджа", "abu dhabi": "Абу-Даби",
   "sharm el sheikh": "Шарм-эль-Шейх", "hurghada": "Хургада",
-  "mattala": "Маттала", "jeddah": "Джидда", "aktau": "Актау",
+  "mattala": "Маттала", "jeddah": "Джидда", "munich": "Мюнхен", "münchen": "Мюнхен", "актау": "Актау", "актобе": "Актобе", "алания": "Аланья", "аланья": "Аланья", "газипаша": "Газипаша", "газипаша (аланья": "Газипаша", "газипаша (аланья)": "Газипаша", "aktau": "Актау",
   "aktobe": "Актобе", "atyrau": "Атырау", "kostanay": "Костанай",
   "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми"
 };
@@ -160,6 +160,7 @@ export function parseRouteLine(line) {
     .replace(/,+$/g, "")
     .trim();
   if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
+  if (/(?:багаж|ручн(?:ая|ой)\s+клад|airline)/iu.test(raw)) return null;
 
   const iataRoute = raw.match(/^([A-Z]{3})\s*[-–—→]\s*([A-Z]{3})(?:\s*[-–—→]\s*([A-Z]{3}))?$/);
   let parts;
@@ -340,8 +341,11 @@ export function parseTelegramPost(text, {
   const offers = [];
   let route = null;
   let tripHint = "OW";
-  let airline = null;
-  let baggage = null;
+  let routeAirline = null;
+  let routeBaggage = null;
+  let pendingAirline = null;
+  let pendingBaggage = null;
+  let routeOfferCount = 0;
   let pendingDeparture = null;
   let pendingReturn = null;
 
@@ -357,8 +361,8 @@ export function parseTelegramPost(text, {
       departureDate: parsed.departureDate,
       returnDate: parsed.returnDate || null,
       trip: parsed.returnDate ? "RT" : tripHint,
-      airline: airline || undefined,
-      baggage: parsed.baggage || baggage || undefined,
+      airline: routeAirline || undefined,
+      baggage: parsed.baggage || routeBaggage || undefined,
       sourcePrice: parsed.price,
       currency: "KZT",
       seats: parsed.seats || "Наличие уточняется",
@@ -367,6 +371,7 @@ export function parseTelegramPost(text, {
     };
     offer.externalId = stableExternalId(sourceId, postId, offers.length, offer);
     offers.push(offer);
+    routeOfferCount += 1;
   };
 
   for (const line of lines) {
@@ -374,15 +379,28 @@ export function parseTelegramPost(text, {
     if (maybeRoute) {
       route = maybeRoute;
       tripHint = maybeRoute.trip;
+      routeAirline = pendingAirline;
+      routeBaggage = pendingBaggage;
+      pendingAirline = null;
+      pendingBaggage = null;
+      routeOfferCount = 0;
       pendingDeparture = null;
       pendingReturn = null;
       continue;
     }
 
     const foundAirline = detectAirline(line);
-    if (foundAirline) airline = foundAirline;
     const foundBaggage = detectBaggage(line);
-    if (foundBaggage) baggage = foundBaggage;
+
+    // Airline/baggage metadata must stay scoped to a single route.
+    // Never carry a carrier legend from one route/country into the next route.
+    if (route && routeOfferCount === 0) {
+      if (foundAirline) routeAirline = foundAirline;
+      if (foundBaggage) routeBaggage = foundBaggage;
+    } else if (!route) {
+      if (foundAirline) pendingAirline = foundAirline;
+      if (foundBaggage) pendingBaggage = foundBaggage;
+    }
 
     if (/\b(?:RT|туда[ -]?(?:и\s*)?обратно|т\/о)\b/iu.test(line)) tripHint = "RT";
     if (/\b(?:OW|в одну сторону)\b/iu.test(line)) tripHint = "OW";
