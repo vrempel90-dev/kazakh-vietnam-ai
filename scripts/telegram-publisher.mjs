@@ -172,16 +172,18 @@ function flightRoute(flight) {
 }
 
 function flightBlock(flight) {
-  const rows = [
-    (flight.hot ? "🔥 " : "✈️ ") + flightRoute(flight),
-    flight.airline ? "✈️ " + esc(flight.airline) : null,
-    "📅 " + fmtDate(flight.departureDate)
-      + (flight.returnDate ? " — " + fmtDate(flight.returnDate) : "")
-      + " · " + (flight.trip === "RT" ? "туда-обратно" : "в одну сторону"),
-    flight.seats && flight.seats !== "Наличие уточняется" ? "💺 " + esc(flight.seats) : null,
-    "💰 " + fmtPrice(flight.price)
-  ];
-  return rows.filter(Boolean).join("\n");
+  const details = [
+    fmtDate(flight.departureDate)
+      + (flight.returnDate ? "–" + fmtDate(flight.returnDate) : ""),
+    fmtPrice(flight.price),
+    flight.airline ? esc(flight.airline) : null,
+    flight.seats && flight.seats !== "Наличие уточняется" ? esc(flight.seats) : null
+  ].filter(Boolean);
+
+  return (flight.hot ? "🔥 " : "✈️ ")
+    + flightRoute(flight)
+    + "\n"
+    + details.join(" · ");
 }
 
 function sortFlightsForCountry(items, country) {
@@ -216,67 +218,76 @@ function groupFlightsByCountry(flights) {
   });
 }
 
-export function buildFlightPostBatches(flights, maxChars = 3400, maxFlightsPerPost = 10) {
+export function buildFlightPostBatches(flights, maxChars = 4050) {
   const posts = [];
 
   for (const group of groupFlightsByCountry(flights)) {
     const items = sortFlightsForCountry(group.flights, group.country);
-    const intro = group.country.flag + " <b>" + esc(group.country.name) + " — чартерные рейсы</b>\n\n";
+    const intro = group.country.flag + " <b>" + esc(group.country.name) + " — все актуальные чартеры</b>\n\n";
     const hasCached = items.some(flight => Boolean(flight?.cachedFallback));
     const footer = hasCached
       ? "\n\nЦены и наличие указаны по последним полученным данным.\n" + AUTO_MARKER
       : "\n\nЦены и наличие актуальны на момент публикации.\n" + AUTO_MARKER;
 
     let body = "";
-    let count = 0;
-    let flightIds = [];
     let currentDirection = null;
-
-    const flush = () => {
-      if (!body) return;
-      posts.push({
-        text: intro + body + footer,
-        flightIds: [...flightIds],
-        country: group.country.name
-      });
-      body = "";
-      count = 0;
-      flightIds = [];
-      currentDirection = null;
-    };
+    const flightIds = [];
 
     for (const flight of items) {
       const direction = directionInfo(flight, group.country);
-      const block = flightBlock(flight);
       const needsHeading = currentDirection !== direction.key;
-      const heading = needsHeading ? direction.label + "\n\n" : "";
-      const separator = body ? "\n\n────────\n\n" : "";
-      const piece = separator + heading + block;
-      const candidate = intro + body + piece + footer;
-
-      if (body && (candidate.length > maxChars || count >= maxFlightsPerPost)) {
-        flush();
-        body = direction.label + "\n\n" + block;
-        currentDirection = direction.key;
-        count = 1;
-        flightIds = flight?.id ? [flight.id] : [];
-        continue;
-      }
-
+      const heading = needsHeading
+        ? (body ? "\n\n" : "") + direction.label + "\n"
+        : "\n";
+      const piece = heading + flightBlock(flight);
       body += piece;
       currentDirection = direction.key;
-      count += 1;
       if (flight?.id) flightIds.push(flight.id);
     }
 
-    flush();
+    let text = intro + body + footer;
+
+    if (text.length > maxChars) {
+      const compactBody = [];
+      let lastDirection = null;
+      for (const flight of items) {
+        const direction = directionInfo(flight, group.country);
+        if (direction.key !== lastDirection) {
+          compactBody.push((compactBody.length ? "\n" : "") + direction.label);
+          lastDirection = direction.key;
+        }
+        compactBody.push(
+          (flight.hot ? "🔥 " : "• ")
+          + flightRoute(flight)
+          + " · "
+          + fmtDate(flight.departureDate)
+          + (flight.returnDate ? "–" + fmtDate(flight.returnDate) : "")
+          + " · "
+          + fmtPrice(flight.price)
+        );
+      }
+      text = intro + compactBody.join("\n") + footer;
+    }
+
+    if (text.length > maxChars) {
+      throw new Error(
+        "Country post exceeds Telegram limit for " + group.country.name
+        + ": " + text.length + " chars"
+      );
+    }
+
+    posts.push({
+      text,
+      flightIds,
+      country: group.country.name
+    });
   }
 
   return posts;
 }
 
-export function buildFlightPosts(flights, maxChars = 3400, maxFlightsPerPost = 10) {
-  return buildFlightPostBatches(flights, maxChars, maxFlightsPerPost).map(post => post.text);
+export function buildFlightPosts(flights, maxChars = 4050) {
+  return buildFlightPostBatches(flights, maxChars).map(post => post.text);
 }
 
 export function filterFlightsForTarget(flights, target) {

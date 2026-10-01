@@ -7,6 +7,7 @@ function emptyState() {
     version: 1,
     targets: {},
     targetBatches: {},
+    targetDigests: {},
     meta: { initializedAt: null }
   };
 }
@@ -21,6 +22,10 @@ function normalizeState(parsed) {
     targetBatches:
       parsed.targetBatches && typeof parsed.targetBatches === "object" && !Array.isArray(parsed.targetBatches)
         ? parsed.targetBatches
+        : {},
+    targetDigests:
+      parsed.targetDigests && typeof parsed.targetDigests === "object" && !Array.isArray(parsed.targetDigests)
+        ? parsed.targetDigests
         : {},
     meta:
       parsed.meta && typeof parsed.meta === "object" && !Array.isArray(parsed.meta)
@@ -96,6 +101,25 @@ export function markTargetBatchPublished(state, target, publishedAt = new Date()
   if (!state || state.version !== 1) throw new Error("Invalid Telegram publication state");
   if (!state.targetBatches || typeof state.targetBatches !== "object") state.targetBatches = {};
   state.targetBatches[target] = { publishedAt };
+  return state;
+}
+
+export function isDailyDigestPublished(state, target, localDate) {
+  return String(state?.targetDigests?.[target]?.date || "") === String(localDate || "");
+}
+
+export function markDailyDigestPublished(
+  state,
+  target,
+  localDate,
+  publishedAt = new Date().toISOString()
+) {
+  if (!state || state.version !== 1) throw new Error("Invalid Telegram publication state");
+  if (!state.targetDigests || typeof state.targetDigests !== "object") state.targetDigests = {};
+  state.targetDigests[target] = {
+    date: String(localDate || ""),
+    publishedAt
+  };
   return state;
 }
 
