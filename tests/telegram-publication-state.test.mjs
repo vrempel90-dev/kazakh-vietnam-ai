@@ -3,6 +3,7 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  bootstrapPublicationTarget,
   initializePublicationState,
   isDailyDigestPublished,
   isPublicationPending,
@@ -113,3 +114,36 @@ prunePublicationState(reloaded, {
 assert.equal(reloaded.targets["@channel"]["flight-1"], undefined);
 
 console.log("Telegram publication state bootstrap, anti-duplicate cooldown, throttling, and persistence: passed");
+
+const freshStatePath = join(dir, "fresh-state.json");
+const freshState = await loadPublicationState(freshStatePath);
+const secondFlight = { ...flight, id: "flight-2", price: 99000 };
+bootstrapPublicationTarget(
+  freshState,
+  "@fresh-channel",
+  [flight, secondFlight],
+  "2026-10-01",
+  "2026-10-01T13:00:00.000Z"
+);
+assert.equal(isPublicationStateInitialized(freshState), true);
+assert.equal(isDailyDigestPublished(freshState, "@fresh-channel", "2026-10-01"), true);
+assert.equal(
+  isPublicationPending(freshState, "@fresh-channel", flight, {
+    now: new Date("2026-10-01T13:01:00.000Z"),
+    cooldownHours: 24
+  }),
+  false,
+  "fresh state must not replay existing flights"
+);
+assert.equal(
+  isPublicationPending(freshState, "@fresh-channel", secondFlight, {
+    now: new Date("2026-10-01T13:01:00.000Z"),
+    cooldownHours: 24
+  }),
+  false
+);
+await savePublicationState(freshStatePath, freshState);
+const persistedBootstrap = JSON.parse(await readFile(freshStatePath, "utf8"));
+assert.equal(persistedBootstrap.targetDigests["@fresh-channel"].date, "2026-10-01");
+assert.ok(persistedBootstrap.targets["@fresh-channel"]["flight-1"]);
+assert.ok(persistedBootstrap.targets["@fresh-channel"]["flight-2"]);
