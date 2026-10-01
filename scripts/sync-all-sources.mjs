@@ -501,11 +501,15 @@ if (
         continue;
       }
 
+      const hotRepublishCooldownHours = Math.max(
+        1,
+        Number(process.env.TELEGRAM_HOT_REPUBLISH_COOLDOWN_HOURS || 24)
+      );
       const hotFlights = eligibleFlights.filter(flight =>
         Boolean(flight.hot)
         && isPublicationPending(publicationState, target, flight, {
           now,
-          cooldownHours: 0
+          cooldownHours: hotRepublishCooldownHours
         })
       );
 
