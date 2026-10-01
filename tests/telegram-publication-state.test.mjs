@@ -4,10 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   initializePublicationState,
+  isDailyDigestPublished,
   isPublicationPending,
   isPublicationStateInitialized,
   isTargetPublishAllowed,
   loadPublicationState,
+  markDailyDigestPublished,
   markFlightsPublished,
   markTargetBatchPublished,
   prunePublicationState,
@@ -35,6 +37,10 @@ assert.equal(isPublicationPending(state, "@channel", flight), true);
 
 initializePublicationState(state, "2026-09-27T08:00:00.000Z");
 assert.equal(isPublicationStateInitialized(state), true);
+
+markDailyDigestPublished(state, "@channel", "2026-09-27", "2026-09-27T08:00:00.000Z");
+assert.equal(isDailyDigestPublished(state, "@channel", "2026-09-27"), true);
+assert.equal(isDailyDigestPublished(state, "@channel", "2026-09-28"), false);
 
 markFlightsPublished(state, "@channel", [flight], "2026-09-27T08:00:00.000Z");
 assert.equal(
@@ -88,6 +94,7 @@ await savePublicationState(path, state);
 const stored = JSON.parse(await readFile(path, "utf8"));
 assert.equal(stored.targets["@channel"]["flight-1"].fingerprint, publicationFingerprint(flight));
 assert.equal(stored.meta.initializedAt, "2026-09-27T08:00:00.000Z");
+assert.equal(stored.targetDigests["@channel"].date, "2026-09-27");
 assert.equal(stored.targetBatches["@channel"].publishedAt, "2026-09-27T08:00:00.000Z");
 
 const reloaded = await loadPublicationState(path);
