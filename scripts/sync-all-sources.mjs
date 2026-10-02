@@ -77,7 +77,9 @@ function stableId(flight) {
     flight.to,
     flight.departureDate,
     flight.returnDate || "",
-    flight.trip
+    flight.trip,
+    flight.airlineCode || flight.airline || "",
+    flight.price
   ].join("|");
   return createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
@@ -93,7 +95,9 @@ function publicFlight(input) {
     hot: Boolean(input.hot),
     seats: input.seats || "Наличие уточняется",
     airline: input.airline || undefined,
+    airlineCode: input.airlineCode || undefined,
     baggage: input.baggage || undefined,
+    notice: input.notice || undefined,
     departureDate: input.departureDate,
     returnDate: input.returnDate || undefined,
     sourcePostedAt: input.sourcePostedAt || undefined,
@@ -153,7 +157,9 @@ async function syncTelegramSource(source, now, pricingConfig) {
         hot: offer.hot,
         seats: offer.seats,
         airline: offer.airline,
+        airlineCode: offer.airlineCode,
         baggage: offer.baggage,
+        notice: offer.notice,
         departureDate: offer.departureDate,
         returnDate: offer.returnDate,
         sourcePostedAt: offer.postedAt
@@ -182,7 +188,9 @@ function dedupeFlights(flights) {
       normalizeCity(flight.to),
       flight.departureDate,
       flight.returnDate || "",
-      flight.trip
+      flight.trip,
+      normalizeCity(flight.airlineCode || flight.airline || ""),
+      flight.price
     ].join("|");
 
     const current = map.get(key);
@@ -205,6 +213,10 @@ function dedupeFlights(flights) {
 
     const freshest = newer ? flight : current;
     winner.seats = freshest.seats || winner.seats;
+    winner.airline = freshest.airline || winner.airline;
+    winner.airlineCode = freshest.airlineCode || winner.airlineCode;
+    winner.baggage = freshest.baggage || winner.baggage;
+    winner.notice = freshest.notice || winner.notice;
     winner.sourcePostedAt = freshest.sourcePostedAt || winner.sourcePostedAt;
     winner.sourceIds = [
       ...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])
