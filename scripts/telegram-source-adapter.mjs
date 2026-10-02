@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
   "Fly Arystan", "FlyArystan", "Pegasus", "Sunday Airlines", "Air Cairo",
-  "Red Sea", "Neos", "Neos Air", "Sun Phu Quoc", "Air Arabia", "Centrum Air",
+  "Red Sea", "Neos", "Neos Air", "Sun Phu Quoc Airways", "Sun Phu Quoc", "Air Arabia", "Centrum Air",
   "CENTRUM AIR", "Qazaq Air", "Turkish Airlines", "Wizz Air", "Southwind",
   "AJet", "Azur Air", "Red Wings", "Corendon", "Freebird", "flydubai",
   "Vietravel", "Bamboo", "Air Serbia", "Uzbekistan Airways", "China Southern",
@@ -246,13 +246,26 @@ function priceFromText(value) {
 
 function detectBaggage(value) {
   const text = String(value || "");
+
+  const checked = text.match(/багаж\D{0,16}?(\d{1,2})\s*(?:кг|kg)/iu);
+  const hand = text.match(/ручн(?:ая|ой|ую)?\s+клад\D{0,16}?(\d{1,2})\s*(?:кг|kg)/iu);
+  if (checked && hand) {
+    return "багаж " + Number(checked[1]) + " кг + ручная кладь " + Number(hand[1]) + " кг";
+  }
+  if (checked) return "багаж " + Number(checked[1]) + " кг";
+  if (hand) return "ручная кладь " + Number(hand[1]) + " кг";
+
   const pair = text.match(/(?<!\d)(\d{1,2})\s*\+\s*(\d{1,2})\s*(?:кг|kg)?/iu);
   if (pair) return Number(pair[1]) + " + " + Number(pair[2]) + " кг";
-  const single = text.match(/багаж\D{0,12}?(\d{1,2})\s*(?:кг|kg)/iu);
-  if (single) return Number(single[1]) + " кг";
   if (/без\s+багаж/iu.test(text)) return "только ручная кладь";
   return null;
 }
+
+function detectOfferAirlineCode(value) {
+  const match = String(value || "").trim().match(/^([A-Z*])\s+(?=\d{1,2}[./]\d{1,2})/u);
+  return match ? match[1] : null;
+}
+
 
 export function parseOfferLine(line, now) {
   const text = String(line || "").replace(/\u00a0/g, " ").trim();
@@ -299,13 +312,15 @@ export function parseOfferLine(line, now) {
   const lastSeat = /последн(?:ее|ий|яя)\s+(?:место|кресло)/iu.test(text);
 
   const baggage = detectBaggage(text);
+  const airlineCode = detectOfferAirlineCode(text);
   return {
     departureDate,
     returnDate,
     price,
     hot: /🔥/u.test(text),
     seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется",
-    ...(baggage ? { baggage } : {})
+    ...(baggage ? { baggage } : {}),
+    ...(airlineCode ? { airlineCode } : {})
   };
 }
 
@@ -315,6 +330,55 @@ function detectAirline(line) {
   if (direct) return direct === "Charter" ? "Чартер" : direct;
   const tagged = text.match(/(?:а\/к|airline)\s*[:\-]?\s*([A-Za-zА-ЯЁ][A-Za-zА-ЯЁ0-9 .-]{1,40})/iu);
   return tagged ? tagged[1].trim() : null;
+}
+
+function airlineCodeFromName(value) {
+  const airline = String(value || "").toLocaleLowerCase("ru-RU");
+  if (!airline) return null;
+  if (airline.includes("air astana") || airline.includes("эйр астана")) return "A";
+  if (airline.includes("vietjet") || airline.includes("вьетжет") || airline.includes("vietravel")) return "V";
+  if (airline.includes("scat")) return "S";
+  if (airline.includes("sun phu quoc")) return "*";
+  if (airline.includes("flyarystan") || airline.includes("fly arystan") || airline.includes("flydubai")) return "F";
+  if (airline.includes("pegasus")) return "P";
+  if (airline.includes("neos")) return "N";
+  return null;
+}
+
+function extractCarrierLegend(lines) {
+  const legend = new Map();
+
+  for (const line of lines) {
+    const airline = detectAirline(line);
+    const baggage = detectBaggage(line);
+    if (!airline || !baggage) continue;
+
+    const code = airlineCodeFromName(airline);
+    if (!code) continue;
+    legend.set(code, { airline, baggage });
+  }
+
+  return legend;
+}
+
+function extractTravelNotices(lines) {
+  const notices = [];
+  const seen = new Set();
+
+  for (const line of lines) {
+    const value = String(line || "").trim();
+    if (!value) continue;
+    if (!/(?:arrival\s*card|k-?eta|виз[аы]?|обязатель|декларац)/iu.test(value)) continue;
+    if (parseRouteLine(value) || parseOfferLine(value, new Date())) continue;
+
+    const clean = value.replace(/\s+/g, " ").trim();
+    if (!seen.has(clean)) {
+      seen.add(clean);
+      notices.push(clean);
+    }
+  }
+
+  return notices;
 }
 
 function daysUntil(iso, now) {
@@ -339,6 +403,9 @@ export function parseTelegramPost(text, {
   if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(String(text || ""))) return [];
 
   const offers = [];
+  const carrierLegend = extractCarrierLegend(lines);
+  const travelNotices = extractTravelNotices(lines);
+  const notice = travelNotices.length ? travelNotices.join("\n") : undefined;
   let route = null;
   let tripHint = "OW";
   let routeAirline = null;
@@ -353,6 +420,12 @@ export function parseTelegramPost(text, {
     if (!route || !parsed?.departureDate || !parsed?.price) return;
     const offset = daysUntil(parsed.departureDate, now);
     if (offset <= 0 || offset > 365) return;
+
+    const inlineCode = parsed.airlineCode || null;
+    const routeCode = airlineCodeFromName(routeAirline);
+    const airlineCode = inlineCode || routeCode || null;
+    const legend = airlineCode ? carrierLegend.get(airlineCode) : null;
+
     const offer = {
       sourceId,
       externalId: "",
@@ -361,12 +434,14 @@ export function parseTelegramPost(text, {
       departureDate: parsed.departureDate,
       returnDate: parsed.returnDate || null,
       trip: parsed.returnDate ? "RT" : tripHint,
-      airline: routeAirline || undefined,
-      baggage: parsed.baggage || routeBaggage || undefined,
+      airline: legend?.airline || routeAirline || undefined,
+      airlineCode: airlineCode || undefined,
+      baggage: parsed.baggage || legend?.baggage || routeBaggage || undefined,
       sourcePrice: parsed.price,
       currency: "KZT",
       seats: parsed.seats || "Наличие уточняется",
       hot: Boolean(parsed.hot),
+      notice,
       postedAt
     };
     offer.externalId = stableExternalId(sourceId, postId, offers.length, offer);
