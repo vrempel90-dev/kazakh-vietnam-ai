@@ -207,11 +207,8 @@ function airlinePrefix(value) {
     || normalized.includes("вьетжет")
     || normalized.includes("vietravel")
   ) return "V";
-  if (
-    normalized.includes("scat")
-    || normalized.includes("sunday")
-    || normalized.includes("sun phu quoc")
-  ) return "S";
+  if (normalized.includes("scat") || normalized.includes("sunday")) return "S";
+  if (normalized.includes("sun phu quoc")) return "*";
   if (
     normalized.includes("flyarystan")
     || normalized.includes("fly arystan")
@@ -224,7 +221,10 @@ function airlinePrefix(value) {
 }
 
 function offerLine(flight) {
-  const prefix = airlinePrefix(flight?.airline);
+  const explicitCode = String(flight?.airlineCode || "").trim().toUpperCase();
+  const prefix = /^[A-Z*]$/.test(explicitCode)
+    ? explicitCode
+    : airlinePrefix(flight?.airline);
   const isRoundTrip = flight?.trip === "RT" && flight?.returnDate;
   const date = isRoundTrip
     ? fmtDate(flight.departureDate) + " - " + fmtDate(flight.returnDate)
