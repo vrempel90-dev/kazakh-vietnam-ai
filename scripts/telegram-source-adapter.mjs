@@ -326,8 +326,13 @@ export function parseOfferLine(line, now) {
 
 function detectAirline(line) {
   const text = String(line || "").trim();
-  const direct = AIRLINES.find(name => text.toLocaleLowerCase("ru-RU").includes(name.toLocaleLowerCase("ru-RU")));
-  if (direct) return direct === "Charter" ? "Чартер" : direct;
+  const lower = text.toLocaleLowerCase("ru-RU");
+  const direct = AIRLINES.find(name => lower.includes(name.toLocaleLowerCase("ru-RU")));
+  if (direct) {
+    if (direct === "Charter") return "Чартер";
+    const index = lower.indexOf(direct.toLocaleLowerCase("ru-RU"));
+    return index >= 0 ? text.slice(index, index + direct.length) : direct;
+  }
   const tagged = text.match(/(?:а\/к|airline)\s*[:\-]?\s*([A-Za-zА-ЯЁ][A-Za-zА-ЯЁ0-9 .-]{1,40})/iu);
   return tagged ? tagged[1].trim() : null;
 }
