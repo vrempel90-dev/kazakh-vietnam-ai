@@ -198,11 +198,16 @@ function cacheSources(cache) {
 
 export function normalizeTelegramSessionString(value) {
   let session = String(value || "").trim();
+
+  const embedded = session.match(/(?:^|[^A-Za-z0-9_-])(1[A-Za-z0-9_-]{300,})(?=$|[^A-Za-z0-9_-])/);
+  if (embedded?.[1]) return embedded[1];
+
   session = session.replace(/^TG_SESSION\s*[:=]\s*/i, "").trim();
 
   if (
     (session.startsWith('"') && session.endsWith('"'))
     || (session.startsWith("'") && session.endsWith("'"))
+    || (session.startsWith("`") && session.endsWith("`"))
   ) {
     session = session.slice(1, -1).trim();
   }
