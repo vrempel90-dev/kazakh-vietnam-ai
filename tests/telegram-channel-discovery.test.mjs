@@ -4,6 +4,7 @@ import {
   channelPassesLargeSourceGate,
   discoveryConfig,
   messageLooksLikeCharter,
+  normalizeTelegramSessionString,
   summarizeRecentCharterMessages
 } from "../scripts/telegram-channel-discovery.mjs";
 
@@ -107,4 +108,11 @@ test("only public broadcast channels with enough subscribers and charter activit
     offerPosts: 1,
     parsedOffers: 1
   }, config), false);
+});
+
+
+test("normalizes Telegram session values pasted from terminals or env files", () => {
+  assert.equal(normalizeTelegramSessionString("  TG_SESSION=1abcDEF  "), "1abcDEF");
+  assert.equal(normalizeTelegramSessionString("'1abc\nDEF'"), "1abcDEF");
+  assert.equal(normalizeTelegramSessionString('"1abcDEF"'), "1abcDEF");
 });
