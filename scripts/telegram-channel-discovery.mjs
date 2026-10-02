@@ -223,6 +223,9 @@ async function loadTeleprotoClient(env) {
   if (!Number.isInteger(apiId) || apiId <= 0 || !apiHash || !sessionString) {
     throw new Error("TG_API_ID, TG_API_HASH and TG_SESSION are required for Telegram discovery");
   }
+  if (!sessionString.startsWith("1")) {
+    throw new Error("invalid_session_format:length=" + sessionString.length + ";startsWith1=false");
+  }
 
   const [{ TelegramClient, Api }, { StringSession }] = await Promise.all([
     import("teleproto"),
