@@ -24,7 +24,7 @@
     "test:admin-auth": "node tests/telegram-admin-auth.test.mjs",
     "test:publisher": "node tests/telegram-publisher.test.mjs && node tests/telegram-publication-state.test.mjs",
     "test:lifecycle": "node tests/offer-lifecycle.test.mjs",
-    "test:sources": "node --test tests/source-registry.test.mjs tests/telegram-source-adapter.test.mjs tests/flight-validator.test.mjs && node tests/cached-flight-fallback.test.mjs"
+    "test:sources": "node --test tests/source-registry.test.mjs tests/telegram-source-adapter.test.mjs tests/telegram-channel-discovery.test.mjs tests/flight-validator.test.mjs && node tests/cached-flight-fallback.test.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",
@@ -34,7 +34,8 @@
     "@use-gesture/react": "10.3.1",
     "motion": "12.42.2",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "teleproto": "1.229.1"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
