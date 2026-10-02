@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { ingestSources } from "./source-registry.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
 import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
+import { discoverLargeTelegramSources } from "./telegram-channel-discovery.mjs";
 import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
@@ -255,7 +256,22 @@ function comparablePayload(payload) {
 const now = new Date();
 const collected = [];
 const statuses = [];
-const sources = ingestSources();
+
+const configuredSources = ingestSources();
+const discovery = await discoverLargeTelegramSources({ env: process.env, now });
+statuses.push(discovery.status);
+
+const largeChannelsOnly =
+  String(process.env.TELEGRAM_LARGE_CHANNELS_ONLY || "false").toLowerCase() === "true";
+
+const sourceMap = new Map();
+for (const source of largeChannelsOnly
+  ? discovery.sources
+  : [...configuredSources, ...discovery.sources]) {
+  if (!source?.id) continue;
+  sourceMap.set(source.id, source);
+}
+const sources = [...sourceMap.values()];
 const pricingConfig = await loadPricingConfig();
 
 for (const source of sources) {
