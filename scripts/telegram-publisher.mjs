@@ -155,7 +155,7 @@ function fmtDate(value) {
   if (!value) return "дата уточняется";
   const date = new Date(value + "T12:00:00");
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  return date.getDate() + "." + String(date.getMonth() + 1).padStart(2, "0");
 }
 
 function fmtPrice(value) {
@@ -172,68 +172,65 @@ function routeKey(flight) {
   return [
     cityKey(flight?.from),
     cityKey(flight?.to),
-    String(flight?.trip || "OW"),
-    flight?.trip === "RT" ? "rt" : "ow"
+    String(flight?.trip || "OW")
   ].join("|");
 }
 
 function routeTitle(flight) {
-  const from = esc(displayCity(flight?.from));
-  const to = esc(displayCity(flight?.to));
+  const from = esc(cleanCity(flight?.from));
+  const to = esc(cleanCity(flight?.to));
   return flight?.trip === "RT"
-    ? from + " " + to + " " + from
-    : from + " " + to;
+    ? from + " - " + to + " - " + from
+    : from + " - " + to;
+}
+
+function airlinePrefix(value) {
+  const airline = String(value || "").trim();
+  if (!airline) return "";
+
+  const normalized = airline.toLocaleLowerCase("ru-RU");
+  if (normalized.includes("air astana") || normalized.includes("эйр астана")) return "A";
+  if (normalized.includes("vietjet") || normalized.includes("вьетжет") || normalized.includes("vietravel")) return "V";
+  if (normalized.includes("sunday") || normalized.includes("scat")) return "S";
+  if (normalized.includes("flyarystan") || normalized.includes("fly arystan") || normalized.includes("flydubai")) return "F";
+  if (normalized.includes("pegasus")) return "P";
+  if (normalized.includes("neos")) return "N";
+
+  const latin = airline.match(/[A-Za-z]/);
+  if (latin) return latin[0].toUpperCase();
+  const cyrillic = airline.match(/[А-ЯЁ]/iu);
+  return cyrillic ? cyrillic[0].toLocaleUpperCase("ru-RU") : "";
 }
 
 function offerLine(flight) {
+  const prefix = airlinePrefix(flight?.airline);
   const date = flight?.trip === "RT" && flight?.returnDate
     ? fmtDate(flight.departureDate) + " - " + fmtDate(flight.returnDate)
     : fmtDate(flight.departureDate);
-  const separator = flight?.trip === "RT" && flight?.returnDate ? " = " : " - ";
-  return date
-    + separator
+
+  return (prefix ? prefix + " " : "")
+    + date
+    + " - "
     + fmtPrice(flight.price)
     + seatSuffix(flight.seats)
     + (flight.hot ? " 🔥" : "");
 }
 
-function routeMetadata(items) {
-  const lines = [];
-  const seen = new Set();
-
-  for (const flight of items) {
-    const airline = String(flight?.airline || "").trim();
-    const baggage = String(flight?.baggage || "").trim();
-    if (!airline && !baggage) continue;
-
-    const line = airline
-      ? esc(airline) + (baggage ? " - " + esc(baggage) : "")
-      : esc(baggage);
-
-    if (!seen.has(line)) {
-      seen.add(line);
-      lines.push(line);
-    }
+function ticketGroup(flight) {
+  if (flight?.trip === "RT") {
+    return { key: "roundtrip", title: "Туда-обратно", order: 3 };
   }
 
-  return lines;
-}
+  const fromKz = cityCountry(flight?.from)?.name === "Казахстан";
+  const toKz = cityCountry(flight?.to)?.name === "Казахстан";
 
-function groupFlightsByCountry(flights) {
-  const groups = new Map();
-  for (const flight of Array.isArray(flights) ? flights : []) {
-    const country = countryForFlight(flight);
-    const key = countryKey(country);
-    if (!groups.has(key)) groups.set(key, { country, flights: [] });
-    groups.get(key).flights.push(flight);
+  if (fromKz && !toKz) {
+    return { key: "outbound", title: "Билеты туда", order: 1 };
   }
-
-  return [...groups.values()].sort((a, b) => {
-    const firstA = [...a.flights].sort((x, y) => String(x.departureDate || "").localeCompare(String(y.departureDate || "")))[0];
-    const firstB = [...b.flights].sort((x, y) => String(x.departureDate || "").localeCompare(String(y.departureDate || "")))[0];
-    return String(firstA?.departureDate || "").localeCompare(String(firstB?.departureDate || ""))
-      || a.country.name.localeCompare(b.country.name, "ru");
-  });
+  if (!fromKz && toKz) {
+    return { key: "return", title: "Обратные билеты", order: 2 };
+  }
+  return { key: "other", title: "Другие билеты", order: 4 };
 }
 
 function routeSections(items) {
@@ -254,109 +251,96 @@ function routeSections(items) {
       );
 
       const sample = routeFlights[0];
-      const rows = [
-        "<b>" + routeTitle(sample) + "</b>",
-        ...(sample?.trip === "RT" ? ["-туда обратно-"] : []),
-        "",
-        ...routeFlights.map(offerLine)
-      ];
-
-      const metadata = routeMetadata(routeFlights);
-      if (metadata.length) rows.push("", ...metadata);
-
       return {
-        text: rows.join("\n"),
+        title: routeTitle(sample),
+        lines: routeFlights.map(offerLine),
         flightIds: routeFlights.map(flight => flight.id).filter(Boolean),
         firstDate: String(sample?.departureDate || "")
       };
     })
-    .sort((a, b) => a.firstDate.localeCompare(b.firstDate) || a.text.localeCompare(b.text, "ru"));
+    .sort((a, b) =>
+      a.title.localeCompare(b.title, "ru")
+      || a.firstDate.localeCompare(b.firstDate)
+    );
 }
 
-function countryHeader(country) {
-  const display = COUNTRY_DISPLAY.get(country.name) || country.name;
-  return "<b>" + country.flag + " " + esc(display) + "</b>";
+function groupFlightsByTicketType(flights) {
+  const groups = new Map();
+
+  for (const flight of Array.isArray(flights) ? flights : []) {
+    const group = ticketGroup(flight);
+    if (!groups.has(group.key)) {
+      groups.set(group.key, { ...group, flights: [] });
+    }
+    groups.get(group.key).flights.push(flight);
+  }
+
+  return [...groups.values()].sort((a, b) => a.order - b.order);
 }
 
-function footerFor(items) {
-  return items.some(flight => Boolean(flight?.cachedFallback))
-    ? "Цены указаны в KZT\nЦены и наличие указаны по последним полученным данным."
-    : "Цены указаны в KZT\nЦены и наличие актуальны на момент публикации";
-}
-
-function packCountryPosts(group, maxChars) {
-  const header = countryHeader(group.country);
-  const footer = footerFor(group.flights);
-  const sections = routeSections(group.flights);
+function packListPosts(group, maxChars) {
   const posts = [];
-  let currentSections = [];
+  const sections = routeSections(group.flights);
+  let currentParts = [];
   let currentIds = [];
 
+  const buildText = parts => group.title + "\n\n" + parts.join("\n\n");
+
   const emit = () => {
-    if (!currentSections.length) return;
+    if (!currentParts.length) return;
     posts.push({
-      text: header + "\n\n" + currentSections.join("\n\n") + "\n\n" + footer,
+      text: buildText(currentParts),
       flightIds: [...new Set(currentIds)],
-      country: group.country.name
+      category: group.key
     });
-    currentSections = [];
+    currentParts = [];
     currentIds = [];
   };
 
   for (const section of sections) {
-    const candidateSections = [...currentSections, section.text];
-    const candidate = header + "\n\n" + candidateSections.join("\n\n") + "\n\n" + footer;
+    const sectionText = section.title + "\n" + section.lines.join("\n");
+    const candidate = buildText([...currentParts, sectionText]);
 
     if (candidate.length <= maxChars) {
-      currentSections = candidateSections;
+      currentParts.push(sectionText);
       currentIds.push(...section.flightIds);
       continue;
     }
 
     emit();
 
-    const fullSingle = header + "\n\n" + section.text + "\n\n" + footer;
+    const fullSingle = buildText([sectionText]);
     if (fullSingle.length <= maxChars) {
-      currentSections = [section.text];
+      currentParts = [sectionText];
       currentIds = [...section.flightIds];
       continue;
     }
 
-    const lines = section.text.split("\n");
-    const routeHead = lines.slice(0, lines[1] === "-туда обратно-" ? 3 : 2);
-    const metadataStart = lines.findIndex((line, index) =>
-      index >= routeHead.length && /(?:багаж|Air|air|SCAT|Scat|Fly|fly|Viet|Pegasus|Turkish|Sunday|Cairo|NEOS)/i.test(line)
-    );
-    const offerLines = metadataStart >= 0
-      ? lines.slice(routeHead.length, metadataStart).filter(Boolean)
-      : lines.slice(routeHead.length).filter(Boolean);
-    const metadata = metadataStart >= 0 ? lines.slice(metadataStart).filter(Boolean) : [];
-
-    let chunk = [...routeHead];
+    let chunkLines = [];
     let chunkIds = [];
-    let flightIndex = 0;
-
-    const flushChunk = () => {
-      if (chunk.length <= routeHead.length) return;
-      const suffix = metadata.length ? "\n\n" + metadata.join("\n") : "";
-      posts.push({
-        text: header + "\n\n" + chunk.join("\n") + suffix + "\n\n" + footer,
-        flightIds: [...chunkIds],
-        country: group.country.name
-      });
-      chunk = [...routeHead];
-      chunkIds = [];
-    };
-
-    for (const line of offerLines) {
-      const suffix = metadata.length ? "\n\n" + metadata.join("\n") : "";
-      const candidateChunk = header + "\n\n" + [...chunk, line].join("\n") + suffix + "\n\n" + footer;
-      if (candidateChunk.length > maxChars && chunk.length > routeHead.length) flushChunk();
-      chunk.push(line);
-      if (section.flightIds[flightIndex]) chunkIds.push(section.flightIds[flightIndex]);
-      flightIndex += 1;
+    for (let index = 0; index < section.lines.length; index += 1) {
+      const line = section.lines[index];
+      const chunkText = section.title + "\n" + [...chunkLines, line].join("\n");
+      if (buildText([chunkText]).length > maxChars && chunkLines.length) {
+        posts.push({
+          text: buildText([section.title + "\n" + chunkLines.join("\n")]),
+          flightIds: [...chunkIds],
+          category: group.key
+        });
+        chunkLines = [];
+        chunkIds = [];
+      }
+      chunkLines.push(line);
+      if (section.flightIds[index]) chunkIds.push(section.flightIds[index]);
     }
-    flushChunk();
+
+    if (chunkLines.length) {
+      posts.push({
+        text: buildText([section.title + "\n" + chunkLines.join("\n")]),
+        flightIds: [...chunkIds],
+        category: group.key
+      });
+    }
   }
 
   emit();
@@ -365,8 +349,8 @@ function packCountryPosts(group, maxChars) {
 
 export function buildFlightPostBatches(flights, maxChars = 4050) {
   const posts = [];
-  for (const group of groupFlightsByCountry(flights)) {
-    posts.push(...packCountryPosts(group, maxChars));
+  for (const group of groupFlightsByTicketType(flights)) {
+    posts.push(...packListPosts(group, maxChars));
   }
   return posts;
 }
