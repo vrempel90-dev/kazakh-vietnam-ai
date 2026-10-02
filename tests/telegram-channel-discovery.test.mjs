@@ -116,3 +116,12 @@ test("normalizes Telegram session values pasted from terminals or env files", ()
   assert.equal(normalizeTelegramSessionString("'1abc\nDEF'"), "1abcDEF");
   assert.equal(normalizeTelegramSessionString('"1abcDEF"'), "1abcDEF");
 });
+
+
+test("extracts an embedded Telethon session token from pasted terminal output", () => {
+  const token = "1" + "A".repeat(352);
+  assert.equal(
+    normalizeTelegramSessionString("TG_SESSION:\n" + token + "\nPS C:\\\\Users\\\\user>"),
+    token
+  );
+});
