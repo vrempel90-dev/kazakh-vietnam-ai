@@ -198,3 +198,68 @@ test("airline legend after offers does not contaminate the next route", () => {
   assert.equal(offers[0].to, "Санья");
   assert.equal(offers[1].to, "Шарм-эль-Шейх");
 });
+
+
+test("parses Step to Travel style carrier codes, notices and baggage legend", () => {
+  const now = new Date("2026-10-02T06:00:00Z");
+  const text = [
+    "🇻🇳Vietnam",
+    "",
+    "❗️ Arrival Card обязательно❗️",
+    "",
+    "Astana Phu Quoc",
+    "(Астана -> Фукуок)",
+    "V 03.10 - 96 000 🔥",
+    "* 23.10 - 236 000 (1)",
+    "",
+    "Phu Quoc Astana",
+    "(Фукуок -> Астана)",
+    "S 21.10 - 55 000 🔥",
+    "",
+    "Astana Phu Quoc Astana",
+    "(Астана -> Фукуок -> Астана)",
+    "-туда обратно 7",
+    "V 03.10 - 10.10 = 196 000 (1)🔥",
+    "",
+    "Sun Phu Quoc Airways - багаж 23 кг + ручная кладь 7 кг",
+    "Scat - багаж 23 кг + ручная кладь 5 кг",
+    "VietJet Air - багаж 20кг + ручная кладь 5кг",
+    "",
+    "Цены указаны в KZT",
+    "Цены и наличие актуальны на момент публикации"
+  ].join("\n");
+
+  const offers = parseTelegramPost(text, {
+    sourceId: "telegram:charterticketsme",
+    postId: 1001,
+    postedAt: "2026-10-02T05:00:00Z",
+    now
+  });
+
+  assert.equal(offers.length, 4);
+
+  assert.equal(offers[0].from, "Астана");
+  assert.equal(offers[0].to, "Фукуок");
+  assert.equal(offers[0].airlineCode, "V");
+  assert.equal(offers[0].airline, "VietJet Air");
+  assert.equal(offers[0].baggage, "багаж 20 кг + ручная кладь 5 кг");
+  assert.equal(offers[0].notice, "❗️ Arrival Card обязательно❗️");
+  assert.equal(offers[0].hot, true);
+
+  assert.equal(offers[1].airlineCode, "*");
+  assert.equal(offers[1].airline, "Sun Phu Quoc Airways");
+  assert.equal(offers[1].baggage, "багаж 23 кг + ручная кладь 7 кг");
+  assert.equal(offers[1].seats, "1 мест");
+
+  assert.equal(offers[2].from, "Фукуок");
+  assert.equal(offers[2].to, "Астана");
+  assert.equal(offers[2].airlineCode, "S");
+  assert.equal(offers[2].airline, "Scat");
+  assert.equal(offers[2].sourcePrice, 55000);
+
+  assert.equal(offers[3].trip, "RT");
+  assert.equal(offers[3].airlineCode, "V");
+  assert.equal(offers[3].departureDate, "2026-10-03");
+  assert.equal(offers[3].returnDate, "2026-10-10");
+  assert.equal(offers[3].sourcePrice, 196000);
+});
