@@ -155,11 +155,11 @@ function fmtDate(value) {
   if (!value) return "дата уточняется";
   const date = new Date(value + "T12:00:00");
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.getDate() + "." + String(date.getMonth() + 1).padStart(2, "0");
+  return String(date.getDate()).padStart(2, "0") + "." + String(date.getMonth() + 1).padStart(2, "0");
 }
 
 function fmtPrice(value) {
-  return new Intl.NumberFormat("ru-RU").format(Number(value || 0));
+  return new Intl.NumberFormat("ru-RU").format(Number(value || 0)).replace(/\u00a0/g, " ");
 }
 
 function seatSuffix(value) {
