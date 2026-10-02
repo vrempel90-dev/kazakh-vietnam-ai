@@ -17,6 +17,7 @@ const pricingPath = process.env.PRICING_RULES_PATH || "/data/pricing-rules.json"
 const adminToken = String(process.env.ADMIN_PRICING_TOKEN || "");
 const adminTelegramIds = parseAdminTelegramIds(process.env.ADMIN_TELEGRAM_IDS);
 const syncIntervalMinutes = Math.max(5, Number(process.env.SYNC_INTERVAL_MINUTES || 15));
+const flightSyncEnabled = String(process.env.FLIGHT_SYNC_ENABLED || "true").toLowerCase() !== "false";
 const sourceStatusPath = process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json";
 
 const publicAppUrl = String(
@@ -135,6 +136,10 @@ async function readJsonBody(req) {
 }
 
 function runFlightSync(reason = "scheduled") {
+  if (!flightSyncEnabled) {
+    syncState.lastError = "flight_sync_disabled";
+    return false;
+  }
   if (syncState.running) return false;
   syncState.running = true;
   syncState.lastStartedAt = new Date().toISOString();
@@ -177,7 +182,7 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/health") {
     sendJson(res, 200, {
       ok: true,
-      sync: syncState,
+      sync: { ...syncState, enabled: flightSyncEnabled },
       telegram: {
         enabled: telegram.status.enabled,
         configured: telegram.status.configured,
