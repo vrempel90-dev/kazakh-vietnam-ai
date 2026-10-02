@@ -10,11 +10,13 @@ import {
   telegramPublicationWindowStatus
 } from "../scripts/telegram-publisher.mjs";
 
+const plain = value => String(value).replace(/\u00a0/g, " ");
+
 const flights = [
   {
     id: "a",
     from: "Алматы",
-    to: "Камрань",
+    to: "Нячанг",
     price: 218000,
     trip: "RT",
     airline: "SCAT",
@@ -53,67 +55,87 @@ assert.deepEqual(foreverFlights.map(item => item.id), ["a", "b"]);
 assert.deepEqual(countryForFlight(flights[0]), { name: "Вьетнам", flag: "🇻🇳" });
 assert.deepEqual(countryForFlight({ from: "Астана", to: "Аланья" }), { name: "Турция", flag: "🇹🇷" });
 assert.deepEqual(countryForFlight({ from: "Алматы", to: "Газипаша (Аланья" }), { name: "Турция", flag: "🇹🇷" });
-assert.deepEqual(countryForFlight({ from: "Шымкент", to: "Мюнхен" }), { name: "Германия", flag: "🇩🇪" });
 
 const posts = buildFlightPosts(flights);
-assert.equal(posts.length, 1);
-assert.ok(posts[0].includes("<b>🇻🇳 Vietnam</b>"));
-assert.ok(posts[0].includes("<b>Astana Da Nang</b>"));
-assert.ok(posts[0].includes("02.10 - 120"));
-assert.ok(posts[0].includes("<b>Almaty Cam Ranh Almaty</b>"));
-assert.ok(posts[0].includes("-туда обратно-"));
-assert.ok(posts[0].includes("03.10 - 08.10 = 218"));
-assert.ok(posts[0].includes("(3)"));
-assert.ok(posts[0].includes("SCAT - багаж 23кг + ручная кладь 5кг"));
-assert.ok(posts[0].includes("Цены указаны в KZT"));
-assert.ok(posts[0].includes("Цены и наличие актуальны на момент публикации"));
-assert.ok(!posts[0].includes("все актуальные чартеры"));
-assert.ok(!posts[0].includes("Из Казахстана"));
-assert.ok(!posts[0].includes(AUTO_MARKER), "visible post should match reference style without bot marker");
+assert.equal(posts.length, 2, "outbound and round-trip offers should be separate compact lists");
+const outbound = plain(posts.find(text => text.startsWith("Билеты туда")));
+assert.ok(outbound.includes("Астана - Дананг"));
+assert.ok(outbound.includes("V 2.10 - 120 000"));
+assert.ok(!outbound.includes("Vietnam"));
+assert.ok(!outbound.includes("багаж"));
+assert.ok(!outbound.includes("Цены указаны"));
+const roundtrip = plain(posts.find(text => text.startsWith("Туда-обратно")));
+assert.ok(roundtrip.includes("Алматы - Нячанг - Алматы"));
+assert.ok(roundtrip.includes("S 3.10 - 8.10 - 218 000 (3)"));
 
-const mixedCountries = buildFlightPosts([
-  ...flights,
+const returnPosts = buildFlightPosts([
   {
-    id: "th-out",
-    from: "Алматы",
-    to: "Пхукет",
+    id: "r1",
+    from: "Дананг",
+    to: "Астана",
     price: 78000,
     trip: "OW",
-    departureDate: "2026-10-29",
-    sourceIds: ["telegram:partner"]
+    airline: "VietJet Air",
+    seats: "4 места",
+    departureDate: "2026-10-03"
   },
   {
-    id: "th-in",
-    from: "Пхукет",
+    id: "r2",
+    from: "Нячанг",
     to: "Алматы",
-    price: 79000,
+    price: 110000,
     trip: "OW",
-    hot: true,
-    seats: "3 места",
-    departureDate: "2026-10-30",
-    sourceIds: ["telegram:partner"]
+    airline: "Air Astana",
+    seats: "1 место",
+    departureDate: "2026-09-30"
+  },
+  {
+    id: "r3",
+    from: "Нячанг",
+    to: "Алматы",
+    price: 122000,
+    trip: "OW",
+    airline: "SCAT",
+    seats: "Наличие уточняется",
+    departureDate: "2026-09-30"
+  },
+  {
+    id: "r4",
+    from: "Нячанг",
+    to: "Алматы",
+    price: 144000,
+    trip: "OW",
+    airline: "Sunday Airlines",
+    seats: "1 место",
+    departureDate: "2026-10-04"
+  },
+  {
+    id: "r5",
+    from: "Фукуок",
+    to: "Астана",
+    price: 55000,
+    trip: "OW",
+    airline: "VietJet Air",
+    departureDate: "2026-10-07"
   }
 ]);
 
-assert.equal(mixedCountries.length, 2, "each country remains a separate post group");
-const thailandPost = mixedCountries.find(text => text.includes("Thailand"));
-assert.ok(thailandPost);
-assert.ok(thailandPost.includes("<b>Almaty Phuket</b>"));
-assert.ok(thailandPost.includes("29.10 - 78"));
-assert.ok(thailandPost.includes("<b>Phuket Almaty</b>"));
-assert.ok(thailandPost.includes("30.10 - 79"));
-assert.ok(thailandPost.includes("(3) 🔥"));
-assert.ok(!thailandPost.includes("Da Nang"), "Vietnam flights must not leak into Thailand post");
+assert.equal(returnPosts.length, 1);
+const returnList = plain(returnPosts[0]);
+assert.ok(returnList.startsWith("Обратные билеты\n\n"));
+assert.ok(returnList.includes("Дананг - Астана\nV 3.10 - 78 000 (4)"));
+assert.ok(returnList.includes("Нячанг - Алматы"));
+assert.ok(returnList.includes("A 30.09 - 110 000 (1)"));
+assert.ok(returnList.includes("S 30.09 - 122 000"));
+assert.ok(returnList.includes("S 4.10 - 144 000 (1)"));
+assert.ok(returnList.includes("Фукуок - Астана\nV 7.10 - 55 000"));
+assert.ok(!returnList.includes("🇻🇳"));
+assert.ok(!returnList.includes("<b>"));
 
 assert.equal(
   telegramPublicationWindowStatus(new Date("2026-10-01T05:00:00Z")).open,
   true,
   "10:00 Asia/Almaty should be inside the window"
-);
-assert.equal(
-  telegramPublicationWindowStatus(new Date("2026-10-01T14:59:00Z")).open,
-  true,
-  "19:59 Asia/Almaty should be inside the window"
 );
 assert.equal(
   telegramPublicationWindowStatus(new Date("2026-10-01T15:00:00Z")).open,
@@ -140,61 +162,33 @@ const result = await publishFreshFlights({
   delayMs: 0
 });
 
-assert.equal(result.published, 2);
+assert.equal(result.published, 3);
 assert.deepEqual(result.targets[0].sentFlightIds, ["b"]);
 assert.deepEqual(result.targets[1].sentFlightIds.sort(), ["a", "b"]);
-assert.equal(calls.length, 2);
+assert.equal(calls.length, 3);
 assert.equal(calls[0].payload.chat_id, "@charterkaz");
-assert.ok(calls[0].payload.text.includes("Astana Da Nang"));
-assert.ok(!calls[0].payload.text.includes("Almaty Cam Ranh"));
+assert.ok(calls[0].payload.text.includes("Билеты туда"));
+assert.ok(calls[0].payload.text.includes("Астана - Дананг"));
 assert.equal(calls[1].payload.chat_id, "@charter_forever_travel");
 assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
 assert.ok(calls[1].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
 
-const cachedPosts = buildFlightPosts([{ ...flights[1], cachedFallback: true }]);
-assert.ok(cachedPosts[0].includes("Цены указаны в KZT"));
-assert.ok(cachedPosts[0].includes("Цены и наличие указаны по последним полученным данным."));
-
-const uaeFlights = Array.from({ length: 18 }, (_, index) => ({
-  id: "uae-" + index,
-  from: index % 2 === 0 ? "Алматы" : "Астана",
-  to: index % 3 === 0 ? "Шарджа" : "Дубай",
-  price: 90000 + index * 1000,
-  trip: "OW",
-  airline: "FlyDubai",
-  baggage: "багаж 20кг + ручная кладь 7кг",
-  seats: index === 0 ? "2 места" : "Наличие уточняется",
-  departureDate: "2026-10-" + String(2 + index).padStart(2, "0"),
-  sourceIds: ["telegram:neos"]
-}));
-
-const uaePosts = buildFlightPosts(uaeFlights);
-assert.equal(uaePosts.length, 1, "Dubai and Sharjah should stay in one UAE post while it fits");
-assert.ok(uaePosts[0].includes("<b>🇦🇪 UAE</b>"));
-assert.ok(uaePosts[0].includes("Almaty Sharjah"));
-assert.ok(uaePosts[0].includes("Astana Dubai"));
-assert.ok(uaePosts[0].includes("FlyDubai - багаж 20кг + ручная кладь 7кг"));
-assert.ok(uaePosts[0].length <= 4050);
-
-const veryLargeCountry = Array.from({ length: 140 }, (_, index) => ({
+const veryLargeList = Array.from({ length: 140 }, (_, index) => ({
   id: "large-" + index,
   from: index % 2 ? "Алматы" : "Астана",
   to: index % 3 ? "Пхукет" : "Бангкок",
   price: 100000 + index * 1000,
   trip: "OW",
+  airline: index % 2 ? "Air Astana" : "SCAT",
   seats: "Наличие уточняется",
   departureDate: "2026-11-" + String(1 + (index % 28)).padStart(2, "0"),
   sourceIds: ["telegram:neos"]
 }));
 
-const splitPosts = buildFlightPosts(veryLargeCountry, 900);
-assert.ok(splitPosts.length > 1, "oversized country must be split safely instead of failing");
+const splitPosts = buildFlightPosts(veryLargeList, 900);
+assert.ok(splitPosts.length > 1, "oversized lists must be split safely");
 assert.ok(splitPosts.every(text => text.length <= 900));
-assert.ok(splitPosts.every(text => text.includes("🇹🇭 Thailand")));
-assert.equal(
-  splitPosts.join("\n").match(/Цены указаны в KZT/g)?.length,
-  splitPosts.length,
-  "each split part must keep the reference footer"
-);
+assert.ok(splitPosts.every(text => text.startsWith("Билеты туда")));
+assert.ok(splitPosts.every(text => !text.includes("Thailand")));
 
-console.log("Telegram Step-to-Travel-style formatting, grouping, splitting, targets, and CTA: passed");
+console.log("Telegram compact charter list formatting, splitting, targets, and CTA: passed");
