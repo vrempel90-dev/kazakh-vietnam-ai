@@ -196,10 +196,25 @@ function cacheSources(cache) {
     .filter(Boolean);
 }
 
+export function normalizeTelegramSessionString(value) {
+  let session = String(value || "").trim();
+  session = session.replace(/^TG_SESSION\s*[:=]\s*/i, "").trim();
+
+  if (
+    (session.startsWith('"') && session.endsWith('"'))
+    || (session.startsWith("'") && session.endsWith("'"))
+  ) {
+    session = session.slice(1, -1).trim();
+  }
+
+  session = session.replace(/\s+/g, "");
+  return session;
+}
+
 async function loadTeleprotoClient(env) {
   const apiId = Number(env.TG_API_ID);
   const apiHash = String(env.TG_API_HASH || "").trim();
-  const sessionString = String(env.TG_SESSION || "").trim();
+  const sessionString = normalizeTelegramSessionString(env.TG_SESSION);
   if (!Number.isInteger(apiId) || apiId <= 0 || !apiHash || !sessionString) {
     throw new Error("TG_API_ID, TG_API_HASH and TG_SESSION are required for Telegram discovery");
   }
