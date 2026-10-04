@@ -59,8 +59,8 @@ export function discoveryConfig(env = process.env) {
     Math.min(30, Math.floor(Number(env.TELEGRAM_DISCOVERY_MAX_POST_AGE_DAYS || 7)))
   );
   const refreshHours = Math.max(
-    1,
-    Math.min(48, Number(env.TELEGRAM_DISCOVERY_REFRESH_HOURS || 12))
+    0.25,
+    Math.min(48, Number(env.TELEGRAM_DISCOVERY_REFRESH_HOURS || 0.25))
   );
 
   const queries = splitCsv(env.TELEGRAM_DISCOVERY_SEARCH_QUERIES);
@@ -105,6 +105,7 @@ export function summarizeRecentCharterMessages(messages, {
   let offerPosts = 0;
   let parsedOffers = 0;
   let lastPostAt = null;
+  const offers = [];
   const cutoff = now.getTime() - Math.max(1, maxPostAgeDays) * 86400000;
 
   for (const message of Array.isArray(messages) ? messages : []) {
@@ -121,7 +122,7 @@ export function summarizeRecentCharterMessages(messages, {
       if (dateValue.getTime() < cutoff) continue;
     }
 
-    const offers = parseTelegramPost(text, {
+    const parsed = parseTelegramPost(text, {
       sourceId,
       postId: Number(message?.id || 0) || null,
       postedAt: dateValue && !Number.isNaN(dateValue.getTime())
@@ -130,9 +131,10 @@ export function summarizeRecentCharterMessages(messages, {
       now
     });
 
-    if (offers.length) {
+    if (parsed.length) {
       offerPosts += 1;
-      parsedOffers += offers.length;
+      parsedOffers += parsed.length;
+      offers.push(...parsed);
       continue;
     }
 
@@ -142,7 +144,8 @@ export function summarizeRecentCharterMessages(messages, {
   return {
     offerPosts,
     parsedOffers,
-    lastPostAt: lastPostAt ? lastPostAt.toISOString() : null
+    lastPostAt: lastPostAt ? lastPostAt.toISOString() : null,
+    offers
   };
 }
 
@@ -185,6 +188,7 @@ function cacheSources(cache) {
       if (!handle || OWN_CHANNELS.has(handle)) return null;
       return {
         ...sourceFromHandle(handle),
+        prefetchedOffers: Array.isArray(item?.offers) ? item.offers : [],
         discovery: {
           subscribers: Number(item?.subscribers || 0),
           offerPosts: Number(item?.offerPosts || 0),
@@ -430,7 +434,8 @@ export async function discoverLargeTelegramSources({
         offerPosts: item.offerPosts,
         parsedOffers: item.parsedOffers,
         lastPostAt: item.lastPostAt,
-        matchedQueries: [...(item.matchedQueries || [])]
+        matchedQueries: [...(item.matchedQueries || [])],
+        offers: Array.isArray(item.offers) ? item.offers : []
       }));
 
     const payload = {
@@ -439,6 +444,8 @@ export async function discoverLargeTelegramSources({
       sources: selected
     };
     await saveCache(config.cachePath, payload);
+
+    const statusChannels = selected.map(({ offers: _offers, ...meta }) => meta);
 
     return {
       sources: cacheSources(payload),
@@ -450,7 +457,7 @@ export async function discoverLargeTelegramSources({
         candidates: inspected.length,
         minSubscribers: config.minSubscribers,
         selected: selected.length,
-        channels: selected
+        channels: statusChannels
       }
     };
   } catch (error) {
