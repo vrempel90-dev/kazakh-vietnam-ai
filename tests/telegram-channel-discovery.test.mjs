@@ -125,3 +125,12 @@ test("extracts an embedded Telethon session token from pasted terminal output", 
     token
   );
 });
+
+test("preserves Telethon base64 padding when normalizing TG_SESSION", () => {
+  const token = "1" + "A".repeat(351) + "=";
+  assert.equal(normalizeTelegramSessionString(token), token);
+  assert.equal(
+    normalizeTelegramSessionString("TG_SESSION:\n" + token + "\nPS C:\\\\Users\\\\user>"),
+    token
+  );
+});
