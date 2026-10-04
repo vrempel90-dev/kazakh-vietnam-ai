@@ -380,7 +380,11 @@ export async function discoverLargeTelegramSources({
     };
   }
 
-  if (cache && cacheAgeHours(cache, now) < config.refreshHours) {
+  const cacheHasOffers = Boolean(
+    cache?.sources?.some(item => Array.isArray(item?.offers) && item.offers.length > 0)
+  );
+
+  if (cache && cacheHasOffers && cacheAgeHours(cache, now) < config.refreshHours) {
     const sources = cacheSources(cache);
     return {
       sources,
