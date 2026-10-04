@@ -172,29 +172,41 @@ function runFlightSync(reason = "scheduled") {
     syncState.lastError = code === 0 ? null : "sync exited with code " + code;
     console.log("Flight sync finished", { reason, code });
 
-    void Promise.all([
-      readSourceStatus(sourceStatusPath).catch(() => null),
-      readFile(join(root, "flights.json"), "utf8")
-        .then(raw => JSON.parse(raw))
-        .catch(() => null),
-      readFile(
-        process.env.TELEGRAM_PUBLISH_STATE_PATH || "/data/telegram-publications.json",
-        "utf8"
-      )
-        .then(raw => JSON.parse(raw))
-        .catch(() => null)
-    ]).then(([sourceStatus, feed, publicationState]) => {
-      const digestDates = Object.values(publicationState?.targetDigests || {})
-        .map(item => String(item?.date || ""))
-        .filter(Boolean);
+    setTimeout(() => {
+      void Promise.all([
+        readSourceStatus(sourceStatusPath).catch(() => null),
+        readFile(join(root, "flights.json"), "utf8")
+          .then(raw => JSON.parse(raw))
+          .catch(() => null),
+        readFile(
+          process.env.TELEGRAM_PUBLISH_STATE_PATH || "/data/telegram-publications.json",
+          "utf8"
+        )
+          .then(raw => JSON.parse(raw))
+          .catch(() => null),
+        loadPricingConfig(pricingPath).catch(() => null)
+      ]).then(([sourceStatus, feed, publicationState, pricing]) => {
+        const digestDates = Object.values(publicationState?.targetDigests || {})
+          .map(item => String(item?.date || ""))
+          .filter(Boolean);
+        const pricingRules = Array.isArray(pricing?.rules)
+          ? pricing.rules.filter(rule => rule?.enabled).map(rule => ({
+              id: rule.id,
+              scope: rule.scope,
+              calculation: rule.calculation
+            }))
+          : [];
 
-      console.log("Flight sync summary", {
-        sourceSummary: sourceStatus?.summary || null,
-        feedFlights: Array.isArray(feed?.flights) ? feed.flights.length : null,
-        publicationStateInitialized: Boolean(publicationState?.meta?.initializedAt),
-        digestDates: [...new Set(digestDates)].sort()
-      });
-    }).catch(() => {});
+        console.log("Flight sync summary", JSON.stringify({
+          sourceSummary: sourceStatus?.summary || null,
+          sourceStatuses: sourceStatus?.sources || [],
+          feedFlights: Array.isArray(feed?.flights) ? feed.flights.length : null,
+          publicationStateInitialized: Boolean(publicationState?.meta?.initializedAt),
+          digestDates: [...new Set(digestDates)].sort(),
+          pricingRules
+        }));
+      }).catch(() => {});
+    }, 750);
   });
 
   return true;
