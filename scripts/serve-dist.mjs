@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -171,6 +171,30 @@ function runFlightSync(reason = "scheduled") {
     syncState.lastFinishedAt = new Date().toISOString();
     syncState.lastError = code === 0 ? null : "sync exited with code " + code;
     console.log("Flight sync finished", { reason, code });
+
+    void Promise.all([
+      readSourceStatus(sourceStatusPath).catch(() => null),
+      readFile(join(root, "flights.json"), "utf8")
+        .then(raw => JSON.parse(raw))
+        .catch(() => null),
+      readFile(
+        process.env.TELEGRAM_PUBLISH_STATE_PATH || "/data/telegram-publications.json",
+        "utf8"
+      )
+        .then(raw => JSON.parse(raw))
+        .catch(() => null)
+    ]).then(([sourceStatus, feed, publicationState]) => {
+      const digestDates = Object.values(publicationState?.targetDigests || {})
+        .map(item => String(item?.date || ""))
+        .filter(Boolean);
+
+      console.log("Flight sync summary", {
+        sourceSummary: sourceStatus?.summary || null,
+        feedFlights: Array.isArray(feed?.flights) ? feed.flights.length : null,
+        publicationStateInitialized: Boolean(publicationState?.meta?.initializedAt),
+        digestDates: [...new Set(digestDates)].sort()
+      });
+    }).catch(() => {});
   });
 
   return true;
