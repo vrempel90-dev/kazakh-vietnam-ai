@@ -144,6 +144,47 @@ export function roundSalePrice(value, step = Number(process.env.SALE_PRICE_ROUND
   return Math.ceil(value / safeStep) * safeStep;
 }
 
+export function resolvePublicationPrice({
+  sourcePrice,
+  currency = "KZT",
+  priceKind = "cost",
+  sourceId,
+  offerId,
+  from,
+  to,
+  trip,
+  rates,
+  config,
+  roundingStep
+}) {
+  const kind = String(priceKind || "cost").trim().toLowerCase();
+  if (kind === "sale") {
+    const code = String(currency || "KZT").trim().toUpperCase();
+    const salePrice = Number(sourcePrice);
+    if (code !== "KZT" || !Number.isFinite(salePrice) || salePrice <= 0) return null;
+    return {
+      salePrice,
+      costKzt: null,
+      ruleId: null,
+      ruleName: "source-sale-price",
+      passthrough: true
+    };
+  }
+
+  return calculateSalePrice({
+    sourcePrice,
+    currency,
+    sourceId,
+    offerId,
+    from,
+    to,
+    trip,
+    rates,
+    config,
+    roundingStep
+  });
+}
+
 export function calculateSalePrice({ sourcePrice, currency, sourceId, offerId, from, to, trip, rates, config, roundingStep }) {
   const costKzt = convertCostToKzt(sourcePrice, currency, rates);
   if (costKzt == null) return null;
