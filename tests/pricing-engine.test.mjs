@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { DEFAULT_PRICING_CONFIG, calculateSalePrice, normalizePricingConfig, selectPricingRule } from "../scripts/pricing-engine.mjs";
+import { DEFAULT_PRICING_CONFIG, calculateSalePrice, normalizePricingConfig, resolvePublicationPrice, selectPricingRule } from "../scripts/pricing-engine.mjs";
 
 assert.equal(DEFAULT_PRICING_CONFIG.rules.find(rule => rule.scope.trip === "OW")?.enabled, true);
 assert.equal(DEFAULT_PRICING_CONFIG.rules.find(rule => rule.scope.trip === "RT")?.enabled, true);
@@ -88,6 +88,35 @@ const usd = calculateSalePrice({
 });
 assert.equal(usd?.salePrice, 160000);
 
+const publicTelegramSale = resolvePublicationPrice({
+  sourcePrice: 123456,
+  currency: "KZT",
+  priceKind: "sale",
+  sourceId: "telegram:public",
+  from: "Алматы",
+  to: "Нячанг",
+  trip: "OW",
+  config,
+  rates: {},
+  roundingStep: 1000
+});
+assert.equal(publicTelegramSale?.salePrice, 123456, "public Telegram retail fare must not receive markup or rounding");
+assert.equal(publicTelegramSale?.passthrough, true);
+
+const costPublication = resolvePublicationPrice({
+  sourcePrice: 100000,
+  currency: "KZT",
+  priceKind: "cost",
+  sourceId: "other",
+  from: "Астана",
+  to: "Дананг",
+  trip: "OW",
+  config,
+  rates: {},
+  roundingStep: 1000
+});
+assert.equal(costPublication?.salePrice, 110000);
+
 const noRule = calculateSalePrice({
   sourcePrice: 100000,
   currency: "KZT",
@@ -100,4 +129,4 @@ const noRule = calculateSalePrice({
 });
 assert.equal(noRule, null);
 
-console.log("Pricing engine priority, fixed markup, percent markup, FX, and safe no-rule behavior: passed");
+console.log("Pricing engine priority, retail passthrough, markups, FX, and safe no-rule behavior: passed");
