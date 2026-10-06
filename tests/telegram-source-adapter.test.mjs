@@ -243,7 +243,7 @@ test("parses Step to Travel style carrier codes, notices and baggage legend", ()
   assert.equal(offers[0].airlineCode, "V");
   assert.equal(offers[0].airline, "VietJet Air");
   assert.equal(offers[0].baggage, "багаж 20 кг + ручная кладь 5 кг");
-  assert.equal(offers[0].notice, "❗️ Arrival Card обязательно❗️");
+  assert.equal(offers[0].notice, "❗ Arrival Card обязательно");
   assert.equal(offers[0].hot, true);
 
   assert.equal(offers[1].airlineCode, "*");
@@ -262,4 +262,50 @@ test("parses Step to Travel style carrier codes, notices and baggage legend", ()
   assert.equal(offers[3].departureDate, "2026-10-03");
   assert.equal(offers[3].returnDate, "2026-10-10");
   assert.equal(offers[3].sourcePrice, 196000);
+});
+
+
+test("scopes entry requirements to the destination country instead of leaking post notices", () => {
+  const offers = parseTelegramPost([
+    "❗ TDAC обязательно",
+    "❗ Arrival Card обязательно",
+    "❗ ETA обязательно",
+    "Алматы -> Куала-Лумпур",
+    "10.10 - 150 000 ₸",
+    "Астана -> Пхукет",
+    "11.10 - 160 000 ₸",
+    "Астана -> Нячанг",
+    "12.10 - 170 000 ₸",
+    "Астана -> Мале",
+    "13.10 - 180 000 ₸"
+  ].join("\n"), {
+    sourceId: "telegram:partner",
+    postId: 1002,
+    postedAt: "2026-10-06T05:00:00Z",
+    now: new Date("2026-10-06T06:00:00Z")
+  });
+
+  assert.equal(offers.length, 4);
+  assert.equal(offers[0].notice, "❗ MDAC обязательно");
+  assert.equal(offers[1].notice, "❗ TDAC обязательно");
+  assert.equal(offers[2].notice, "❗ Arrival Card обязательно");
+  assert.equal(offers[3].notice, "❗ Health Declaration обязательно");
+});
+
+test("canonicalizes Kazakhstan round trips to start and end in Kazakhstan", () => {
+  const offers = parseTelegramPost([
+    "Нячанг -> Шымкент -> Нячанг",
+    "10.10 - 17.10 = 220 000 ₸"
+  ].join("\n"), {
+    sourceId: "telegram:partner",
+    postId: 1003,
+    postedAt: "2026-10-06T05:00:00Z",
+    now: new Date("2026-10-06T06:00:00Z")
+  });
+
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].trip, "RT");
+  assert.equal(offers[0].from, "Шымкент");
+  assert.equal(offers[0].to, "Нячанг");
+  assert.equal(offers[0].notice, "❗ Arrival Card обязательно");
 });

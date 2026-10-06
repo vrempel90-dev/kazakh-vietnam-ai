@@ -8,6 +8,7 @@ function emptyState() {
     targets: {},
     targetBatches: {},
     targetDigests: {},
+    targetCountryMessages: {},
     meta: { initializedAt: null }
   };
 }
@@ -26,6 +27,12 @@ function normalizeState(parsed) {
     targetDigests:
       parsed.targetDigests && typeof parsed.targetDigests === "object" && !Array.isArray(parsed.targetDigests)
         ? parsed.targetDigests
+        : {},
+    targetCountryMessages:
+      parsed.targetCountryMessages
+      && typeof parsed.targetCountryMessages === "object"
+      && !Array.isArray(parsed.targetCountryMessages)
+        ? parsed.targetCountryMessages
         : {},
     meta:
       parsed.meta && typeof parsed.meta === "object" && !Array.isArray(parsed.meta)
@@ -120,6 +127,45 @@ export function markDailyDigestPublished(
     date: String(localDate || ""),
     publishedAt
   };
+  return state;
+}
+
+export function countryMessageIdsForDate(state, target, localDate) {
+  const entries = state?.targetCountryMessages?.[target];
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) return {};
+
+  return Object.fromEntries(
+    Object.entries(entries)
+      .filter(([, value]) =>
+        String(value?.date || "") === String(localDate || "")
+        && Number(value?.messageId) > 0
+      )
+      .map(([country, value]) => [country, Number(value.messageId)])
+  );
+}
+
+export function markCountryMessagesPublished(
+  state,
+  target,
+  countryMessages,
+  localDate,
+  publishedAt = new Date().toISOString()
+) {
+  if (!state || state.version !== 1) throw new Error("Invalid Telegram publication state");
+  if (!state.targetCountryMessages || typeof state.targetCountryMessages !== "object") {
+    state.targetCountryMessages = {};
+  }
+  if (!state.targetCountryMessages[target]) state.targetCountryMessages[target] = {};
+
+  for (const [country, messageId] of Object.entries(countryMessages || {})) {
+    const numericId = Number(messageId);
+    if (!country || !Number.isFinite(numericId) || numericId <= 0) continue;
+    state.targetCountryMessages[target][country] = {
+      date: String(localDate || ""),
+      messageId: numericId,
+      publishedAt
+    };
+  }
   return state;
 }
 

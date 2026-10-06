@@ -26,7 +26,7 @@ export const sourceRegistry = DEFAULT_PUBLIC_TELEGRAM_CHANNELS.map(handle => ({
   ...sourceFromHandle(handle),
   enabled: true,
   ingest: true,
-  priceKind: "cost",
+  priceKind: "sale",
   note: "Verified public Telegram charter source"
 }));
 
@@ -38,7 +38,7 @@ export function configuredTelegramSources(env = process.env) {
       ...source,
       enabled: true,
       ingest: true,
-      priceKind: "cost"
+      priceKind: "sale"
     }));
 }
 

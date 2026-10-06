@@ -35,7 +35,9 @@ const CITY_FORMS = {
   "sharm el sheikh": "Шарм-эль-Шейх", "hurghada": "Хургада",
   "mattala": "Маттала", "jeddah": "Джидда", "munich": "Мюнхен", "münchen": "Мюнхен", "актау": "Актау", "актобе": "Актобе", "алания": "Аланья", "аланья": "Аланья", "газипаша": "Газипаша", "газипаша (аланья": "Газипаша", "газипаша (аланья)": "Газипаша", "aktau": "Актау",
   "aktobe": "Актобе", "atyrau": "Атырау", "kostanay": "Костанай",
-  "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми"
+  "karaganda": "Караганда", "milan": "Милан", "batumi": "Батуми",
+  "kuala lumpur": "Куала-Лумпур", "куала лумпур": "Куала-Лумпур",
+  "куала-лумпур": "Куала-Лумпур", "male": "Мале"
 };
 
 const MONTHS = {
@@ -83,7 +85,7 @@ export function sourceFromHandle(handle) {
     label: "Telegram @" + clean,
     kind: "telegram_public",
     adapter: "telegram_public_feed",
-    priceKind: "cost",
+    priceKind: "sale",
     url: "https://t.me/s/" + clean,
     handle: clean,
     enabled: Boolean(clean),
@@ -134,7 +136,7 @@ function normalizeCity(value) {
     .replace(/\p{Extended_Pictographic}/gu, "")
     .replace(/[\uFE0E\uFE0F\u200D]/g, "")
     .replace(/[*_~`]+/g, " ")
-    .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка)\)\s*/giu, " ")
+    .replace(/\s*\((?:вьетнам|турция|египет|китай|таиланд|казахстан|оаэ|шри[- ]?ланка|малайзия|мальдивы|грузия|германия|венгрия)\)\s*/giu, " ")
     .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
     .replace(/^\(+|\)+$/g, "")
     .replace(/\s+/g, " ")
@@ -147,6 +149,51 @@ function normalizeCity(value) {
 
 function sameCity(a, b) {
   return normalizeCity(a).toLocaleLowerCase("ru-RU") === normalizeCity(b).toLocaleLowerCase("ru-RU");
+}
+
+function cityKey(value) {
+  return normalizeCity(value)
+    .toLocaleLowerCase("ru-RU")
+    .replace(/[^а-яёa-z0-9]/giu, "");
+}
+
+const KAZAKHSTAN_CITY_KEYS = new Set([
+  "алматы", "астана", "шымкент", "атырау", "актобе", "актау",
+  "костанай", "кызылорда", "тараз", "уральск", "петропавловск",
+  "караганда"
+]);
+
+const ENTRY_REQUIREMENT_BY_CITY = new Map([
+  ["пхукет", "TDAC обязательно"],
+  ["бангкок", "TDAC обязательно"],
+  ["куалалумпур", "MDAC обязательно"],
+  ["нячанг", "Arrival Card обязательно"],
+  ["камрань", "Arrival Card обязательно"],
+  ["фукуок", "Arrival Card обязательно"],
+  ["дананг", "Arrival Card обязательно"],
+  ["мале", "Health Declaration обязательно"],
+  ["санья", "Arrival Card обязательно"]
+]);
+
+function isKazakhstanCity(value) {
+  return KAZAKHSTAN_CITY_KEYS.has(cityKey(value));
+}
+
+function entryRequirementForRoute(from, to) {
+  for (const city of [from, to]) {
+    if (isKazakhstanCity(city)) continue;
+    const requirement = ENTRY_REQUIREMENT_BY_CITY.get(cityKey(city));
+    if (requirement) return "❗ " + requirement;
+  }
+  return undefined;
+}
+
+function canonicalizeRoundTripRoute(route, trip) {
+  if (!route || trip !== "RT") return route;
+  if (!isKazakhstanCity(route.from) && isKazakhstanCity(route.to)) {
+    return { ...route, from: route.to, to: route.from, trip: "RT" };
+  }
+  return route;
 }
 
 function isRouteNoise(value) {
@@ -409,8 +456,6 @@ export function parseTelegramPost(text, {
 
   const offers = [];
   const carrierLegend = extractCarrierLegend(lines);
-  const travelNotices = extractTravelNotices(lines);
-  const notice = travelNotices.length ? travelNotices.join("\n") : undefined;
   let route = null;
   let tripHint = "OW";
   let routeAirline = null;
@@ -426,6 +471,8 @@ export function parseTelegramPost(text, {
     const offset = daysUntil(parsed.departureDate, now);
     if (offset <= 0 || offset > 365) return;
 
+    const effectiveTrip = parsed.returnDate ? "RT" : tripHint;
+    const effectiveRoute = canonicalizeRoundTripRoute(route, effectiveTrip);
     const inlineCode = parsed.airlineCode || null;
     const routeCode = airlineCodeFromName(routeAirline);
     const airlineCode = inlineCode || routeCode || null;
@@ -434,11 +481,11 @@ export function parseTelegramPost(text, {
     const offer = {
       sourceId,
       externalId: "",
-      from: route.from,
-      to: route.to,
+      from: effectiveRoute.from,
+      to: effectiveRoute.to,
       departureDate: parsed.departureDate,
       returnDate: parsed.returnDate || null,
-      trip: parsed.returnDate ? "RT" : tripHint,
+      trip: effectiveTrip,
       airline: legend?.airline || routeAirline || undefined,
       airlineCode: airlineCode || undefined,
       baggage: parsed.baggage || legend?.baggage || routeBaggage || undefined,
@@ -446,7 +493,7 @@ export function parseTelegramPost(text, {
       currency: "KZT",
       seats: parsed.seats || "Наличие уточняется",
       hot: Boolean(parsed.hot),
-      notice,
+      notice: entryRequirementForRoute(effectiveRoute.from, effectiveRoute.to),
       postedAt
     };
     offer.externalId = stableExternalId(sourceId, postId, offers.length, offer);

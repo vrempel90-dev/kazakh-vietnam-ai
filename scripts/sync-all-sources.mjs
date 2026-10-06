@@ -5,11 +5,12 @@ import { ingestSources } from "./source-registry.mjs";
 import { writeSourceStatus } from "./source-status.mjs";
 import { fetchTelegramSourceOffers } from "./telegram-source-adapter.mjs";
 import { discoverLargeTelegramSources } from "./telegram-channel-discovery.mjs";
-import { calculateSalePrice, loadPricingConfig } from "./pricing-engine.mjs";
+import { loadPricingConfig, resolvePublicationPrice } from "./pricing-engine.mjs";
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
 import { validateFlightsForPublication } from "./flight-validator.mjs";
 import {
+  countryForFlight,
   filterFlightsForTarget,
   parsePublishTargets,
   publishFreshFlights,
@@ -18,11 +19,13 @@ import {
 } from "./telegram-publisher.mjs";
 import {
   bootstrapPublicationTarget,
+  countryMessageIdsForDate,
   initializePublicationState,
   isDailyDigestPublished,
   isPublicationPending,
   isPublicationStateInitialized,
   loadPublicationState,
+  markCountryMessagesPublished,
   markDailyDigestPublished,
   markFlightsPublished,
   markTargetBatchPublished,
@@ -150,9 +153,10 @@ async function syncTelegramSource(source, now, pricingConfig) {
   let pricingSkipped = 0;
 
   for (const offer of result.offers || []) {
-    const priced = calculateSalePrice({
+    const priced = resolvePublicationPrice({
       sourcePrice: offer.sourcePrice,
-      currency: "KZT",
+      currency: offer.currency || "KZT",
+      priceKind: source.priceKind || "cost",
       sourceId: source.id,
       offerId: offer.externalId,
       from: offer.from,
@@ -563,6 +567,13 @@ if (
         ) {
           const publishedAt = now.toISOString();
           markFlightsPublished(publicationState, target, sentFlights, publishedAt);
+          markCountryMessagesPublished(
+            publicationState,
+            target,
+            result.countryMessages,
+            localClock.date,
+            publishedAt
+          );
           markDailyDigestPublished(publicationState, target, localClock.date, publishedAt);
           markTargetBatchPublished(publicationState, target, publishedAt);
           prunePublicationState(publicationState, { now, retentionDays });
@@ -602,14 +613,27 @@ if (
         continue;
       }
 
+      const hotCountries = new Set(
+        hotFlights.map(flight => countryForFlight(flight).name)
+      );
+      const countryFlights = eligibleFlights.filter(flight =>
+        hotCountries.has(countryForFlight(flight).name)
+      );
+      const editMessageIds = countryMessageIdsForDate(
+        publicationState,
+        target,
+        localClock.date
+      );
+
       const publishResult = await publishFreshFlights({
         token: process.env.TELEGRAM_BOT_TOKEN,
         targets: [target],
-        flights: hotFlights,
+        flights: countryFlights,
         publicAppUrl:
           process.env.PUBLIC_APP_URL ||
           process.env.RAILWAY_PUBLIC_DOMAIN,
         managerPhone: process.env.VITE_MANAGER_WHATSAPP,
+        editMessageIds,
         maxPostsPerRun: 100
       });
 
@@ -617,14 +641,22 @@ if (
         target,
         sent: 0,
         sentFlightIds: [],
+        countryMessages: {},
         error: publishResult.reason || null
       };
       const sentIds = new Set(result.sentFlightIds || []);
-      const sentFlights = hotFlights.filter(flight => sentIds.has(flight.id));
+      const sentFlights = countryFlights.filter(flight => sentIds.has(flight.id));
 
-      if (sentFlights.length) {
+      if (sentFlights.length && !result.error) {
         const publishedAt = now.toISOString();
         markFlightsPublished(publicationState, target, sentFlights, publishedAt);
+        markCountryMessagesPublished(
+          publicationState,
+          target,
+          result.countryMessages,
+          localClock.date,
+          publishedAt
+        );
         markTargetBatchPublished(publicationState, target, publishedAt);
         prunePublicationState(publicationState, { now, retentionDays });
         await savePublicationState(statePath, publicationState);
@@ -634,8 +666,9 @@ if (
       publishedPosts += Number(result.sent || 0);
       targetResults.push({
         ...result,
-        mode: "hot_only",
-        pendingFlights: hotFlights.length
+        mode: "hot_country_update",
+        pendingFlights: hotFlights.length,
+        affectedCountries: [...hotCountries]
       });
     }
     }
