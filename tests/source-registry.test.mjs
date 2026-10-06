@@ -13,6 +13,7 @@ test("production ingestion contains only public Telegram channels", () => {
   assert.ok(sourceRegistry.every(source => source.kind === "telegram_public"));
   assert.ok(sourceRegistry.every(source => source.adapter === "telegram_public_feed"));
   assert.ok(sourceRegistry.every(source => source.ingest === true));
+  assert.ok(sourceRegistry.every(source => source.priceKind === "sale"));
 
   const enabled = enabledSources();
   assert.ok(enabled.length >= 5);
@@ -43,6 +44,7 @@ test("additional public Telegram channels can be configured without duplicates",
     ["telegram:supplier_one", "telegram:supplier_two"]
   );
   assert.ok(telegram.every(source => source.adapter === "telegram_public_feed"));
+  assert.ok(telegram.every(source => source.priceKind === "sale"));
 
   const withTelegram = ingestSources({
     TELEGRAM_SOURCE_CHANNELS: "supplier_one,bilettu"
