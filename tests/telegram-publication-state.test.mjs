@@ -4,12 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   bootstrapPublicationTarget,
+  countryMessageIdsForDate,
   initializePublicationState,
   isDailyDigestPublished,
   isPublicationPending,
   isPublicationStateInitialized,
   isTargetPublishAllowed,
   loadPublicationState,
+  markCountryMessagesPublished,
   markDailyDigestPublished,
   markFlightsPublished,
   markTargetBatchPublished,
@@ -44,6 +46,18 @@ assert.equal(isDailyDigestPublished(state, "@channel", "2026-09-27"), true);
 assert.equal(isDailyDigestPublished(state, "@channel", "2026-09-28"), false);
 
 markFlightsPublished(state, "@channel", [flight], "2026-09-27T08:00:00.000Z");
+markCountryMessagesPublished(
+  state,
+  "@channel",
+  { "Вьетнам": 777, "Таиланд": 778 },
+  "2026-09-27",
+  "2026-09-27T08:00:00.000Z"
+);
+assert.deepEqual(
+  countryMessageIdsForDate(state, "@channel", "2026-09-27"),
+  { "Вьетнам": 777, "Таиланд": 778 }
+);
+assert.deepEqual(countryMessageIdsForDate(state, "@channel", "2026-09-28"), {});
 assert.equal(
   isPublicationPending(state, "@channel", flight, {
     now: new Date("2026-09-27T09:00:00.000Z"),
@@ -97,6 +111,8 @@ assert.equal(stored.targets["@channel"]["flight-1"].fingerprint, publicationFing
 assert.equal(stored.meta.initializedAt, "2026-09-27T08:00:00.000Z");
 assert.equal(stored.targetDigests["@channel"].date, "2026-09-27");
 assert.equal(stored.targetBatches["@channel"].publishedAt, "2026-09-27T08:00:00.000Z");
+assert.equal(stored.targetCountryMessages["@channel"]["Вьетнам"].messageId, 777);
+assert.equal(stored.targetCountryMessages["@channel"]["Вьетнам"].date, "2026-09-27");
 
 const reloaded = await loadPublicationState(path);
 assert.equal(isPublicationStateInitialized(reloaded), true);
