@@ -64,6 +64,45 @@ function normalizeCity(value) {
     .replace(/[^а-яёa-z0-9]/giu, "");
 }
 
+const KAZAKHSTAN_CITY_KEYS = new Set([
+  "алматы", "астана", "шымкент", "атырау", "актобе", "актау",
+  "костанай", "кызылорда", "тараз", "уральск", "петропавловск",
+  "караганда"
+]);
+
+const ENTRY_REQUIREMENT_BY_COUNTRY = new Map([
+  ["Таиланд", "TDAC обязательно"],
+  ["Малайзия", "MDAC обязательно"],
+  ["Вьетнам", "Arrival Card обязательно"],
+  ["Мальдивы", "Health Declaration обязательно"],
+  ["Китай", "Arrival Card обязательно"]
+]);
+
+function isKazakhstanCity(value) {
+  return KAZAKHSTAN_CITY_KEYS.has(normalizeCity(value));
+}
+
+function normalizeOfferForPublication(offer) {
+  const trip = offer?.returnDate ? "RT" : String(offer?.trip || "OW");
+  let from = offer?.from;
+  let to = offer?.to;
+
+  if (trip === "RT" && !isKazakhstanCity(from) && isKazakhstanCity(to)) {
+    [from, to] = [to, from];
+  }
+
+  const country = countryForFlight({ from, to });
+  const requirement = ENTRY_REQUIREMENT_BY_COUNTRY.get(country?.name);
+
+  return {
+    ...offer,
+    from,
+    to,
+    trip,
+    notice: requirement ? "❗ " + requirement : undefined
+  };
+}
+
 function dayOffset(iso, now) {
   const target = new Date(iso + "T12:00:00Z");
   const base = new Date(Date.UTC(
@@ -152,7 +191,8 @@ async function syncTelegramSource(source, now, pricingConfig) {
   const flights = [];
   let pricingSkipped = 0;
 
-  for (const offer of result.offers || []) {
+  for (const rawOffer of result.offers || []) {
+    const offer = normalizeOfferForPublication(rawOffer);
     const priced = resolvePublicationPrice({
       sourcePrice: offer.sourcePrice,
       currency: offer.currency || "KZT",
