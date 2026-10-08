@@ -507,11 +507,12 @@ export function parseTelegramPost(text, {
   for (const line of lines) {
     const maybeRoute = parseRouteLine(line);
     if (maybeRoute) {
+      const firstRoute = route === null;
       route = maybeRoute;
       tripHint = maybeRoute.trip;
       // Route-specific airline metadata must not inherit from previous headings.
-      routeAirline = route ? null : headingAirline;
-      routeBaggage = route ? null : headingBaggage;
+      routeAirline = firstRoute ? headingAirline : null;
+      routeBaggage = firstRoute ? headingBaggage : null;
       headingAirline = null;
       headingBaggage = null;
       routeOfferCount = 0;
