@@ -460,6 +460,8 @@ export function parseTelegramPost(text, {
   let tripHint = "OW";
   let routeAirline = null;
   let routeBaggage = null;
+  let headingAirline = null;
+  let headingBaggage = null;
   let routeOfferCount = 0;
   let pendingDeparture = null;
   let pendingReturn = null;
@@ -508,8 +510,10 @@ export function parseTelegramPost(text, {
       route = maybeRoute;
       tripHint = maybeRoute.trip;
       // Route-specific airline metadata must not inherit from previous headings.
-      routeAirline = null;
-      routeBaggage = null;
+      routeAirline = route ? null : headingAirline;
+      routeBaggage = route ? null : headingBaggage;
+      headingAirline = null;
+      headingBaggage = null;
       routeOfferCount = 0;
       pendingDeparture = null;
       pendingReturn = null;
@@ -524,7 +528,9 @@ export function parseTelegramPost(text, {
     if (route && routeOfferCount === 0) {
       if (foundAirline) routeAirline = foundAirline;
       if (foundBaggage) routeBaggage = foundBaggage;
-
+    } else if (!route) {
+      if (foundAirline) headingAirline = foundAirline;
+      if (foundBaggage) headingBaggage = foundBaggage;
     }
 
     if (/\b(?:RT|туда[ -]?(?:и\s*)?обратно|т\/о)\b/iu.test(line)) tripHint = "RT";
