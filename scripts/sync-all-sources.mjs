@@ -630,22 +630,22 @@ if (
         continue;
       }
 
-      const hotRepublishCooldownHours = Math.max(
-        1,
-        Number(process.env.TELEGRAM_HOT_REPUBLISH_COOLDOWN_HOURS || 24)
+      // Publish every newly discovered or changed offer, not only hot deals.
+      const republishCooldownHours = Math.max(
+        0,
+        Number(process.env.TELEGRAM_REPUBLISH_COOLDOWN_HOURS ?? 24)
       );
-      const hotFlights = eligibleFlights.filter(flight =>
-        Boolean(flight.hot)
-        && isPublicationPending(publicationState, target, flight, {
+      const pendingFlights = eligibleFlights.filter(flight =>
+        isPublicationPending(publicationState, target, flight, {
           now,
-          cooldownHours: hotRepublishCooldownHours
+          cooldownHours: republishCooldownHours
         })
       );
 
-      if (!hotFlights.length) {
+      if (!pendingFlights.length) {
         targetResults.push({
           target,
-          mode: "hot_only",
+          mode: "no_new_offers",
           pendingFlights: 0,
           sent: 0,
           sentFlightIds: []
@@ -653,12 +653,22 @@ if (
         continue;
       }
 
-      const hotCountries = new Set(
-        hotFlights.map(flight => countryForFlight(flight).name)
-      );
+      // Preserve existing offer context within affected route messages.
+      const pendingRoutes = new Set(pendingFlights.map(flight =>
+        countryForFlight(flight).name + "|" +
+        [String(flight.from || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
+         String(flight.to || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
+         flight.trip === "RT" ? "RT" : "OW"].join("|")
+      ));
       const countryFlights = eligibleFlights.filter(flight =>
-        hotCountries.has(countryForFlight(flight).name)
+        pendingRoutes.has(
+          countryForFlight(flight).name + "|" +
+          [String(flight.from || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
+           String(flight.to || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
+           flight.trip === "RT" ? "RT" : "OW"].join("|")
+        )
       );
+
       const editMessageIds = countryMessageIdsForDate(
         publicationState,
         target,
@@ -706,9 +716,9 @@ if (
       publishedPosts += Number(result.sent || 0);
       targetResults.push({
         ...result,
-        mode: "hot_country_update",
-        pendingFlights: hotFlights.length,
-        affectedCountries: [...hotCountries]
+        mode: "route_update",
+        pendingFlights: pendingFlights.length,
+        affectedRoutes: [...pendingRoutes]
       });
     }
     }
