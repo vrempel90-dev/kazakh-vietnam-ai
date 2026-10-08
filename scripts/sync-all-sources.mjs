@@ -257,8 +257,7 @@ function dedupeFlights(flights) {
       flight.departureDate,
       flight.returnDate || "",
       flight.trip,
-      normalizeCity(flight.airlineCode || flight.airline || ""),
-      flight.price
+      normalizeCity(flight.airlineCode || flight.airline || "")
     ].join("|");
 
     const current = map.get(key);
@@ -281,9 +280,11 @@ function dedupeFlights(flights) {
 
     const freshest = newer ? flight : current;
     winner.seats = freshest.seats || winner.seats;
-    winner.airline = freshest.airline || winner.airline;
-    winner.airlineCode = freshest.airlineCode || winner.airlineCode;
-    winner.baggage = freshest.baggage || winner.baggage;
+    // Keep carrier and baggage attached to the selected price/source.
+    // Never transfer metadata from another offer with a different fare.
+    winner.airline = winner.airline || undefined;
+    winner.airlineCode = winner.airlineCode || undefined;
+    winner.baggage = winner.baggage || undefined;
     winner.notice = freshest.notice || winner.notice;
     winner.sourcePostedAt = freshest.sourcePostedAt || winner.sourcePostedAt;
     winner.sourceIds = [
