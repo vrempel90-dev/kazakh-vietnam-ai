@@ -460,8 +460,6 @@ export function parseTelegramPost(text, {
   let tripHint = "OW";
   let routeAirline = null;
   let routeBaggage = null;
-  let pendingAirline = null;
-  let pendingBaggage = null;
   let routeOfferCount = 0;
   let pendingDeparture = null;
   let pendingReturn = null;
@@ -477,6 +475,9 @@ export function parseTelegramPost(text, {
     const routeCode = airlineCodeFromName(routeAirline);
     const airlineCode = inlineCode || routeCode || null;
     const legend = airlineCode ? carrierLegend.get(airlineCode) : null;
+    const airline = inlineCode
+      ? (legend?.airline || (inlineCode === routeCode ? routeAirline : undefined))
+      : routeAirline;
 
     const offer = {
       sourceId,
@@ -486,7 +487,7 @@ export function parseTelegramPost(text, {
       departureDate: parsed.departureDate,
       returnDate: parsed.returnDate || null,
       trip: effectiveTrip,
-      airline: legend?.airline || routeAirline || undefined,
+      airline: airline || undefined,
       airlineCode: airlineCode || undefined,
       baggage: parsed.baggage || legend?.baggage || routeBaggage || undefined,
       sourcePrice: parsed.price,
@@ -506,10 +507,9 @@ export function parseTelegramPost(text, {
     if (maybeRoute) {
       route = maybeRoute;
       tripHint = maybeRoute.trip;
-      routeAirline = pendingAirline;
-      routeBaggage = pendingBaggage;
-      pendingAirline = null;
-      pendingBaggage = null;
+      // Route-specific airline metadata must not inherit from previous headings.
+      routeAirline = null;
+      routeBaggage = null;
       routeOfferCount = 0;
       pendingDeparture = null;
       pendingReturn = null;
@@ -524,9 +524,7 @@ export function parseTelegramPost(text, {
     if (route && routeOfferCount === 0) {
       if (foundAirline) routeAirline = foundAirline;
       if (foundBaggage) routeBaggage = foundBaggage;
-    } else if (!route) {
-      if (foundAirline) pendingAirline = foundAirline;
-      if (foundBaggage) pendingBaggage = foundBaggage;
+
     }
 
     if (/\b(?:RT|туда[ -]?(?:и\s*)?обратно|т\/о)\b/iu.test(line)) tripHint = "RT";
