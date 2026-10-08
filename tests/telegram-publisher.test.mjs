@@ -95,10 +95,10 @@ assert.deepEqual(countryForFlight({ from: "Астана", to: "Аланья" }),
 assert.deepEqual(countryForFlight({ from: "Алматы", to: "Куала-Лумпур" }), { name: "Малайзия", flag: "🇲🇾" });
 
 const posts = buildFlightPosts(vietnamFlights);
-assert.equal(posts.length, 1, "Vietnam must remain one country digest when it fits Telegram");
-const post = posts[0];
+assert.equal(posts.length, 3, "Each direction and trip type must have its own post");
+const post = posts.join("\n");
 
-assert.ok(post.startsWith("🇻🇳 <b>ВЬЕТНАМ · ЧАРТЕРЫ</b>\n\n⚠️ Arrival Card обязательно"));
+assert.ok(post.startsWith("🇻🇳 <b>ВЬЕТНАМ · АВИАБИЛЕТЫ</b>\n\n⚠️ Arrival Card обязательно"));
 assert.ok(post.includes("✈️ Астана → Фукуок"));
 assert.ok(post.includes("• 03.10 · 96 000 ₸ · VietJet Air · 🔥"));
 assert.ok(post.includes("• 23.10 · 236 000 ₸ · Sun Phu Quoc Airways · 1 место"));
@@ -142,10 +142,10 @@ const mixedCountries = buildFlightPosts([
     departureDate: "2026-10-06"
   }
 ]);
-assert.equal(mixedCountries.length, 3, "each country must remain a separate digest");
-assert.ok(mixedCountries.some(text => text.startsWith("🇻🇳 <b>ВЬЕТНАМ · ЧАРТЕРЫ</b>")));
-assert.ok(mixedCountries.some(text => text.startsWith("🇹🇭 <b>ТАИЛАНД · ЧАРТЕРЫ</b>\n\n⚠️ TDAC обязательно")));
-assert.ok(mixedCountries.some(text => text.startsWith("🇲🇾 <b>МАЛАЙЗИЯ · ЧАРТЕРЫ</b>\n\n⚠️ MDAC обязательно")));
+assert.equal(mixedCountries.length, 5, "each route must have a separate digest");
+assert.ok(mixedCountries.some(text => text.startsWith("🇻🇳 <b>ВЬЕТНАМ · АВИАБИЛЕТЫ</b>")));
+assert.ok(mixedCountries.some(text => text.startsWith("🇹🇭 <b>ТАИЛАНД · АВИАБИЛЕТЫ</b>\n\n⚠️ TDAC обязательно")));
+assert.ok(mixedCountries.some(text => text.startsWith("🇲🇾 <b>МАЛАЙЗИЯ · АВИАБИЛЕТЫ</b>\n\n⚠️ MDAC обязательно")));
 
 const targetFiltered = filterFlightsForTarget(vietnamFlights, "@charterkaz");
 assert.ok(!targetFiltered.some(item => item.id === "out-v-1"));
@@ -181,15 +181,15 @@ const result = await publishFreshFlights({
   delayMs: 0
 });
 
-assert.equal(result.published, 2);
-assert.equal(calls.length, 2);
+assert.equal(result.published, 6);
+assert.equal(calls.length, 6);
 assert.ok(calls.every(call => call.url.endsWith("/sendMessage")));
 assert.equal(calls[0].payload.chat_id, "@charterkaz");
-assert.ok(calls[0].payload.text.startsWith("🇻🇳 <b>ВЬЕТНАМ · ЧАРТЕРЫ</b>"));
-assert.equal(calls[1].payload.chat_id, "@charter_forever_travel");
-assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
-assert.ok(calls[1].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
-assert.equal(result.targets[1].countryMessages["Вьетнам"], 2);
+assert.ok(calls[0].payload.text.startsWith("🇻🇳 <b>ВЬЕТНАМ · АВИАБИЛЕТЫ</b>"));
+assert.equal(calls[3].payload.chat_id, "@charter_forever_travel");
+assert.equal(calls[3].payload.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
+assert.ok(calls[3].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
+assert.equal(Object.keys(result.targets[1].countryMessages).length, 3);
 
 const editCalls = [];
 const editFetch = async (url, options) => {
@@ -205,16 +205,16 @@ const editResult = await publishFreshFlights({
   targets: "@updates",
   flights: vietnamFlights,
   managerPhone: "+7 700 777 24 14",
-  editMessageIds: { "Вьетнам": 777 },
+  editMessageIds: { "Вьетнам|астана|фукуок|OW": 777 },
   fetchImpl: editFetch,
   delayMs: 0,
   maxPostsPerRun: 10
 });
 
-assert.equal(editCalls.length, 1);
-assert.ok(editCalls[0].url.endsWith("/editMessageText"));
-assert.equal(editCalls[0].payload.message_id, 777);
-assert.equal(editResult.targets[0].countryMessages["Вьетнам"], 777);
+assert.equal(editCalls.length, 3);
+assert.ok(editCalls.some(call => call.url.endsWith("/editMessageText")));
+assert.ok(editCalls.some(call => call.payload.message_id === 777));
+assert.equal(editResult.targets[0].countryMessages["Вьетнам|астана|фукуок|OW"], 777);
 
 const veryLargeList = Array.from({ length: 140 }, (_, index) => ({
   id: "large-" + index,
@@ -234,7 +234,15 @@ const veryLargeList = Array.from({ length: 140 }, (_, index) => ({
 const splitPosts = buildFlightPosts(veryLargeList, 900);
 assert.ok(splitPosts.length > 1, "oversized country digests must split safely");
 assert.ok(splitPosts.every(text => text.length <= 900));
-assert.ok(splitPosts.every(text => text.startsWith("🇹🇭 <b>ТАИЛАНД · ЧАРТЕРЫ</b>")));
+assert.ok(splitPosts.every(text => text.startsWith("🇹🇭 <b>ТАИЛАНД · АВИАБИЛЕТЫ</b>")));
 assert.ok(splitPosts.every(text => text.includes("💳 Цены в KZT")));
 
-console.log("Telegram country digest design, country notices, airline names, editing, splitting, targets, and CTA: passed");
+console.log("Telegram route digest design, country notices, airline names, editing, splitting, targets, and CTA: passed");
+
+const separateDestinations = buildFlightPosts([
+  { id: "kul", from: "Алматы", to: "Куала-Лумпур", trip: "OW", departureDate: "2026-11-10", price: 110000 },
+  { id: "sel", from: "Алматы", to: "Сеул", trip: "OW", departureDate: "2026-11-11", price: 130000 }
+]);
+assert.equal(separateDestinations.length, 2);
+assert.ok(separateDestinations.every(text => !(text.includes("Куала-Лумпур") && text.includes("Сеул"))));
+assert.ok(separateDestinations.some(text => text.startsWith("🇰🇷 <b>ЮЖНАЯ КОРЕЯ · АВИАБИЛЕТЫ</b>")));
