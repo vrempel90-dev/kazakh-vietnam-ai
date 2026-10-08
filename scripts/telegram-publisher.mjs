@@ -10,6 +10,7 @@ const COUNTRY_BY_CITY = new Map([
 
   ["пхукет", ["Таиланд", "🇹🇭"]], ["бангкок", ["Таиланд", "🇹🇭"]],
   ["куалалумпур", ["Малайзия", "🇲🇾"]],
+  ["сеул", ["Южная Корея", "🇰🇷"]], ["инчхон", ["Южная Корея", "🇰🇷"]],
   ["нячанг", ["Вьетнам", "🇻🇳"]], ["камрань", ["Вьетнам", "🇻🇳"]],
   ["дананг", ["Вьетнам", "🇻🇳"]], ["фукуок", ["Вьетнам", "🇻🇳"]],
   ["анталия", ["Турция", "🇹🇷"]], ["анталья", ["Турция", "🇹🇷"]],
@@ -45,6 +46,7 @@ const COUNTRY_DISPLAY = new Map([
   ["Испания", "Spain"], ["Франция", "France"], ["Чехия", "Czech Republic"],
   ["Австрия", "Austria"], ["Кипр", "Cyprus"], ["Кыргызстан", "Kyrgyzstan"],
   ["Узбекистан", "Uzbekistan"], ["Россия", "Russia"],
+  ["Южная Корея", "South Korea"],
   ["Другие направления", "Other destinations"]
 ]);
 
@@ -57,6 +59,7 @@ const ENTRY_REQUIREMENT_BY_COUNTRY = new Map([
 ]);
 
 const CITY_DISPLAY = new Map([
+  ["сеул", "Seoul"], ["инчхон", "Incheon"],
   ["алматы", "Almaty"], ["астана", "Astana"], ["шымкент", "Shymkent"],
   ["атырау", "Atyrau"], ["актобе", "Aktobe"], ["актау", "Aktau"],
   ["костанай", "Kostanay"], ["кызылорда", "Kyzylorda"], ["тараз", "Taraz"],
@@ -361,8 +364,8 @@ function groupFlightsByCountry(flights) {
 
   for (const flight of Array.isArray(flights) ? flights : []) {
     const country = countryForFlight(flight);
-    const key = countryKey(country);
-    if (!groups.has(key)) groups.set(key, { country, flights: [] });
+    const key = countryKey(country) + "|" + routeKey(flight);
+    if (!groups.has(key)) groups.set(key, { country, key, flights: [] });
     groups.get(key).flights.push(flight);
   }
 
@@ -418,7 +421,7 @@ function footerFor(items) {
 }
 
 function countryHeader(country) {
-  return country.flag + " <b>" + esc(String(country.name || "").toLocaleUpperCase("ru-RU")) + " · ЧАРТЕРЫ</b>";
+  return country.flag + " <b>" + esc(String(country.name || "").toLocaleUpperCase("ru-RU")) + " · АВИАБИЛЕТЫ</b>";
 }
 
 function sectionText(section, rows = section.rows) {
@@ -451,7 +454,7 @@ function packCountryPosts(group, maxChars) {
     posts.push({
       text: countryPostText(group, currentParts),
       flightIds: [...new Set(currentIds)],
-      country: group.country.name
+      country: group.key
     });
     currentParts = [];
     currentIds = [];
@@ -582,7 +585,7 @@ export async function publishFreshFlights({
   editMessageIds = {},
   fetchImpl = fetch,
   delayMs = Math.max(0, Number(process.env.POST_DELAY_SECONDS || 2) * 1000),
-  maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 2)))
+  maxPostsPerRun = Math.max(1, Math.floor(Number(process.env.MAX_POSTS_PER_RUN || 100)))
 }) {
   const botToken = String(token || "").trim();
   const appUrl = String(publicAppUrl || "").trim();
