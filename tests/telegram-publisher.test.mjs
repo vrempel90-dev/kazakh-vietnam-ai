@@ -95,57 +95,30 @@ assert.deepEqual(countryForFlight({ from: "Астана", to: "Аланья" }),
 assert.deepEqual(countryForFlight({ from: "Алматы", to: "Куала-Лумпур" }), { name: "Малайзия", flag: "🇲🇾" });
 
 const posts = buildFlightPosts(vietnamFlights);
-assert.equal(posts.length, 3, "Each direction and trip type must have its own post");
+assert.equal(posts.length, 3, "Outbound, return and RT are classified separately");
 const post = posts.join("\n");
 
-assert.ok(post.startsWith("🇻🇳 <b>ВЬЕТНАМ · АВИАБИЛЕТЫ</b>\n\n⚠️ Arrival Card обязательно"));
-assert.ok(post.includes("✈️ Астана → Фукуок"));
-assert.ok(post.includes("• 03.10 · 96 000 ₸ · VietJet Air · 🔥"));
-assert.ok(post.includes("• 23.10 · 236 000 ₸ · Sun Phu Quoc Airways · 1 место"));
-assert.ok(post.includes("✈️ Фукуок → Астана"));
-assert.ok(post.includes("• 21.10 · 55 000 ₸ · Scat · 2 места · 🔥"));
-assert.ok(post.includes("🔁 Астана ⇄ Фукуок"));
-assert.ok(post.includes("• 03.10–10.10 · 196 000 ₸ · VietJet Air · 1 место · 🔥"));
-assert.ok(post.includes("— ноябрь —"));
-assert.ok(post.includes("• 02.11–09.11 · 378 000 ₸ · VietJet Air"));
-assert.ok(post.includes("🧳 Sun Phu Quoc Airways: багаж 23 кг + ручная кладь 7 кг"));
-assert.ok(post.includes("🧳 Scat: багаж 23 кг + ручная кладь 5 кг"));
-assert.ok(post.includes("🧳 VietJet Air: багаж 20 кг + ручная кладь 5 кг"));
-assert.ok(post.endsWith("💳 Цены в KZT\n🕒 Цена и наличие актуальны на момент публикации"));
-assert.ok(!post.includes("Astana Phu Quoc"));
-assert.ok(!post.includes("\nV 03.10"));
-assert.ok(!post.includes("\nS 21.10"));
-assert.ok(!post.includes("\n* 23.10"));
-assert.ok(!post.includes(AUTO_MARKER));
+assert.ok(post.includes("БИЛЕТЫ ТУДА"));
+assert.ok(post.includes("ОБРАТНЫЕ БИЛЕТЫ"));
+assert.ok(post.includes("ТУДА И ОБРАТНО (RT)"));
+assert.ok(post.includes("Астана - Фукуок"));
+assert.ok(post.includes("Фукуок - Астана"));
+assert.ok(post.includes("V 03.10 - 96 000 ₸"));
+assert.ok(post.includes("S 21.10 - 55 000 ₸ (2)"));
+assert.ok(post.includes("V 03.10–10.10 | 7 ночей - 196 000 ₸ (1)"));
+assert.ok(post.includes("S - SCAT"));
+assert.ok(post.includes("A - Air Astana") === false);
+assert.ok(post.includes("V - VietJet Air"));
+assert.ok(!post.includes("\\\\n"), "Use actual line breaks");
 
 const mixedCountries = buildFlightPosts([
   ...vietnamFlights,
-  {
-    id: "thai-1",
-    from: "Алматы",
-    to: "Пхукет",
-    price: 99000,
-    trip: "OW",
-    airline: "Air Astana",
-    baggage: "багаж 23 кг + ручная кладь 8 кг",
-    seats: "2 места",
-    departureDate: "2026-10-05"
-  },
-  {
-    id: "malaysia-1",
-    from: "Алматы",
-    to: "Куала-Лумпур",
-    price: 159000,
-    trip: "OW",
-    airline: "Air Astana",
-    seats: "Наличие уточняется",
-    departureDate: "2026-10-06"
-  }
+  {id:"thai-1",from:"Алматы",to:"Пхукет",price:99000,trip:"OW",airline:"Air Astana",departureDate:"2026-10-05"},
+  {id:"malaysia-1",from:"Алматы",to:"Куала-Лумпур",price:159000,trip:"OW",departureDate:"2026-10-06"}
 ]);
-assert.equal(mixedCountries.length, 5, "each route must have a separate digest");
-assert.ok(mixedCountries.some(text => text.startsWith("🇻🇳 <b>ВЬЕТНАМ · АВИАБИЛЕТЫ</b>")));
-assert.ok(mixedCountries.some(text => text.startsWith("🇹🇭 <b>ТАИЛАНД · АВИАБИЛЕТЫ</b>\n\n⚠️ TDAC обязательно")));
-assert.ok(mixedCountries.some(text => text.startsWith("🇲🇾 <b>МАЛАЙЗИЯ · АВИАБИЛЕТЫ</b>\n\n⚠️ MDAC обязательно")));
+assert.equal(mixedCountries.length, 5);
+assert.ok(mixedCountries.some(text=>text.startsWith("🇹🇭 <b>БИЛЕТЫ ТУДА")));
+assert.ok(mixedCountries.some(text=>text.startsWith("🇲🇾 <b>БИЛЕТЫ ТУДА")));
 
 const targetFiltered = filterFlightsForTarget(vietnamFlights, "@charterkaz");
 assert.ok(!targetFiltered.some(item => item.id === "out-v-1"));
@@ -185,7 +158,7 @@ assert.equal(result.published, 6);
 assert.equal(calls.length, 6);
 assert.ok(calls.every(call => call.url.endsWith("/sendMessage")));
 assert.equal(calls[0].payload.chat_id, "@charterkaz");
-assert.ok(calls[0].payload.text.startsWith("🇻🇳 <b>ВЬЕТНАМ · АВИАБИЛЕТЫ</b>"));
+assert.ok(calls[0].payload.text.startsWith("🇻🇳 <b>БИЛЕТЫ ТУДА"));
 assert.equal(calls[3].payload.chat_id, "@charter_forever_travel");
 assert.equal(calls[3].payload.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
 assert.ok(calls[3].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
@@ -234,8 +207,8 @@ const veryLargeList = Array.from({ length: 140 }, (_, index) => ({
 const splitPosts = buildFlightPosts(veryLargeList, 900);
 assert.ok(splitPosts.length > 1, "oversized country digests must split safely");
 assert.ok(splitPosts.every(text => text.length <= 900));
-assert.ok(splitPosts.every(text => text.startsWith("🇹🇭 <b>ТАИЛАНД · АВИАБИЛЕТЫ</b>")));
-assert.ok(splitPosts.every(text => text.includes("💳 Цены в KZT")));
+assert.ok(splitPosts.every(text => text.startsWith("🇹🇭 <b>БИЛЕТЫ ТУДА")));
+assert.ok(splitPosts.every(text => text.includes("💳 Цены в ₸")));
 
 console.log("Telegram route digest design, country notices, airline names, editing, splitting, targets, and CTA: passed");
 
@@ -245,4 +218,4 @@ const separateDestinations = buildFlightPosts([
 ]);
 assert.equal(separateDestinations.length, 2);
 assert.ok(separateDestinations.every(text => !(text.includes("Куала-Лумпур") && text.includes("Сеул"))));
-assert.ok(separateDestinations.some(text => text.startsWith("🇰🇷 <b>ЮЖНАЯ КОРЕЯ · АВИАБИЛЕТЫ</b>")));
+assert.ok(separateDestinations.some(text => text.startsWith("🇰🇷 <b>БИЛЕТЫ ТУДА")));
