@@ -21,6 +21,8 @@ jobs:
       TELEGRAM_SOURCE_TTL_HOURS: ${{ vars.TELEGRAM_SOURCE_TTL_HOURS }}
       TELEGRAM_SOURCE_MAX_PAGES: ${{ vars.TELEGRAM_SOURCE_MAX_PAGES }}
       SALE_PRICE_ROUNDING: ${{ vars.SALE_PRICE_ROUNDING }}
+      # Telegram publishing is owned by Railway, which has the bot token and persistent /data volume.
+      TELEGRAM_PUBLISH_ENABLED: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
