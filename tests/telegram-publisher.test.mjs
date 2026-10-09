@@ -178,7 +178,7 @@ const editResult = await publishFreshFlights({
   targets: "@updates",
   flights: vietnamFlights,
   managerPhone: "+7 700 777 24 14",
-  editMessageIds: { "Вьетнам|астана|фукуок|OW": 777 },
+  editMessageIds: { "Вьетнам|outbound": 777 },
   fetchImpl: editFetch,
   delayMs: 0,
   maxPostsPerRun: 10
@@ -187,7 +187,7 @@ const editResult = await publishFreshFlights({
 assert.equal(editCalls.length, 3);
 assert.ok(editCalls.some(call => call.url.endsWith("/editMessageText")));
 assert.ok(editCalls.some(call => call.payload.message_id === 777));
-assert.equal(editResult.targets[0].countryMessages["Вьетнам|астана|фукуок|OW"], 777);
+assert.equal(editResult.targets[0].countryMessages["Вьетнам|outbound"], 777);
 
 const veryLargeList = Array.from({ length: 140 }, (_, index) => ({
   id: "large-" + index,
