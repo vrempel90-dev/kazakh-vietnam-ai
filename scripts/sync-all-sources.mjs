@@ -519,10 +519,13 @@ const localClock = localPublicationClock(now, publishTimeZone);
 const digestStartHour = envNumber("TELEGRAM_DAILY_DIGEST_START_HOUR") ?? 10;
 const digestEndHour = envNumber("TELEGRAM_DAILY_DIGEST_END_HOUR") ?? 12;
 const digestCatchupDate = String(process.env.TELEGRAM_DIGEST_CATCHUP_DATE || "").trim();
+const publishNotBeforeDate = String(process.env.TELEGRAM_PUBLISH_NOT_BEFORE_DATE || "").trim();
+const publicationDateAllowed = !publishNotBeforeDate || localClock.date >= publishNotBeforeDate;
 
 if (
   flights.length
   && process.env.TELEGRAM_PUBLISH_ENABLED !== "false"
+  && publicationDateAllowed
   && publishWindow.open
 ) {
   try {
@@ -756,7 +759,9 @@ if (
       ? "No Telegram charter offers are eligible for publication."
       : process.env.TELEGRAM_PUBLISH_ENABLED === "false"
         ? "Telegram publishing is disabled."
-        : "Telegram publishing paused outside configured daytime window: " + JSON.stringify(publishWindow)
+        : !publicationDateAllowed
+          ? "Telegram publishing starts on " + publishNotBeforeDate + " in " + publishTimeZone
+          : "Telegram publishing paused outside configured daytime window: " + JSON.stringify(publishWindow)
   );
 }
 
