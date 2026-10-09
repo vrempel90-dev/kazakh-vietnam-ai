@@ -205,11 +205,7 @@ function routeTitleEnglish(flight) {
 }
 
 function routeTitleRussian(flight) {
-  const from = esc(cleanCity(flight?.from));
-  const to = esc(cleanCity(flight?.to));
-  return flight?.trip === "RT"
-    ? "🔁 " + from + " ⇄ " + to
-    : "✈️ " + from + " → " + to;
+  return esc(cleanCity(flight?.from)) + " - " + esc(cleanCity(flight?.to));
 }
 
 function airlinePrefix(value) {
@@ -241,19 +237,18 @@ function airlinePrefix(value) {
 }
 
 function offerLine(flight) {
-  const isRoundTrip = flight?.trip === "RT" && flight?.returnDate;
-  const date = isRoundTrip
+  const roundTrip = flight?.trip === "RT" && Boolean(flight?.returnDate);
+  const date = roundTrip
     ? fmtDate(flight.departureDate) + "–" + fmtDate(flight.returnDate)
     : fmtDate(flight.departureDate);
-  const parts = [date, fmtPrice(flight.price) + " ₸"];
   const airline = String(flight?.airline || "").trim();
-  const seats = seatLabel(flight?.seats);
-
-  if (airline) parts.push(esc(airline));
-  if (seats) parts.push(esc(seats));
-  if (flight?.hot) parts.push("🔥");
-
-  return "• " + parts.join(" · ");
+  const prefix = airlinePrefix(airline);
+  const carrier = prefix === "*" && airline ? esc(airline) + " " : (prefix !== "*" ? prefix + " " : "");
+  const match = String(flight?.seats || "").match(/\\b(\\d{1,3})\\b/);
+  const seats = match ? " (" + Number(match[1]) + ")" : "";
+  const nights = roundTrip ? stayDays(flight) : null;
+  const duration = roundTrip && nights ? " | " + nights + " ночей" : "";
+  return carrier + date + duration + " - " + fmtPrice(flight.price) + " ₸" + seats;
 }
 
 const MONTH_LABELS = [
@@ -361,26 +356,22 @@ function routeSections(items) {
 
 function groupFlightsByCountry(flights) {
   const groups = new Map();
-
   for (const flight of Array.isArray(flights) ? flights : []) {
     const country = countryForFlight(flight);
-    const key = countryKey(country) + "|" + routeKey(flight);
-    if (!groups.has(key)) groups.set(key, { country, key, flights: [] });
+    const fromKz = cityCountry(flight?.from)?.name === "Казахстан";
+    const toKz = cityCountry(flight?.to)?.name === "Казахстан";
+    const roundTrip = flight?.trip === "RT" && Boolean(flight?.returnDate);
+    const direction = roundTrip ? "roundtrip" : fromKz && !toKz
+      ? "outbound" : !fromKz && toKz ? "return" : "other";
+    const key = countryKey(country) + "|" + direction;
+    if (!groups.has(key)) groups.set(key, { country, key, direction, flights: [] });
     groups.get(key).flights.push(flight);
   }
-
-  return [...groups.values()].sort((a, b) => {
-    const firstA = [...a.flights]
-      .map(item => String(item?.departureDate || ""))
-      .filter(Boolean)
-      .sort()[0] || "";
-    const firstB = [...b.flights]
-      .map(item => String(item?.departureDate || ""))
-      .filter(Boolean)
-      .sort()[0] || "";
-    return firstA.localeCompare(firstB)
-      || a.country.name.localeCompare(b.country.name, "ru");
-  });
+  const directionOrder = { outbound: 0, return: 1, roundtrip: 2, other: 3 };
+  return [...groups.values()].sort((a, b) =>
+    a.country.name.localeCompare(b.country.name, "ru")
+    || directionOrder[a.direction] - directionOrder[b.direction]
+  );
 }
 
 function normalizeNotice(value) {
@@ -420,8 +411,11 @@ function footerFor(items) {
     : "💳 Цены в KZT\n🕒 Цена и наличие актуальны на момент публикации";
 }
 
-function countryHeader(country) {
-  return country.flag + " <b>" + esc(String(country.name || "").toLocaleUpperCase("ru-RU")) + " · АВИАБИЛЕТЫ</b>";
+function countryHeader(country, direction = "other") {
+  const heading = direction === "return" ? "ОБРАТНЫЕ БИЛЕТЫ"
+    : direction === "outbound" ? "БИЛЕТЫ ТУДА"
+    : direction === "roundtrip" ? "ТУДА И ОБРАТНО (RT)" : "ЧАРТЕРНЫЕ РЕЙСЫ";
+  return country.flag + " <b>" + heading + " · " + esc(country.name.toLocaleUpperCase("ru-RU")) + "</b>";
 }
 
 function sectionText(section, rows = section.rows) {
@@ -429,18 +423,16 @@ function sectionText(section, rows = section.rows) {
 }
 
 function countryPostText(group, parts) {
-  const blocks = [countryHeader(group.country)];
-
-  const notices = countryNotices(group);
-  if (notices.length) blocks.push(notices.join("\n"));
-
+  const blocks = [countryHeader(group.country, group.direction)];
   blocks.push(...parts);
-
-  const baggage = baggageLines(group.flights);
-  if (baggage.length) blocks.push(baggage.join("\n"));
-
-  blocks.push(footerFor(group.flights));
-  return blocks.join("\n\n");
+  const airlines = [...new Set(group.flights.map(f => String(f?.airline || "").trim()).filter(Boolean))];
+  const legend = [];
+  if (airlines.some(a => airlinePrefix(a) === "S")) legend.push("S - SCAT");
+  if (airlines.some(a => airlinePrefix(a) === "A")) legend.push("A - Air Astana");
+  if (airlines.some(a => airlinePrefix(a) === "V")) legend.push("V - VietJet Air");
+  if (legend.length) blocks.push(legend.join("\\n"));
+  blocks.push("💳 Цены в ₸. Наличие и стоимость уточняются при бронировании.");
+  return blocks.join("\\n\\n");
 }
 
 function packCountryPosts(group, maxChars) {
