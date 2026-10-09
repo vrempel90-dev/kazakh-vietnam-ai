@@ -244,7 +244,7 @@ function offerLine(flight) {
   const airline = String(flight?.airline || "").trim();
   const prefix = airlinePrefix(airline);
   const carrier = prefix === "*" && airline ? esc(airline) + " " : (prefix !== "*" ? prefix + " " : "");
-  const match = String(flight?.seats || "").match(/\\b(\\d{1,3})\\b/);
+  const match = String(flight?.seats || "").match(/([0-9]{1,3})/);
   const seats = match ? " (" + Number(match[1]) + ")" : "";
   const nights = roundTrip ? stayDays(flight) : null;
   const duration = roundTrip && nights ? " | " + nights + " ночей" : "";
