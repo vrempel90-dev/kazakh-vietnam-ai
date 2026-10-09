@@ -430,9 +430,9 @@ function countryPostText(group, parts) {
   if (airlines.some(a => airlinePrefix(a) === "S")) legend.push("S - SCAT");
   if (airlines.some(a => airlinePrefix(a) === "A")) legend.push("A - Air Astana");
   if (airlines.some(a => airlinePrefix(a) === "V")) legend.push("V - VietJet Air");
-  if (legend.length) blocks.push(legend.join("\\n"));
+  if (legend.length) blocks.push(legend.join("\n"));
   blocks.push("💳 Цены в ₸. Наличие и стоимость уточняются при бронировании.");
-  return blocks.join("\\n\\n");
+  return blocks.join("\n\n");
 }
 
 function packCountryPosts(group, maxChars) {
@@ -480,7 +480,7 @@ function packCountryPosts(group, maxChars) {
       posts.push({
         text: countryPostText(group, [sectionText(section, chunkRows)]),
         flightIds: [...new Set(chunkIds)],
-        country: group.country.name
+        country: group.key
       });
       chunkRows = [];
       chunkIds = [];
