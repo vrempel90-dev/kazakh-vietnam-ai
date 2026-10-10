@@ -598,7 +598,7 @@ if (
             process.env.PUBLIC_APP_URL ||
             process.env.RAILWAY_PUBLIC_DOMAIN,
           managerPhone: process.env.VITE_MANAGER_WHATSAPP,
-          maxPostsPerRun: 100
+          maxPostsPerRun: 8
         });
 
         const result = publishResult.targets?.[0] || {
@@ -700,7 +700,7 @@ if (
           process.env.RAILWAY_PUBLIC_DOMAIN,
         managerPhone: process.env.VITE_MANAGER_WHATSAPP,
         editMessageIds,
-        maxPostsPerRun: 100
+        maxPostsPerRun: 8
       });
 
       const result = publishResult.targets?.[0] || {
