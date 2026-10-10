@@ -632,6 +632,12 @@ if (
 
         publishedFlights += sentFlights.length;
         publishedPosts += Number(result.sent || 0);
+        if (Number(result.sent || 0) > 0) {
+          publicationState.meta ||= {};
+          publicationState.meta.windowRuns ||= {};
+          publicationState.meta.windowRuns[target] = windowKey;
+          await savePublicationState(statePath, publicationState);
+        }
         targetResults.push({
           ...result,
           mode: digestCatchup && !digestWindowOpen ? "daily_digest_catchup" : "daily_digest",
