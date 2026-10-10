@@ -521,11 +521,15 @@ const digestEndHour = envNumber("TELEGRAM_DAILY_DIGEST_END_HOUR") ?? 12;
 const digestCatchupDate = String(process.env.TELEGRAM_DIGEST_CATCHUP_DATE || "").trim();
 const publishNotBeforeDate = String(process.env.TELEGRAM_PUBLISH_NOT_BEFORE_DATE || "").trim();
 const publicationDateAllowed = !publishNotBeforeDate || localClock.date >= publishNotBeforeDate;
+const windows = [{ id: "morning", start: 10, end: 12 }, { id: "afternoon", start: 14, end: 15 }, { id: "evening", start: 17, end: 18 }];
+const activeWindow = windows.find(w => localClock.hour >= w.start && localClock.hour < w.end);
+
 
 if (
   flights.length
   && process.env.TELEGRAM_PUBLISH_ENABLED !== "false"
   && publicationDateAllowed
+  && Boolean(activeWindow)
   && publishWindow.open
 ) {
   try {
