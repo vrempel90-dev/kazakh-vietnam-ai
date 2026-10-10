@@ -578,6 +578,8 @@ if (
 
     if (!stateWasFresh) {
     for (const target of targets) {
+      const windowKey = localClock.date + ":" + activeWindow.id;
+      if (publicationState.meta?.windowRuns?.[target] === windowKey) continue;
       const eligibleFlights = filterFlightsForTarget(flights, target);
       const digestWindowOpen =
         localClock.hour >= digestStartHour
