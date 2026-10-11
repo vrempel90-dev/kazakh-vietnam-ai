@@ -47,6 +47,29 @@ function basicRejectReason(flight, now) {
   return null;
 }
 
+
+// Do not advertise a disputed airline/route pairing solely because it was
+// copied from Telegram. A manager reported that SCAT has no inbound Phuket
+// to Almaty programme. Unknown carriers on that route also require review.
+// This is a publication-safety hold, not an assertion about live schedules.
+function carrierRouteReviewReason(flight) {
+  const from = normalizeCity(flight?.from);
+  const to = normalizeCity(flight?.to);
+  const phuket = new Set(["пхукет", "phuket", "hkt"]);
+  const almaty = new Set(["алматы", "almaty", "ala"]);
+  if (!phuket.has(from) || !almaty.has(to) || flight?.trip !== "OW") return null;
+
+  const airlineCode = String(flight?.airlineCode || "").trim().toUpperCase();
+  const airline = String(flight?.airline || "").toLocaleLowerCase("ru-RU").trim();
+  if (airlineCode === "S" || /(?:^|[^a-zа-яё])scat(?:$|[^a-zа-яё])|ска[тд]|sunday airlines/iu.test(airline)) {
+    return "DISPUTED_SCAT_PHUKET_ALMATY_ROUTE";
+  }
+  if (!airline || airlineCode === "*" && !airline) {
+    return "UNVERIFIED_CARRIER_PHUKET_ALMATY_ROUTE";
+  }
+  return null;
+}
+
 function pairKey(flight) {
   const from = normalizeCity(flight.from);
   const to = normalizeCity(flight.to);
@@ -96,8 +119,16 @@ export function validateFlightsForPublication(flights, {
     }
   }
 
-  const mirroredGroups = new Map();
+  const routeReview = [];
+  const publishCandidates = [];
   for (const flight of candidates) {
+    const reason = carrierRouteReviewReason(flight);
+    if (reason) routeReview.push({ flight, reason });
+    else publishCandidates.push(flight);
+  }
+
+  const mirroredGroups = new Map();
+  for (const flight of publishCandidates) {
     if (flight.trip !== "OW" || flight.returnDate) continue;
     const key = pairKey(flight);
     const group = mirroredGroups.get(key) || new Map();
@@ -134,11 +165,11 @@ export function validateFlightsForPublication(flights, {
     }
   }
 
-  const needsReview = [...reviewById.values()];
+  const needsReview = [...routeReview, ...reviewById.values()];
   const reviewIds = new Set(needsReview.map(item => item.flight?.id).filter(Boolean));
   const reviewObjects = new Set(needsReview.map(item => item.flight));
 
-  const verified = candidates.filter(flight =>
+  const verified = publishCandidates.filter(flight =>
     flight?.id ? !reviewIds.has(flight.id) : !reviewObjects.has(flight)
   );
 
