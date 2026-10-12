@@ -181,6 +181,20 @@ async function saveCache(path, payload) {
   await writeFile(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
 }
 
+/**
+ * Channel metadata for diagnostics, without the parsed offers.
+ *
+ * A discovered channel carries every offer it yielded. Printing those into the
+ * run log produced thousands of lines per sync and tripped Railway's log rate
+ * limit, which then dropped the publisher's own diagnostics.
+ */
+export function channelSummaries(sources) {
+  return (sources || []).map(({ offers, ...meta }) => ({
+    ...meta,
+    offers: Array.isArray(offers) ? offers.length : 0
+  }));
+}
+
 function cacheSources(cache) {
   return (cache?.sources || [])
     .map(item => {
@@ -394,7 +408,7 @@ export async function discoverLargeTelegramSources({
         status: "cache",
         minSubscribers: config.minSubscribers,
         selected: sources.length,
-        channels: cache.sources
+        channels: channelSummaries(cache.sources)
       }
     };
   }
@@ -449,8 +463,6 @@ export async function discoverLargeTelegramSources({
     };
     await saveCache(config.cachePath, payload);
 
-    const statusChannels = selected.map(({ offers: _offers, ...meta }) => meta);
-
     return {
       sources: cacheSources(payload),
       status: {
@@ -461,7 +473,7 @@ export async function discoverLargeTelegramSources({
         candidates: inspected.length,
         minSubscribers: config.minSubscribers,
         selected: selected.length,
-        channels: statusChannels
+        channels: channelSummaries(selected)
       }
     };
   } catch (error) {
@@ -476,7 +488,7 @@ export async function discoverLargeTelegramSources({
           reason: error instanceof Error ? error.message : String(error),
           minSubscribers: config.minSubscribers,
           selected: sources.length,
-          channels: cache.sources
+          channels: channelSummaries(cache.sources)
         }
       };
     }

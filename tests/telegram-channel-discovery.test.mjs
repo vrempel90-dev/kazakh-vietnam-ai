@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   channelPassesLargeSourceGate,
+  channelSummaries,
+  discoverLargeTelegramSources,
   discoveryConfig,
   messageLooksLikeCharter,
   normalizeTelegramSessionString,
@@ -133,4 +138,64 @@ test("preserves Telethon base64 padding when normalizing TG_SESSION", () => {
     normalizeTelegramSessionString("TG_SESSION:\n" + token + "\nPS C:\\\\Users\\\\user>"),
     token
   );
+});
+test("channel diagnostics report an offer count, never the offers themselves", () => {
+  const summaries = channelSummaries([
+    {
+      handle: "partner",
+      subscribers: 42000,
+      offers: [
+        { externalId: "a", sourcePrice: 96000, from: "Астана", to: "Фукуок" },
+        { externalId: "b", sourcePrice: 55000, from: "Фукуок", to: "Астана" }
+      ]
+    },
+    { handle: "other", subscribers: 11000 }
+  ]);
+
+  assert.deepEqual(summaries, [
+    { handle: "partner", subscribers: 42000, offers: 2 },
+    { handle: "other", subscribers: 11000, offers: 0 }
+  ]);
+  assert.ok(!JSON.stringify(summaries).includes("sourcePrice"));
+});
+
+test("a cached discovery run keeps parsed offers out of the run log", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "charter-discovery-"));
+  const cachePath = join(dir, "discovered.json");
+  const offers = Array.from({ length: 400 }, (_, index) => ({
+    externalId: "telegram:partner:" + index,
+    from: "Алматы",
+    to: "Анталия",
+    departureDate: "2026-11-01",
+    sourcePrice: 100000 + index,
+    currency: "KZT",
+    postedAt: "2026-10-12T04:00:00.000Z"
+  }));
+
+  await writeFile(cachePath, JSON.stringify({
+    updatedAt: "2026-10-12T04:00:00.000Z",
+    sources: [{ handle: "partner", subscribers: 42000, offerPosts: 9, parsedOffers: 400, offers }]
+  }), "utf8");
+
+  const result = await discoverLargeTelegramSources({
+    env: {
+      TELEGRAM_DISCOVERY_ENABLED: "true",
+      TELEGRAM_DISCOVERY_CACHE_PATH: cachePath,
+      TELEGRAM_DISCOVERY_REFRESH_HOURS: "12"
+    },
+    now: new Date("2026-10-12T06:00:00.000Z")
+  });
+
+  assert.equal(result.status.status, "cache");
+  // The sources themselves still carry the offers for the sync to ingest.
+  assert.equal(result.sources[0].prefetchedOffers.length, 400);
+
+  // The status is what gets printed and persisted as diagnostics.
+  const printed = JSON.stringify(result.status);
+  assert.ok(!printed.includes("sourcePrice"), "offers must not reach the run log");
+  assert.ok(!printed.includes("externalId"));
+  assert.deepEqual(result.status.channels, [
+    { handle: "partner", subscribers: 42000, offerPosts: 9, parsedOffers: 400, offers: 400 }
+  ]);
+  assert.ok(printed.length < 1000, "diagnostics stay small, got " + printed.length);
 });

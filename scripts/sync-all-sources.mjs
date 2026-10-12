@@ -442,7 +442,7 @@ if (!publicFlights.length) {
   );
 
   console.warn("No fresh Telegram charter offers; cleared the public feed.");
-  console.log("Source status:", JSON.stringify(statuses, null, 2));
+  console.log("Source status:", JSON.stringify(statuses));
   await new Promise(resolve => setTimeout(resolve, 150));
   process.exit(0);
 }
@@ -486,25 +486,23 @@ const publicationReport = await runTelegramPublication({
 });
 
 if (publicationReport.skipped) {
-  console.log(
-    "Telegram publication skipped:",
-    JSON.stringify(
-      {
-        reason: publicationReport.reason,
-        localDate: publicationReport.localDate,
-        localTime: publicationReport.localTime,
-        schedule: publicationReport.schedule
-      },
-      null,
-      2
-    )
-  );
+  console.log("Telegram publication skipped:", JSON.stringify({
+    reason: publicationReport.reason,
+    localDate: publicationReport.localDate,
+    localTime: publicationReport.localTime,
+    schedule: publicationReport.schedule
+  }));
 }
 
 if (publicationReport.diagnostics?.length) {
   console.warn(
     "Offers held back for review (no country could be established):",
-    JSON.stringify(publicationReport.diagnostics.slice(0, 25), null, 2)
+    JSON.stringify({
+      total: publicationReport.diagnostics.length,
+      sample: publicationReport.diagnostics.slice(0, 10).map(item =>
+        item.reason + " " + item.from + " -> " + item.to
+      )
+    })
   );
 }
 
@@ -526,4 +524,4 @@ statuses.push({
 });
 
 
-console.log("Source status:", JSON.stringify(statuses, null, 2));
+console.log("Source status:", JSON.stringify(statuses));

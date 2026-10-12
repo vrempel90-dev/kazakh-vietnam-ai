@@ -186,9 +186,16 @@ function runFlightSync(reason = "scheduled") {
           .catch(() => null),
         loadPricingConfig(pricingPath).catch(() => null)
       ]).then(([sourceStatus, feed, publicationState, pricing]) => {
-        const digestDates = Object.values(publicationState?.targetDigests || {})
-          .map(item => String(item?.date || ""))
-          .filter(Boolean);
+        // Publication state is schema v2: completed windows live under
+        // channels[chat].windows, keyed "<local date>:<window>".
+        const publishedWindows = Object.entries(publicationState?.channels || {})
+          .flatMap(([chatId, channel]) =>
+            Object.entries(channel?.windows || {})
+              .filter(([, record]) => record?.status === "completed")
+              .map(([key]) => chatId + " " + key)
+          )
+          .sort()
+          .slice(-6);
         const pricingRules = Array.isArray(pricing?.rules)
           ? pricing.rules.filter(rule => rule?.enabled).map(rule => ({
               id: rule.id,
@@ -202,7 +209,8 @@ function runFlightSync(reason = "scheduled") {
           sourceStatuses: sourceStatus?.sources || [],
           feedFlights: Array.isArray(feed?.flights) ? feed.flights.length : null,
           publicationStateInitialized: Boolean(publicationState?.meta?.initializedAt),
-          digestDates: [...new Set(digestDates)].sort(),
+          publicationStateVersion: publicationState?.version ?? null,
+          publishedWindows,
           pricingRules
         }));
       }).catch(() => {});

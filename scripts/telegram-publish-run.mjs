@@ -369,6 +369,8 @@ export async function runTelegramPublication({
   };
 
   if (logger?.log) {
+    // One line per run: Railway drops messages past 500 log lines per second,
+    // and a multi-line dump makes the publisher's own diagnostics unfilterable.
     logger.log("Telegram publication: " + JSON.stringify({
       window: activeWindow.id,
       localDate: schedule.localDate,
@@ -379,9 +381,12 @@ export async function runTelegramPublication({
         chatId: report.chatId,
         status: report.status,
         counts: report.counts,
-        coverage: report.coverage
+        coverage: report.coverage,
+        messages: report.messages.map(message =>
+          message.key + ":" + message.action + (message.messageId ? "#" + message.messageId : "")
+        )
       }))
-    }, null, 2));
+    }));
   }
 
   return result;
