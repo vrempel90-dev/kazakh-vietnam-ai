@@ -9,53 +9,15 @@ import { loadPricingConfig, resolvePublicationPrice } from "./pricing-engine.mjs
 import { reconcileLifecycle } from "./offer-lifecycle.mjs";
 import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
 import { validateFlightsForPublication } from "./flight-validator.mjs";
-import {
-  countryForFlight,
-  filterFlightsForTarget,
-  parsePublishTargets,
-  publishFreshFlights,
-  shouldSkipParsedTelegramMessage,
-  telegramPublicationWindowStatus
-} from "./telegram-publisher.mjs";
-import {
-  bootstrapPublicationTarget,
-  countryMessageIdsForDate,
-  initializePublicationState,
-  isDailyDigestPublished,
-  isPublicationPending,
-  isPublicationStateInitialized,
-  loadPublicationState,
-  markCountryMessagesPublished,
-  markDailyDigestPublished,
-  markFlightsPublished,
-  markTargetBatchPublished,
-  prunePublicationState,
-  savePublicationState
-} from "./telegram-publication-state.mjs";
+import { shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
+import { runTelegramPublication } from "./telegram-publish-run.mjs";
+import { classifyFlight } from "./charter-geo.mjs";
 
 function envNumber(name) {
   const raw = process.env[name];
   if (raw == null || raw === "") return null;
   const value = Number(String(raw).replace(",", "."));
   return Number.isFinite(value) ? value : null;
-}
-
-function localPublicationClock(now, timeZone) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(now);
-  const value = type => parts.find(part => part.type === type)?.value || "";
-  return {
-    date: value("year") + "-" + value("month") + "-" + value("day"),
-    hour: Number(value("hour")),
-    minute: Number(value("minute"))
-  };
 }
 
 function normalizeCity(value) {
@@ -91,8 +53,14 @@ function normalizeOfferForPublication(offer) {
     [from, to] = [to, from];
   }
 
-  const country = countryForFlight({ from, to });
-  const requirement = ENTRY_REQUIREMENT_BY_COUNTRY.get(country?.name);
+  const classification = classifyFlight({
+    from,
+    to,
+    trip,
+    departureDate: offer?.departureDate,
+    returnDate: offer?.returnDate
+  });
+  const requirement = ENTRY_REQUIREMENT_BY_COUNTRY.get(classification.country?.name);
 
   return {
     ...offer,
@@ -509,278 +477,53 @@ if (feedChanged) {
   console.log("No customer-visible flight changes.");
 }
 
-const publishTimeZone = process.env.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty";
-const publishWindow = telegramPublicationWindowStatus(now, {
-  timeZone: publishTimeZone,
-  startHour: envNumber("TELEGRAM_PUBLISH_START_HOUR") ?? 10,
-  endHour: envNumber("TELEGRAM_PUBLISH_END_HOUR") ?? 20
+const publicationReport = await runTelegramPublication({
+  flights,
+  now,
+  env: process.env,
+  reason: process.env.SYNC_REASON || "scheduled",
+  logger: console
 });
-const localClock = localPublicationClock(now, publishTimeZone);
-const digestStartHour = envNumber("TELEGRAM_DAILY_DIGEST_START_HOUR") ?? 10;
-const digestEndHour = envNumber("TELEGRAM_DAILY_DIGEST_END_HOUR") ?? 12;
-const digestCatchupDate = String(process.env.TELEGRAM_DIGEST_CATCHUP_DATE || "").trim();
-const publishNotBeforeDate = String(process.env.TELEGRAM_PUBLISH_NOT_BEFORE_DATE || "").trim();
-const publicationDateAllowed = !publishNotBeforeDate || localClock.date >= publishNotBeforeDate;
-const windows = [{ id: "morning", start: 10, end: 12 }, { id: "afternoon", start: 14, end: 15 }, { id: "evening", start: 17, end: 18 }];
-const activeWindow = windows.find(w => localClock.hour >= w.start && localClock.hour < w.end);
 
-
-if (
-  flights.length
-  && process.env.TELEGRAM_PUBLISH_ENABLED !== "false"
-  && publicationDateAllowed
-  && Boolean(activeWindow)
-  && publishWindow.open
-) {
-  try {
-    const targets = parsePublishTargets(process.env.TELEGRAM_PUBLISH_CHATS);
-    const statePath =
-      process.env.TELEGRAM_PUBLISH_STATE_PATH ||
-      "/data/telegram-publications.json";
-    const retentionDays = Math.max(
-      1,
-      Number(process.env.TELEGRAM_PUBLICATION_RETENTION_DAYS || 30)
-    );
-
-    const publicationState = await loadPublicationState(statePath);
-    let publishedFlights = 0;
-    let publishedPosts = 0;
-    const targetResults = [];
-
-    const stateWasFresh = !isPublicationStateInitialized(publicationState);
-    if (stateWasFresh) {
-      const initializedAt = now.toISOString();
-      for (const target of targets) {
-        const eligibleFlights = filterFlightsForTarget(flights, target);
-        bootstrapPublicationTarget(
-          publicationState,
-          target,
-          eligibleFlights,
-          localClock.date,
-          initializedAt
-        );
-        targetResults.push({
-          target,
-          mode: "bootstrap_no_replay",
-          pendingFlights: 0,
-          sent: 0,
-          sentFlightIds: [],
-          bootstrappedFlights: eligibleFlights.length
-        });
-      }
-      prunePublicationState(publicationState, { now, retentionDays });
-      await savePublicationState(statePath, publicationState);
-      console.log(
-        "Telegram publication state bootstrapped without replaying existing flights:",
-        JSON.stringify({ localDate: localClock.date, targets: targetResults }, null, 2)
-      );
-    }
-
-    if (!stateWasFresh) {
-    for (const target of targets) {
-      const windowKey = localClock.date + ":" + activeWindow.id;
-      if (publicationState.meta?.windowRuns?.[target] === windowKey) continue;
-      const eligibleFlights = filterFlightsForTarget(flights, target);
-      const digestWindowOpen =
-        localClock.hour >= digestStartHour
-        && localClock.hour < digestEndHour;
-      const digestCatchup = digestCatchupDate === localClock.date;
-      const digestDue =
-        !isDailyDigestPublished(publicationState, target, localClock.date)
-        && (digestWindowOpen || digestCatchup);
-
-      if (digestDue) {
-        const publishResult = await publishFreshFlights({
-          token: process.env.TELEGRAM_BOT_TOKEN,
-          targets: [target],
-          flights: eligibleFlights,
-          publicAppUrl:
-            process.env.PUBLIC_APP_URL ||
-            process.env.RAILWAY_PUBLIC_DOMAIN,
-          managerPhone: process.env.VITE_MANAGER_WHATSAPP,
-          maxPostsPerRun: 8
-        });
-
-        const result = publishResult.targets?.[0] || {
-          target,
-          sent: 0,
-          sentFlightIds: [],
-          error: publishResult.reason || null
-        };
-        const sentIds = new Set(result.sentFlightIds || []);
-        const sentFlights = eligibleFlights.filter(flight => sentIds.has(flight.id));
-
-        if (
-          !result.error
-          && Number(result.postsSkipped || 0) === 0
-          && Number(result.sent || 0) === Number(result.postsAvailable || 0)
-        ) {
-          const publishedAt = now.toISOString();
-          markFlightsPublished(publicationState, target, sentFlights, publishedAt);
-          markCountryMessagesPublished(
-            publicationState,
-            target,
-            result.countryMessages,
-            localClock.date,
-            publishedAt
-          );
-          markDailyDigestPublished(publicationState, target, localClock.date, publishedAt);
-          markTargetBatchPublished(publicationState, target, publishedAt);
-          prunePublicationState(publicationState, { now, retentionDays });
-          await savePublicationState(statePath, publicationState);
-        }
-
-        publishedFlights += sentFlights.length;
-        publishedPosts += Number(result.sent || 0);
-        if (Number(result.sent || 0) > 0) {
-          publicationState.meta ||= {};
-          publicationState.meta.windowRuns ||= {};
-          publicationState.meta.windowRuns[target] = windowKey;
-          await savePublicationState(statePath, publicationState);
-        }
-        targetResults.push({
-          ...result,
-          mode: digestCatchup && !digestWindowOpen ? "daily_digest_catchup" : "daily_digest",
-          localDate: localClock.date
-        });
-        continue;
-      }
-
-      // Publish every newly discovered or changed offer, not only hot deals.
-      const republishCooldownHours = Math.max(
-        0,
-        Number(process.env.TELEGRAM_REPUBLISH_COOLDOWN_HOURS ?? 24)
-      );
-      const pendingFlights = eligibleFlights.filter(flight =>
-        isPublicationPending(publicationState, target, flight, {
-          now,
-          cooldownHours: republishCooldownHours
-        })
-      );
-
-      if (!pendingFlights.length) {
-        targetResults.push({
-          target,
-          mode: "no_new_offers",
-          pendingFlights: 0,
-          sent: 0,
-          sentFlightIds: []
-        });
-        continue;
-      }
-
-      // Preserve existing offer context within affected route messages.
-      const pendingRoutes = new Set(pendingFlights.map(flight =>
-        countryForFlight(flight).name + "|" +
-        [String(flight.from || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
-         String(flight.to || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
-         flight.trip === "RT" ? "RT" : "OW"].join("|")
-      ));
-      const countryFlights = eligibleFlights.filter(flight =>
-        pendingRoutes.has(
-          countryForFlight(flight).name + "|" +
-          [String(flight.from || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
-           String(flight.to || "").toLocaleLowerCase("ru-RU").replace(/[^а-яёa-z0-9]/giu, ""),
-           flight.trip === "RT" ? "RT" : "OW"].join("|")
-        )
-      );
-
-      const editMessageIds = countryMessageIdsForDate(
-        publicationState,
-        target,
-        localClock.date
-      );
-
-      const publishResult = await publishFreshFlights({
-        token: process.env.TELEGRAM_BOT_TOKEN,
-        targets: [target],
-        flights: countryFlights,
-        publicAppUrl:
-          process.env.PUBLIC_APP_URL ||
-          process.env.RAILWAY_PUBLIC_DOMAIN,
-        managerPhone: process.env.VITE_MANAGER_WHATSAPP,
-        editMessageIds,
-        maxPostsPerRun: 8
-      });
-
-      const result = publishResult.targets?.[0] || {
-        target,
-        sent: 0,
-        sentFlightIds: [],
-        countryMessages: {},
-        error: publishResult.reason || null
-      };
-      const sentIds = new Set(result.sentFlightIds || []);
-      const sentFlights = countryFlights.filter(flight => sentIds.has(flight.id));
-
-      if (sentFlights.length && !result.error) {
-        const publishedAt = now.toISOString();
-        markFlightsPublished(publicationState, target, sentFlights, publishedAt);
-        markCountryMessagesPublished(
-          publicationState,
-          target,
-          result.countryMessages,
-          localClock.date,
-          publishedAt
-        );
-        markTargetBatchPublished(publicationState, target, publishedAt);
-        prunePublicationState(publicationState, { now, retentionDays });
-        await savePublicationState(statePath, publicationState);
-      }
-
-      publishedFlights += sentFlights.length;
-      publishedPosts += Number(result.sent || 0);
-      if (Number(result.sent || 0) > 0) {
-        publicationState.meta ||= {};
-        publicationState.meta.windowRuns ||= {};
-        publicationState.meta.windowRuns[target] = windowKey;
-        await savePublicationState(statePath, publicationState);
-      }
-      targetResults.push({
-        ...result,
-        mode: "route_update",
-        pendingFlights: pendingFlights.length,
-        affectedRoutes: [...pendingRoutes]
-      });
-    }
-    }
-
-    console.log(
-      "Telegram publishing:",
-      JSON.stringify(
-        {
-          eligibleFlights: flights.length,
-          publishedFlights,
-          publishedPosts,
-          publishWindow,
-          localClock,
-          digestWindow: {
-            startHour: digestStartHour,
-            endHour: digestEndHour,
-            catchupDate: digestCatchupDate || null
-          },
-          targets: targetResults
-        },
-        null,
-        2
-      )
-    );
-  } catch (error) {
-    console.error(
-      "Telegram publishing failed:",
-      error instanceof Error ? error.message : String(error)
-    );
-  }
-} else {
+if (publicationReport.skipped) {
   console.log(
-    !flights.length
-      ? "No Telegram charter offers are eligible for publication."
-      : process.env.TELEGRAM_PUBLISH_ENABLED === "false"
-        ? "Telegram publishing is disabled."
-        : !publicationDateAllowed
-          ? "Telegram publishing starts on " + publishNotBeforeDate + " in " + publishTimeZone
-          : "Telegram publishing paused outside configured daytime window: " + JSON.stringify(publishWindow)
+    "Telegram publication skipped:",
+    JSON.stringify(
+      {
+        reason: publicationReport.reason,
+        localDate: publicationReport.localDate,
+        localTime: publicationReport.localTime,
+        schedule: publicationReport.schedule
+      },
+      null,
+      2
+    )
   );
 }
+
+if (publicationReport.diagnostics?.length) {
+  console.warn(
+    "Offers held back for review (no country could be established):",
+    JSON.stringify(publicationReport.diagnostics.slice(0, 25), null, 2)
+  );
+}
+
+statuses.push({
+  id: "telegram_publisher",
+  kind: "publication",
+  status: publicationReport.skipped
+    ? "skipped"
+    : publicationReport.channels.some(channel => channel.status === "error")
+      ? "error"
+      : publicationReport.channels.some(channel => channel.status === "partial")
+        ? "partial"
+        : "ok",
+  reason: publicationReport.reason,
+  window: publicationReport.window?.id || null,
+  localDate: publicationReport.localDate,
+  totals: publicationReport.totals,
+  unclassified: publicationReport.diagnostics?.length || 0
+});
+
 
 console.log("Source status:", JSON.stringify(statuses, null, 2));

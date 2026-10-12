@@ -77,3 +77,57 @@ When any text-entry control loses focus, dismiss the simulated keyboard. If the 
 ## Project-specific direction
 
 The user renamed this prototype to «Чартерные авиабилеты». Preserve the blue header, white rounded cards, minimal mobile-first typography, iPhone/Pixel runtime, and light/dark themes. Home and primary navigation focus on charter-flight search. Display sample prices and availability only as clearly labeled demonstration data until a live supplier is connected.
+
+## Telegram charter publisher (2026-10-12)
+
+The publication pipeline was rebuilt around five single-purpose modules. Keep
+these boundaries: the duplicate posts, the split countries and the lost offers
+all came from each stage keeping its own city table, its own notion of
+"direction" and its own grouping key.
+
+- `scripts/charter-geo.mjs` is the only place that maps a city spelling to a
+  country and a ticket category. Add new cities and aliases (Russian forms,
+  Latin transliterations, IATA codes, airport names) here and nowhere else.
+- `scripts/telegram-digest.mjs` renders **one digest per country**, with
+  `БИЛЕТЫ ТУДА` / `ОБРАТНЫЕ БИЛЕТЫ` / `ТУДА И ОБРАТНО` / `МЕЖДУ СТРАНАМИ` as
+  sections inside that single message. Never go back to one message per
+  country-and-direction. Oversized digests split into `Часть N/M` and splitting
+  must stay lossless.
+- `scripts/telegram-schedule.mjs` owns the only schedule: 10:00-12:00,
+  14:00-15:00 and 17:00-18:00 `Asia/Almaty`. Collection may run every 15
+  minutes; sending outside a window is refused. The morning window is the full
+  digest, the later two send updates only.
+- `scripts/telegram-publication-state.mjs` is schema v2 on the Railway `/data`
+  volume. It records chat, local date, window, country, category, offer ids,
+  content hash, Telegram message id, status, timestamps and errors, and it
+  carries a `.lock` file mutex. v1 state migrates automatically: offer history
+  is preserved, but v1 message ids are archived and never reused for edits.
+- `scripts/telegram-publish-run.mjs` is the single entry point and the only
+  component allowed to call Telegram during a sync.
+
+Rules that must not be weakened:
+
+- A changed country digest is **edited in place**; a new post is only created
+  when no confirmed message exists for that digest key.
+- An offer that cannot be resolved to a country and a category goes to
+  diagnostics. There is no "Другие направления" bucket, and no invented
+  country, carrier, seat count, baggage rule or return date.
+- A sync whose `SYNC_REASON` is `startup` never publishes, so a redeploy or a
+  crash-restart cannot fire an unscheduled package.
+- A send whose outcome Telegram never confirmed is recorded as `unconfirmed`
+  and held for review, not retried blindly. `TELEGRAM_RETRY_UNCONFIRMED=true`
+  is a manual override only.
+- Publishing is refused when `GITHUB_ACTIONS` is set. GitHub Actions only
+  refreshes `public/flights.json`; Railway owns delivery.
+- Never cap delivery by dropping messages. The per-window ceiling defers and
+  reports; it must not truncate a digest.
+
+Layout choices worth keeping: the legend is sorted by carrier letter so the
+rendered text (and therefore its content hash) is stable; carrier names come
+from a canonical table because channel text arrives as "Scat" or "PEGASUS";
+a departure outside the current year prints a two-digit year (`14.09.27`) so it
+cannot be read as a past date.
+
+Use `npm run publish:dry-run` to inspect the plan against real data without
+touching Telegram, and `npm run publish:test-chat` to deliver to
+`TELEGRAM_TEST_CHAT_ID` only.

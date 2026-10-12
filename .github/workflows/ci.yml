@@ -46,6 +46,9 @@ jobs:
       - name: Telegram publisher tests
         run: npm run test:publisher
 
+      - name: Telegram publication pipeline tests
+        run: npm run test:pipeline
+
       - name: Typecheck
         run: npm run typecheck
 

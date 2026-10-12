@@ -1,221 +1,194 @@
+import test from "node:test";
 import assert from "node:assert/strict";
 import {
   AUTO_MARKER,
-  buildFlightPosts,
-  countryForFlight,
+  TelegramApiError,
+  editDigestMessage,
   filterFlightsForTarget,
+  isPublishingEnvironmentAllowed,
   parsePublishTargets,
-  publishFreshFlights,
+  sendDigestMessage,
   shouldSkipParsedTelegramMessage,
-  telegramPublicationWindowStatus
+  sourceIdForTarget,
+  telegramApi
 } from "../scripts/telegram-publisher.mjs";
+import { FOOTER_TEXT } from "../scripts/telegram-digest.mjs";
 
-const vietnamFlights = [
-  {
-    id: "out-v-1",
-    from: "Астана",
-    to: "Фукуок",
-    price: 96000,
-    trip: "OW",
-    airline: "VietJet Air",
-    airlineCode: "V",
-    baggage: "багаж 20 кг + ручная кладь 5 кг",
-    seats: "Наличие уточняется",
-    departureDate: "2026-10-03",
-    hot: true,
-    sourceIds: ["telegram:charterkaz"]
-  },
-  {
-    id: "out-star-1",
-    from: "Астана",
-    to: "Фукуок",
-    price: 236000,
-    trip: "OW",
-    airline: "Sun Phu Quoc Airways",
-    airlineCode: "*",
-    baggage: "багаж 23 кг + ручная кладь 7 кг",
-    seats: "1 место",
-    departureDate: "2026-10-23",
-    sourceIds: ["telegram:partner"]
-  },
-  {
-    id: "return-s-1",
-    from: "Фукуок",
-    to: "Астана",
-    price: 55000,
-    trip: "OW",
-    airline: "Scat",
-    airlineCode: "S",
-    baggage: "багаж 23 кг + ручная кладь 5 кг",
-    seats: "2 места",
-    departureDate: "2026-10-21",
-    hot: true,
-    sourceIds: ["telegram:partner"]
-  },
-  {
-    id: "rt-v-oct",
-    from: "Астана",
-    to: "Фукуок",
-    price: 196000,
-    trip: "RT",
-    airline: "VietJet Air",
-    airlineCode: "V",
-    baggage: "багаж 20 кг + ручная кладь 5 кг",
-    seats: "1 место",
-    departureDate: "2026-10-03",
-    returnDate: "2026-10-10",
-    hot: true,
-    sourceIds: ["telegram:partner"]
-  },
-  {
-    id: "rt-v-nov",
-    from: "Астана",
-    to: "Фукуок",
-    price: 378000,
-    trip: "RT",
-    airline: "VietJet Air",
-    airlineCode: "V",
-    baggage: "багаж 20 кг + ручная кладь 5 кг",
-    seats: "Наличие уточняется",
-    departureDate: "2026-11-02",
-    returnDate: "2026-11-09",
-    sourceIds: ["telegram:partner"]
-  }
-];
-
-assert.deepEqual(
-  parsePublishTargets("charterkaz,@charter_forever_travel"),
-  ["@charterkaz", "@charter_forever_travel"]
-);
-assert.equal(shouldSkipParsedTelegramMessage("test " + AUTO_MARKER), true);
-assert.equal(shouldSkipParsedTelegramMessage("manual post"), false);
-
-assert.deepEqual(countryForFlight(vietnamFlights[0]), { name: "Вьетнам", flag: "🇻🇳" });
-assert.deepEqual(countryForFlight({ from: "Астана", to: "Аланья" }), { name: "Турция", flag: "🇹🇷" });
-assert.deepEqual(countryForFlight({ from: "Алматы", to: "Куала-Лумпур" }), { name: "Малайзия", flag: "🇲🇾" });
-
-const posts = buildFlightPosts(vietnamFlights);
-assert.equal(posts.length, 3, "Outbound, return and RT are classified separately");
-const post = posts.join("\n");
-
-assert.ok(post.includes("БИЛЕТЫ ТУДА"));
-assert.ok(post.includes("ОБРАТНЫЕ БИЛЕТЫ"));
-assert.ok(post.includes("ТУДА И ОБРАТНО (RT)"));
-assert.ok(post.includes("Астана - Фукуок"));
-assert.ok(post.includes("Фукуок - Астана"));
-assert.ok(post.includes("V 03.10 - 96 000 ₸"));
-assert.ok(post.includes("S 21.10 - 55 000 ₸ (2)"));
-assert.ok(post.includes("V 03.10–10.10 | 7 ночей - 196 000 ₸ (1)"));
-assert.ok(post.includes("S - SCAT"));
-assert.ok(post.includes("A - Air Astana") === false);
-assert.ok(post.includes("V - VietJet Air"));
-assert.ok(!post.includes("\\\\n"), "Use actual line breaks");
-
-const mixedCountries = buildFlightPosts([
-  ...vietnamFlights,
-  {id:"thai-1",from:"Алматы",to:"Пхукет",price:99000,trip:"OW",airline:"Air Astana",departureDate:"2026-10-05"},
-  {id:"malaysia-1",from:"Алматы",to:"Куала-Лумпур",price:159000,trip:"OW",departureDate:"2026-10-06"}
-]);
-assert.equal(mixedCountries.length, 5);
-assert.ok(mixedCountries.some(text=>text.startsWith("🇹🇭 <b>БИЛЕТЫ ТУДА")));
-assert.ok(mixedCountries.some(text=>text.startsWith("🇲🇾 <b>БИЛЕТЫ ТУДА")));
-
-const targetFiltered = filterFlightsForTarget(vietnamFlights, "@charterkaz");
-assert.ok(!targetFiltered.some(item => item.id === "out-v-1"));
-assert.equal(filterFlightsForTarget(vietnamFlights, "@charter_forever_travel").length, vietnamFlights.length);
-
-assert.equal(
-  telegramPublicationWindowStatus(new Date("2026-10-01T05:00:00Z")).open,
-  true,
-  "10:00 Asia/Almaty should be inside the window"
-);
-assert.equal(
-  telegramPublicationWindowStatus(new Date("2026-10-01T15:00:00Z")).open,
-  false,
-  "20:00 Asia/Almaty should stop publication"
-);
-
-const calls = [];
-const fakeFetch = async (url, options) => {
-  calls.push({ url: String(url), payload: JSON.parse(options.body) });
-  return new Response(JSON.stringify({ ok: true, result: { message_id: calls.length } }), {
-    status: 200,
+const jsonResponse = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
     headers: { "Content-Type": "application/json" }
   });
-};
 
-const result = await publishFreshFlights({
-  token: "123:test",
-  targets: "@charterkaz,@charter_forever_travel",
-  flights: vietnamFlights,
-  publicAppUrl: "https://example.com",
-  managerPhone: "+7 700 777 24 14",
-  fetchImpl: fakeFetch,
-  delayMs: 0
+test("publication targets are normalised and de-duplicated", () => {
+  assert.deepEqual(
+    parsePublishTargets("charterkaz,@charter_forever_travel, -1002106608923 ,charterkaz"),
+    ["@charterkaz", "@charter_forever_travel", "-1002106608923"]
+  );
+  assert.deepEqual(
+    parsePublishTargets(""),
+    ["-1002106608923", "-1002285584868"],
+    "an empty configuration falls back to the known channels"
+  );
 });
 
-assert.equal(result.published, 6);
-assert.equal(calls.length, 6);
-assert.ok(calls.every(call => call.url.endsWith("/sendMessage")));
-assert.equal(calls[0].payload.chat_id, "@charterkaz");
-assert.ok(calls[0].payload.text.startsWith("🇻🇳 <b>БИЛЕТЫ ТУДА"));
-assert.equal(calls[3].payload.chat_id, "@charter_forever_travel");
-assert.equal(calls[3].payload.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
-assert.ok(calls[3].payload.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
-assert.equal(Object.keys(result.targets[1].countryMessages).length, 3);
+test("a channel is never fed offers that came from itself", () => {
+  const flights = [
+    { id: "a", sourceIds: ["telegram:charterkaz"] },
+    { id: "b", sourceIds: ["telegram:partner"] },
+    { id: "c" }
+  ];
+  assert.equal(sourceIdForTarget("@charterkaz"), "telegram:charterkaz");
+  assert.equal(sourceIdForTarget("-1002106608923"), null);
+  assert.deepEqual(
+    filterFlightsForTarget(flights, "@charterkaz").map(f => f.id),
+    ["b", "c"]
+  );
+  assert.equal(filterFlightsForTarget(flights, "-1002106608923").length, 3);
+});
 
-const editCalls = [];
-const editFetch = async (url, options) => {
-  editCalls.push({ url: String(url), payload: JSON.parse(options.body) });
-  return new Response(JSON.stringify({ ok: true, result: { message_id: 777 } }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" }
+test("our own published digests are recognised and not parsed back as new offers", () => {
+  assert.equal(shouldSkipParsedTelegramMessage("Подборка\n\n" + FOOTER_TEXT), true);
+  assert.equal(shouldSkipParsedTelegramMessage("legacy " + AUTO_MARKER), true);
+  assert.equal(shouldSkipParsedTelegramMessage("Алматы - Нячанг\n21.10 - 96 000 ₸"), false);
+});
+
+test("CI and a missing token are refused; Railway with a token is allowed", () => {
+  assert.deepEqual(
+    isPublishingEnvironmentAllowed({ TELEGRAM_BOT_TOKEN: "1:x" }),
+    { allowed: true, reason: null }
+  );
+  assert.equal(
+    isPublishingEnvironmentAllowed({ TELEGRAM_BOT_TOKEN: "1:x", GITHUB_ACTIONS: "true" }).reason,
+    "GITHUB_ACTIONS_CANNOT_PUBLISH"
+  );
+  assert.equal(
+    isPublishingEnvironmentAllowed({ TELEGRAM_BOT_TOKEN: "1:x", TELEGRAM_PUBLISH_ENABLED: "false" }).reason,
+    "TELEGRAM_PUBLISH_ENABLED=false"
+  );
+  assert.equal(
+    isPublishingEnvironmentAllowed({}).reason,
+    "TELEGRAM_BOT_TOKEN_MISSING"
+  );
+});
+
+test("sendMessage posts HTML with a preview-free body and a buy button", async () => {
+  const calls = [];
+  const messageId = await sendDigestMessage({
+    token: "1:test",
+    chatId: "@channel",
+    text: "🇻🇳 ВЬЕТНАМ",
+    managerPhone: "+7 700 777 24 14",
+    fetchImpl: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      return jsonResponse({ ok: true, result: { message_id: 321 } });
+    }
   });
-};
 
-const editResult = await publishFreshFlights({
-  token: "123:test",
-  targets: "@updates",
-  flights: vietnamFlights,
-  managerPhone: "+7 700 777 24 14",
-  editMessageIds: { "Вьетнам|outbound": 777 },
-  fetchImpl: editFetch,
-  delayMs: 0,
-  maxPostsPerRun: 10
+  assert.equal(messageId, 321);
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].url.endsWith("/sendMessage"));
+  assert.equal(calls[0].body.chat_id, "@channel");
+  assert.equal(calls[0].body.parse_mode, "HTML");
+  assert.equal(calls[0].body.disable_web_page_preview, true);
+  assert.equal(calls[0].body.reply_markup.inline_keyboard[0][0].text, "🎫 Купить билет");
+  assert.ok(calls[0].body.reply_markup.inline_keyboard[0][0].url.startsWith("https://wa.me/77007772414?text="));
 });
 
-assert.equal(editCalls.length, 3);
-assert.ok(editCalls.some(call => call.url.endsWith("/editMessageText")));
-assert.ok(editCalls.some(call => call.payload.message_id === 777));
-assert.equal(editResult.targets[0].countryMessages["Вьетнам|outbound"], 777);
+test("editMessageText updates a live post in place", async () => {
+  const calls = [];
+  const messageId = await editDigestMessage({
+    token: "1:test",
+    chatId: "@channel",
+    messageId: 555,
+    text: "updated",
+    publicAppUrl: "https://example.com",
+    fetchImpl: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      return jsonResponse({ ok: true, result: { message_id: 555 } });
+    }
+  });
 
-const veryLargeList = Array.from({ length: 140 }, (_, index) => ({
-  id: "large-" + index,
-  from: "Алматы",
-  to: "Пхукет",
-  price: 100000 + index * 1000,
-  trip: "OW",
-  airline: index % 2 ? "Air Astana" : "SCAT",
-  baggage: index % 2
-    ? "багаж 23 кг + ручная кладь 8 кг"
-    : "багаж 23 кг + ручная кладь 5 кг",
-  seats: "Наличие уточняется",
-  departureDate: "2026-11-" + String(1 + (index % 28)).padStart(2, "0"),
-  sourceIds: ["telegram:partner"]
-}));
+  assert.equal(messageId, 555);
+  assert.ok(calls[0].url.endsWith("/editMessageText"));
+  assert.equal(calls[0].body.message_id, 555);
+  assert.equal(calls[0].body.reply_markup.inline_keyboard[0][0].text, "✈️ Посмотреть рейсы");
+});
 
-const splitPosts = buildFlightPosts(veryLargeList, 900);
-assert.ok(splitPosts.length > 1, "oversized country digests must split safely");
-assert.ok(splitPosts.every(text => text.length <= 900));
-assert.ok(splitPosts.every(text => text.startsWith("🇹🇭 <b>БИЛЕТЫ ТУДА")));
-assert.ok(splitPosts.every(text => text.includes("💳 Цены в ₸")));
+test("\"message is not modified\" counts as a successful edit", async () => {
+  const messageId = await editDigestMessage({
+    token: "1:test",
+    chatId: "@channel",
+    messageId: 555,
+    text: "same",
+    fetchImpl: async () => jsonResponse({
+      ok: false,
+      description: "Bad Request: message is not modified"
+    }, 400)
+  });
+  assert.equal(messageId, 555);
+});
 
-console.log("Telegram route digest design, country notices, airline names, editing, splitting, targets, and CTA: passed");
+test("a 4xx rejection is definitive; a timeout or 5xx leaves delivery unknown", async () => {
+  await assert.rejects(
+    () => telegramApi("1:test", "sendMessage", {}, {
+      fetchImpl: async () => jsonResponse({ ok: false, description: "Bad Request: chat not found" }, 400)
+    }),
+    error => {
+      assert.ok(error instanceof TelegramApiError);
+      assert.equal(error.definitive, true, "Telegram rejected it, so nothing was delivered");
+      assert.equal(error.fatalForChannel, true, "a missing chat must stop the channel");
+      return true;
+    }
+  );
 
-const separateDestinations = buildFlightPosts([
-  { id: "kul", from: "Алматы", to: "Куала-Лумпур", trip: "OW", departureDate: "2026-11-10", price: 110000 },
-  { id: "sel", from: "Алматы", to: "Сеул", trip: "OW", departureDate: "2026-11-11", price: 130000 }
-]);
-assert.equal(separateDestinations.length, 2);
-assert.ok(separateDestinations.every(text => !(text.includes("Куала-Лумпур") && text.includes("Сеул"))));
-assert.ok(separateDestinations.some(text => text.startsWith("🇰🇷 <b>БИЛЕТЫ ТУДА")));
+  await assert.rejects(
+    () => telegramApi("1:test", "sendMessage", {}, {
+      fetchImpl: async () => { throw new Error("network down"); }
+    }),
+    error => {
+      assert.equal(error.definitive, false, "the call never reported back");
+      return true;
+    }
+  );
+
+  await assert.rejects(
+    () => telegramApi("1:test", "sendMessage", {}, {
+      fetchImpl: async () => jsonResponse({ ok: false, description: "Internal Server Error" }, 500)
+    }),
+    error => {
+      assert.equal(error.definitive, false);
+      return true;
+    }
+  );
+});
+
+test("a rate limit reports its retry delay and is not fatal for the channel", async () => {
+  await assert.rejects(
+    () => telegramApi("1:test", "sendMessage", {}, {
+      fetchImpl: async () => jsonResponse({
+        ok: false,
+        description: "Too Many Requests: retry after 7",
+        parameters: { retry_after: 7 }
+      }, 429)
+    }),
+    error => {
+      assert.equal(error.retryAfter, 7);
+      assert.equal(error.definitive, true);
+      assert.equal(error.fatalForChannel, false);
+      return true;
+    }
+  );
+});
+
+test("an unreadable response body is treated as unknown delivery", async () => {
+  await assert.rejects(
+    () => telegramApi("1:test", "sendMessage", {}, {
+      fetchImpl: async () => new Response("<html>502</html>", { status: 502 })
+    }),
+    error => {
+      assert.equal(error.definitive, false);
+      return true;
+    }
+  );
+});
