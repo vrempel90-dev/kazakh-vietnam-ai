@@ -117,9 +117,22 @@ function migrateFromV1(parsed) {
 }
 
 function normalizeState(parsed) {
-  if (!plainObject(parsed)) return emptyState();
+  if (!plainObject(parsed)) throw new Error("Invalid Telegram publication state");
   if (Number(parsed.version) === 1) return migrateFromV1(parsed);
-  if (Number(parsed.version) !== STATE_VERSION) return emptyState();
+  if (Number(parsed.version) !== STATE_VERSION || !plainObject(parsed.channels)) {
+    throw new Error("Unsupported or corrupt Telegram publication state");
+  }
+  for (const channel of Object.values(parsed.channels)) {
+    if (!plainObject(channel) || !plainObject(channel.messages) || !plainObject(channel.windows)) {
+      throw new Error("Corrupt Telegram channel state");
+    }
+    if (Object.values(channel.messages).some(record => !plainObject(record)
+      || !Object.values(MESSAGE_STATUS).includes(record.status))
+      || Object.values(channel.windows).some(record => !plainObject(record)
+        || !Object.values(WINDOW_STATUS).includes(record.status))) {
+      throw new Error("Corrupt Telegram delivery records");
+    }
+  }
 
   const state = emptyState();
   state.meta = { ...state.meta, ...plainObject(parsed.meta) };
@@ -152,8 +165,9 @@ export function publicationFingerprint(flight) {
 export async function loadPublicationState(path) {
   try {
     return normalizeState(JSON.parse(await readFile(resolve(path), "utf8")));
-  } catch {
-    return emptyState();
+  } catch (error) {
+    if (error?.code === "ENOENT") return emptyState();
+    throw new Error("PUBLICATION_STATE_UNREADABLE", { cause: error });
   }
 }
 
@@ -234,8 +248,9 @@ export function releaseRunLease(state, owner = String(process.pid)) {
  *
  * `acquireRunLease` records who is running for diagnostics, but only an
  * exclusive file create is actually atomic, so that is what decides whether a
- * run may proceed. A lock left behind by a killed process is taken over once
- * it is older than the TTL.
+ * run may proceed. A leftover lock is held for review by default: elapsed time
+ * does not prove that its owner is dead. Stale takeover is an explicit operator
+ * option, never enabled by the automatic publisher.
  */
 export function runLockPath(statePath) {
   return resolve(statePath) + ".lock";
@@ -245,7 +260,7 @@ export async function acquireRunLock(statePath, {
   owner = String(process.pid),
   now = new Date(),
   ttlMinutes = 10,
-  allowStaleTakeover = true
+  allowStaleTakeover = false
 } = {}) {
   const lockPath = runLockPath(statePath);
   await mkdir(dirname(lockPath), { recursive: true });
@@ -297,7 +312,8 @@ export async function releaseRunLock(statePath, owner = String(process.pid)) {
     const held = JSON.parse(await readFile(lockPath, "utf8"));
     if (held?.owner && held.owner !== String(owner)) return false;
   } catch {
-    // An unreadable lock is removed below so a run can never wedge the queue.
+    // Never delete another process's partially written or unreadable mutex.
+    return false;
   }
   await unlink(lockPath).catch(() => {});
   return true;
@@ -461,19 +477,18 @@ export function planMessageAction(state, chatId, digest, { retryUnconfirmed = fa
 
   if (!record) return { action: "send", record: null, reason: "NEW_DIGEST" };
 
-  if (record.status === MESSAGE_STATUS.UNCONFIRMED && !retryUnconfirmed) {
+  if ([MESSAGE_STATUS.UNCONFIRMED, MESSAGE_STATUS.PENDING].includes(record.status) && !retryUnconfirmed) {
     return { action: "hold", record, reason: "PREVIOUS_ATTEMPT_UNCONFIRMED" };
   }
 
   const liveMessageId = Number(record.messageId);
-  const hasLiveMessage = Number.isFinite(liveMessageId) && liveMessageId > 0
-    && record.status === MESSAGE_STATUS.SENT;
+  const hasLiveMessage = Number.isFinite(liveMessageId) && liveMessageId > 0;
 
   if (!hasLiveMessage) {
     return { action: "send", record, reason: "NO_CONFIRMED_MESSAGE" };
   }
 
-  if (String(record.contentHash || "") === String(digest.contentHash)) {
+  if (record.status === MESSAGE_STATUS.SENT && String(record.contentHash || "") === String(digest.contentHash)) {
     return { action: "skip", record, reason: "CONTENT_UNCHANGED" };
   }
 
@@ -536,6 +551,8 @@ export function prunePublicationState(state, {
     // later window edit an existing post instead of sending a duplicate.
     normalized.messages = Object.fromEntries(
       Object.entries(normalized.messages).filter(([, record]) => {
+        // Unresolved attempts cannot age into a new send after a restart.
+        if ([MESSAGE_STATUS.PENDING, MESSAGE_STATUS.UNCONFIRMED].includes(record?.status)) return true;
         const time = Date.parse(record?.sentAt || record?.attemptedAt || "");
         return !Number.isFinite(time) || time >= cutoff;
       })

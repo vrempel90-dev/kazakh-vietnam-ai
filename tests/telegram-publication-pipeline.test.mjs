@@ -225,9 +225,9 @@ test("the whole chain publishes one message per country in the agreed layout", a
 
   assert.ok(text.startsWith("🇻🇳 ВЬЕТНАМ\n\n"));
   assert.equal(text.match(/ВЬЕТНАМ/g).length, 1);
-  assert.ok(text.includes("БИЛЕТЫ ТУДА"));
-  assert.ok(text.includes("ОБРАТНЫЕ БИЛЕТЫ"));
-  assert.ok(text.includes("ТУДА И ОБРАТНО"));
+  assert.ok(text.includes("В одну сторону"));
+  assert.ok(text.includes("Обратные билеты"));
+  assert.ok(text.includes("Туда обратно"));
 
   // Outbound, inbound and round-trip routes land in their own sections.
   assert.ok(text.includes("Астана - Фукуок\n"));
@@ -276,9 +276,9 @@ test("the scheduler and publisher deliver the chain once and keep durable state"
   });
 
   assert.equal(morning.window.id, "morning");
-  assert.equal(morning.totals.sent, 3);
+  assert.equal(morning.totals.sent, 2);
   assert.equal(morning.channels[0].coverage.complete, true);
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 2);
   assert.ok(calls.every(call => call.method === "sendMessage"));
 
   // Each delivered message names exactly one country.
@@ -290,7 +290,7 @@ test("the scheduler and publisher deliver the chain once and keep durable state"
   // Every rendered offer is recorded against the channel.
   const stored = await loadPublicationState(path);
   const recorded = Object.values(stored.channels[CHAT].messages).flatMap(m => m.offerIds);
-  assert.equal(new Set(recorded).size, publishable.length);
+  assert.equal(new Set(recorded).size, publishable.filter(f => classifyFlight(f).country?.code !== "KR").length);
   assert.equal(stored.channels[CHAT].windows["2026-10-12:morning"].status, "completed");
 
   // A later sync in the same window changes nothing.
@@ -298,24 +298,26 @@ test("the scheduler and publisher deliver the chain once and keep durable state"
     flights: publishable, now: new Date(NOW.getTime() + 15 * 60000),
     env, statePath: path, fetchImpl, logger: null
   });
-  assert.equal(calls.length, 3, "no duplicate posts from the next sync");
+  assert.equal(calls.length, 2, "no duplicate posts from the next sync");
   assert.equal(rerun.channels[0].error, "WINDOW_ALREADY_PUBLISHED");
 
-  // The afternoon window edits only the country whose offers changed.
+  // Korea stays in the feed but is excluded without an agreed regional rule.
+  assert.equal(morning.channels[0].excluded.length, 3);
+  // Next morning edits only the eligible country whose offers changed.
   const afternoon = await runTelegramPublication({
     flights: publishable.map(flight =>
-      classifyFlight(flight).country?.code === "KR" ? { ...flight, price: flight.price + 5000 } : flight
+      classifyFlight(flight).country?.code === "VN" ? { ...flight, price: flight.price + 5000 } : flight
     ),
-    now: new Date(Date.UTC(2026, 9, 12, 9, 10)),
+    now: new Date(Date.UTC(2026, 9, 13, 5, 10)),
     env, statePath: path, fetchImpl, logger: null
   });
 
   assert.equal(afternoon.totals.edited, 1);
   assert.equal(afternoon.totals.sent, 0);
-  assert.equal(afternoon.totals.skipped, 2);
-  assert.equal(calls.length, 4);
-  assert.equal(calls[3].method, "editMessageText");
-  assert.ok(calls[3].text.includes("ЮЖНАЯ КОРЕЯ"));
+  assert.equal(afternoon.totals.skipped, 1);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[2].method, "editMessageText");
+  assert.ok(calls[2].text.includes("ВЬЕТНАМ"));
 });
 
 test("a feed that grows past one message per country still delivers every offer", async () => {

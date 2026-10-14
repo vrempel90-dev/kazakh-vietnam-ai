@@ -11,6 +11,7 @@ import { selectCachedFallbackFlights } from "./cached-flight-fallback.mjs";
 import { validateFlightsForPublication } from "./flight-validator.mjs";
 import { shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 import { runTelegramPublication } from "./telegram-publish-run.mjs";
+import { dedupeFlights } from "./charter-offer.mjs";
 import { classifyFlight } from "./charter-geo.mjs";
 
 function envNumber(name) {
@@ -20,18 +21,6 @@ function envNumber(name) {
   return Number.isFinite(value) ? value : null;
 }
 
-function normalizeCity(value) {
-  return String(value || "")
-    .toLocaleLowerCase("ru-RU")
-    .replace(/[^а-яёa-z0-9]/giu, "");
-}
-
-const KAZAKHSTAN_CITY_KEYS = new Set([
-  "алматы", "астана", "шымкент", "атырау", "актобе", "актау",
-  "костанай", "кызылорда", "тараз", "уральск", "петропавловск",
-  "караганда"
-]);
-
 const ENTRY_REQUIREMENT_BY_COUNTRY = new Map([
   ["Таиланд", "TDAC обязательно"],
   ["Малайзия", "MDAC обязательно"],
@@ -40,18 +29,11 @@ const ENTRY_REQUIREMENT_BY_COUNTRY = new Map([
   ["Китай", "Arrival Card обязательно"]
 ]);
 
-function isKazakhstanCity(value) {
-  return KAZAKHSTAN_CITY_KEYS.has(normalizeCity(value));
-}
-
 function normalizeOfferForPublication(offer) {
   const trip = offer?.returnDate ? "RT" : String(offer?.trip || "OW");
   let from = offer?.from;
   let to = offer?.to;
 
-  if (trip === "RT" && !isKazakhstanCity(from) && isKazakhstanCity(to)) {
-    [from, to] = [to, from];
-  }
 
   const classification = classifyFlight({
     from,
@@ -83,15 +65,8 @@ function dayOffset(iso, now) {
 }
 
 function stableId(flight) {
-  const raw = [
-    flight.from,
-    flight.to,
-    flight.departureDate,
-    flight.returnDate || "",
-    flight.trip,
-    flight.airlineCode || flight.airline || "",
-    flight.price
-  ].join("|");
+  const raw = [flight.from, flight.to, flight.departureDate, flight.returnDate || "",
+    flight.trip, flight.airlineCode || flight.airline || "", flight.price].join("|");
   return createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
 
@@ -215,57 +190,6 @@ async function syncTelegramSource(source, now, pricingConfig) {
   };
 }
 
-function dedupeFlights(flights) {
-  const map = new Map();
-
-  for (const flight of flights) {
-    const key = [
-      normalizeCity(flight.from),
-      normalizeCity(flight.to),
-      flight.departureDate,
-      flight.returnDate || "",
-      flight.trip,
-      normalizeCity(flight.airlineCode || flight.airline || "")
-    ].join("|");
-
-    const current = map.get(key);
-    if (!current) {
-      map.set(key, {
-        ...flight,
-        sourceIds: [...new Set(flight.sourceIds || [])]
-      });
-      continue;
-    }
-
-    const flightStamp = Date.parse(flight.sourcePostedAt || flight.updatedAt || "") || 0;
-    const currentStamp = Date.parse(current.sourcePostedAt || current.updatedAt || "") || 0;
-    const newer = flightStamp > currentStamp;
-
-    const winner =
-      flight.price < current.price || (flight.price === current.price && newer)
-        ? { ...flight }
-        : { ...current };
-
-    const freshest = newer ? flight : current;
-    winner.seats = freshest.seats || winner.seats;
-    // Keep carrier and baggage attached to the selected price/source.
-    // Never transfer metadata from another offer with a different fare.
-    winner.airline = winner.airline || undefined;
-    winner.airlineCode = winner.airlineCode || undefined;
-    winner.baggage = winner.baggage || undefined;
-    winner.notice = freshest.notice || winner.notice;
-    winner.sourcePostedAt = freshest.sourcePostedAt || winner.sourcePostedAt;
-    winner.sourceIds = [
-      ...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])
-    ];
-
-    map.set(key, winner);
-  }
-
-  return [...map.values()]
-    .sort((a, b) => a.offset - b.offset || a.price - b.price)
-    .slice(0, 300);
-}
 
 function offerTtlHours() {
   const configured = envNumber("OFFER_TTL_HOURS");

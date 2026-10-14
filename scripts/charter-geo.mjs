@@ -313,8 +313,14 @@ export const TICKET_CATEGORIES = {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+function validDate(value) {
+  if (!ISO_DATE.test(String(value))) return false;
+  const date = new Date(value + "T12:00:00Z");
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 function nightsBetween(departureDate, returnDate) {
-  if (!ISO_DATE.test(String(departureDate)) || !ISO_DATE.test(String(returnDate))) return null;
+  if (!validDate(departureDate) || !validDate(returnDate)) return null;
   const from = Date.parse(departureDate + "T12:00:00Z");
   const to = Date.parse(returnDate + "T12:00:00Z");
   if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
@@ -346,10 +352,9 @@ export function classifyFlight(flight) {
   const hasReturnDate = Boolean(flight?.returnDate);
   const nights = nightsBetween(flight?.departureDate, flight?.returnDate);
 
-  // A stated return date that does not sit after departure is corrupt data,
-  // not a round trip. A round trip whose return date the source never gave is
-  // still a round-trip fare: it keeps its category and simply shows no stay
-  // length, because inventing a return date is worse than omitting it.
+  if (!validDate(flight?.departureDate)) return unknown("INVALID_DEPARTURE_DATE");
+  if (declaredRoundTrip && !hasReturnDate) return unknown("MISSING_RETURN_DATE");
+  // Only two real, ordered dates establish a complete round trip.
   if (hasReturnDate && !nights) {
     return unknown("INVALID_RETURN_DATE", {
       departureDate: flight?.departureDate || null,
@@ -367,12 +372,12 @@ export function classifyFlight(flight) {
       fromCity,
       toCity,
       nights,
-      roundTrip: declaredRoundTrip,
+      roundTrip: hasReturnDate,
       reason: null
     };
   }
 
-  if (declaredRoundTrip) {
+  if (hasReturnDate) {
     return {
       category: TICKET_CATEGORIES.ROUND_TRIP,
       // A round trip belongs to the foreign country being visited.

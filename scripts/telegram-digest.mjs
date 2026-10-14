@@ -17,16 +17,16 @@ import {
   isPublishableCategory
 } from "./charter-geo.mjs";
 
+import { carrierIdentity, knownSeatCount, offerIdentity } from "./charter-offer.mjs";
+
 export const TELEGRAM_TEXT_LIMIT = 4096;
 const DEFAULT_MAX_CHARS = 3900;
-/** Room reserved for the " · Часть N/M" suffix while laying out a split digest. */
-const PART_SUFFIX_RESERVE = 20;
 
 const SECTION_ORDER = [
-  [TICKET_CATEGORIES.OUTBOUND, "БИЛЕТЫ ТУДА"],
-  [TICKET_CATEGORIES.INBOUND, "ОБРАТНЫЕ БИЛЕТЫ"],
-  [TICKET_CATEGORIES.ROUND_TRIP, "ТУДА И ОБРАТНО"],
-  [TICKET_CATEGORIES.FOREIGN, "МЕЖДУ СТРАНАМИ"]
+  [TICKET_CATEGORIES.OUTBOUND, "В одну сторону"],
+  [TICKET_CATEGORIES.INBOUND, "Обратные билеты"],
+  [TICKET_CATEGORIES.ROUND_TRIP, "Туда обратно"],
+  [TICKET_CATEGORIES.FOREIGN, "Между странами"]
 ];
 
 const SECTION_TITLES = new Map(SECTION_ORDER);
@@ -34,55 +34,7 @@ const SECTION_RANK = new Map(SECTION_ORDER.map(([category], index) => [category,
 
 export const FOOTER_TEXT = "Цены и наличие уточняются при бронировании.";
 
-/**
- * Carrier letters. `name` is used for the legend only when the offers
- * themselves carry no airline name.
- *
- * "F" is deliberately absent: public channels use it for both FlyArystan and
- * flydubai, so the letter is printed but never expanded into a guessed name.
- */
-const CARRIER_LETTERS = [
-  ["A", "Air Astana", [/air\s*astana/, /эйр\s*астана/]],
-  ["S", "SCAT", [/\bscat\b/, /\bскат\b/]],
-  ["U", "Sunday Airlines", [/sunday/]],
-  ["V", "VietJet Air", [/vietjet/, /вьетжет/]],
-  ["Y", null, [/vietravel/]],
-  ["Q", "Qazaq Air", [/qazaq\s*air/]],
-  ["T", "Turkish Airlines", [/turkish/]],
-  ["P", "Pegasus", [/pegasus/]],
-  ["N", "Neos", [/\bneos\b/]],
-  ["J", "AJet", [/\bajet\b/]],
-  ["W", "Wizz Air", [/wizz/]],
-  ["C", "Centrum Air", [/centrum/]],
-  ["D", "flydubai", [/flydubai/, /fly\s*dubai/]],
-  ["F", null, [/flyarystan/, /fly\s*arystan/]]
-];
-
-const CARRIER_FALLBACK_NAME = new Map(
-  CARRIER_LETTERS.filter(([, name]) => name).map(([code, name]) => [code, name])
-);
-
-function normalizeAirlineText(value) {
-  return String(value || "")
-    .toLocaleLowerCase("ru-RU")
-    .replace(/ё/g, "е")
-    .replace(/[^a-zа-я0-9]+/giu, " ")
-    .trim();
-}
-
-/** Letter used in front of an offer line, or null when the carrier is unknown. */
-export function carrierCode(flight) {
-  const declared = String(flight?.airlineCode || "").trim().toUpperCase();
-  if (/^[A-Z]$/.test(declared)) return declared;
-
-  const airline = normalizeAirlineText(flight?.airline);
-  if (!airline) return null;
-
-  for (const [code, , patterns] of CARRIER_LETTERS) {
-    if (patterns.some(pattern => pattern.test(airline))) return code;
-  }
-  return null;
-}
+export const carrierCode = flight => carrierIdentity(flight).code;
 
 function esc(value) {
   return String(value ?? "")
@@ -107,13 +59,8 @@ function formatPrice(value) {
 }
 
 function seatsSuffix(flight) {
-  const text = String(flight?.seats || "").trim();
-  if (!text) return "";
-  if (/последн/iu.test(text)) return " (1)";
-  const match = text.match(/\b(\d{1,3})\b/);
-  if (!match) return "";
-  const count = Number(match[1]);
-  return count > 0 ? " (" + count + ")" : "";
+  const count = knownSeatCount(flight?.seats);
+  return count ? " (" + count + ")" : "";
 }
 
 function nightsSuffix(nights) {
@@ -144,15 +91,12 @@ function offerLine(entry, referenceYear = null) {
   const departure = formatDate(flight.departureDate, referenceYear);
 
   if (classification.category === TICKET_CATEGORIES.ROUND_TRIP) {
-    // Sources often publish a round-trip fare without the return date. Show
-    // the dates we actually have and never fabricate the missing one.
-    const dates = flight.returnDate
-      ? departure + "–" + formatDate(flight.returnDate, referenceYear)
-      : departure;
+    // Classification admits RT only with two real, ordered dates.
+    const dates = departure + "–" + formatDate(flight.returnDate, referenceYear);
     return prefix
       + dates
       + " - " + formatPrice(flight.price) + " ₸"
-      + nightsSuffix(classification.nights);
+      + nightsSuffix(classification.nights) + seatsSuffix(flight);
   }
 
   return prefix
@@ -162,18 +106,7 @@ function offerLine(entry, referenceYear = null) {
 }
 
 /** Identifies a genuinely identical offer so only true duplicates collapse. */
-function offerSignature(entry) {
-  return [
-    entry.classification.category,
-    entry.classification.fromCity.id,
-    entry.classification.toCity.id,
-    String(entry.flight.departureDate || ""),
-    String(entry.flight.returnDate || ""),
-    Math.round(Number(entry.flight.price) || 0),
-    entry.code || normalizeAirlineText(entry.flight.airline),
-    String(entry.flight.seats || "")
-  ].join("|");
-}
+function offerSignature(entry) { return offerIdentity(entry.flight); }
 
 /**
  * Splits flights into per-country publishable entries plus diagnostics for
@@ -182,7 +115,6 @@ function offerSignature(entry) {
 export function groupFlightsByCountry(flights) {
   const countries = new Map();
   const diagnostics = [];
-  const seenIds = new Set();
   const seenSignatures = new Set();
   let duplicates = 0;
 
@@ -203,12 +135,6 @@ export function groupFlightsByCountry(flights) {
       continue;
     }
 
-    const id = flight?.id ? String(flight.id) : null;
-    if (id && seenIds.has(id)) {
-      duplicates += 1;
-      continue;
-    }
-
     const entry = { flight, classification, code: carrierCode(flight) };
     const signature = offerSignature(entry);
     if (seenSignatures.has(signature)) {
@@ -216,7 +142,6 @@ export function groupFlightsByCountry(flights) {
       continue;
     }
 
-    if (id) seenIds.add(id);
     seenSignatures.add(signature);
 
     const code = classification.country.code;
@@ -257,6 +182,7 @@ function buildSections(entries) {
             || String(a.flight.returnDate || "").localeCompare(String(b.flight.returnDate || ""))
             || (Number(a.flight.price) || 0) - (Number(b.flight.price) || 0)
             || String(a.code || "").localeCompare(String(b.code || ""))
+            || offerSignature(a).localeCompare(offerSignature(b))
           );
           return {
             title: routeTitle(routeEntries[0]),
@@ -273,21 +199,12 @@ function buildSections(entries) {
 
 function legendLines(entries) {
   const names = new Map();
-
   for (const entry of entries) {
-    if (!entry.code) continue;
-    const airline = String(entry.flight.airline || "").trim();
-    if (!names.has(entry.code)) names.set(entry.code, airline || null);
-    else if (!names.get(entry.code) && airline) names.set(entry.code, airline);
+    const carrier = carrierIdentity(entry.flight);
+    if (carrier.code) names.set(carrier.code, carrier.name);
   }
-
-  return [...names.entries()]
-    // Channel text arrives as "Scat", "PEGASUS" or a truncated "VietJet", so
-    // the canonical spelling wins whenever the letter has one.
-    .map(([code, airline]) => [code, CARRIER_FALLBACK_NAME.get(code) || airline || null])
-    .filter(([, airline]) => Boolean(airline))
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([code, airline]) => code + " - " + esc(airline));
+  return [...names].sort(([a], [b]) => a.localeCompare(b))
+    .map(([code, name]) => code + " - " + esc(name));
 }
 
 function header(country, partIndex, partCount) {
@@ -308,87 +225,51 @@ function renderPart({ country, blocks, entries, partIndex, partCount }) {
  * Lays out one country's sections into blocks that each fit `maxChars`.
  * Returns an array of { blocks, entries } in sending order.
  */
-function layoutCountry(group, maxChars, referenceYear) {
-  const sections = buildSections(group.entries);
-  const budget = Math.max(400, maxChars);
+function layoutCountry(group, maxChars, referenceYear, partCount = 1) {
   const pages = [];
-
   let blocks = [];
   let entries = [];
-  let openSection = null;
-
-  const measure = (candidateBlocks, candidateEntries) =>
-    renderPart({
-      country: group.country,
-      blocks: candidateBlocks,
-      entries: candidateEntries,
-      partIndex: 1,
-      partCount: 1
-    }).length;
-
+  const renderBlock = (route, rows, continued = false) =>
+    "<b>" + route.title + (continued ? " (продолжение)" : "") + "</b>\n"
+    + route.type + "\n\n" + rows.map(entry => offerLine(entry, referenceYear)).join("\n");
+  const measure = (candidateBlocks, candidateEntries, page = pages.length + 1) =>
+    renderPart({ country: group.country, blocks: candidateBlocks, entries: candidateEntries,
+      partIndex: page, partCount }).length;
   const flush = () => {
-    if (!entries.length) return;
-    pages.push({ blocks, entries });
-    blocks = [];
-    entries = [];
-    openSection = null;
+    if (entries.length) pages.push({ blocks, entries });
+    blocks = []; entries = [];
   };
-
-  for (const section of sections) {
-    for (const route of section.routes) {
-      const needsHeading = openSection !== section.category;
-      const heading = needsHeading ? ["<b>" + section.title + "</b>"] : [];
-      const routeBlock = route.title + "\n\n" + route.entries.map(entry => offerLine(entry, referenceYear)).join("\n");
-
-      if (measure([...blocks, ...heading, routeBlock], [...entries, ...route.entries]) <= budget) {
-        blocks = [...blocks, ...heading, routeBlock];
-        entries = [...entries, ...route.entries];
-        openSection = section.category;
-        continue;
+  for (const section of buildSections(group.entries)) {
+    for (const sourceRoute of section.routes) {
+      const route = { ...sourceRoute, type: section.title };
+      const block = renderBlock(route, route.entries);
+      if (measure([...blocks, block], [...entries, ...route.entries]) <= maxChars) {
+        blocks.push(block); entries.push(...route.entries); continue;
       }
-
-      // The route does not fit on the current page: start a fresh page.
-      flush();
-
-      const freshBlock = route.title + "\n\n" + route.entries.map(entry => offerLine(entry, referenceYear)).join("\n");
-      if (measure(["<b>" + section.title + "</b>", freshBlock], route.entries) <= budget) {
-        blocks = ["<b>" + section.title + "</b>", freshBlock];
-        entries = [...route.entries];
-        openSection = section.category;
-        continue;
+      if (measure([block], route.entries, pages.length + 2) <= maxChars) {
+        flush(); blocks.push(block); entries.push(...route.entries); continue;
       }
-
-      // Even alone the route is too long: split its offer rows, never drop them.
+      // Only a route larger than an entire page may split at offer boundaries.
       let chunk = [];
-      let continuation = false;
-
-      const flushChunk = () => {
-        if (!chunk.length) return;
-        const title = continuation ? route.title + " (продолжение)" : route.title;
-        pages.push({
-          blocks: ["<b>" + section.title + "</b>", title + "\n\n" + chunk.map(entry => offerLine(entry, referenceYear)).join("\n")],
-          entries: [...chunk]
-        });
-        continuation = true;
-        chunk = [];
-      };
-
+      let continued = false;
       for (const entry of route.entries) {
-        const title = continuation ? route.title + " (продолжение)" : route.title;
         const candidate = [...chunk, entry];
-        const candidateBlocks = [
-          "<b>" + section.title + "</b>",
-          title + "\n\n" + candidate.map(entry => offerLine(entry, referenceYear)).join("\n")
-        ];
-        if (chunk.length && measure(candidateBlocks, candidate) > budget) flushChunk();
+        if (measure([...blocks, renderBlock(route, candidate, continued)], [...entries, ...candidate]) > maxChars) {
+          if (chunk.length) {
+            blocks.push(renderBlock(route, chunk, continued)); entries.push(...chunk);
+            continued = true;
+          }
+          flush(); chunk = [];
+          if (measure([renderBlock(route, [entry], continued)], [entry]) > maxChars) {
+            throw new Error("OFFER_EXCEEDS_MESSAGE_LIMIT: " + entry.flight.id);
+          }
+        }
         chunk.push(entry);
       }
-
-      flushChunk();
-      openSection = null;
+      // Leave the last chunk open so another route can share the page.
+      if (chunk.length) { blocks.push(renderBlock(route, chunk, continued)); entries.push(...chunk); }
     }
   }
-
   flush();
   return pages;
 }
@@ -414,17 +295,11 @@ export function buildCountryDigests(flights, {
   for (const group of groups) {
     let pages = layoutCountry(group, limit, referenceYear);
 
-    // A split digest carries a "Часть N/M" suffix, so re-layout with the
-    // suffix accounted for and keep going until the part count is stable.
-    if (pages.length > 1) {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
-        const relaid = layoutCountry(group, limit - PART_SUFFIX_RESERVE, referenceYear);
-        if (relaid.length === pages.length) {
-          pages = relaid;
-          break;
-        }
-        pages = relaid;
-      }
+    // Use the actual suffix width, including transitions to 10+ parts.
+    let measuredParts = 1;
+    while (measuredParts !== pages.length) {
+      measuredParts = pages.length;
+      pages = layoutCountry(group, limit, referenceYear, measuredParts);
     }
 
     const partCount = pages.length;
@@ -453,7 +328,6 @@ export function buildCountryDigests(flights, {
     });
   }
 
-  const renderedOfferIds = new Set(digests.flatMap(digest => digest.offerIds));
 
   return {
     digests,
@@ -462,7 +336,7 @@ export function buildCountryDigests(flights, {
     summary: {
       countries: groups.length,
       messages: digests.length,
-      offers: renderedOfferIds.size,
+      offers: digests.reduce((count, digest) => count + digest.offers, 0),
       diagnostics: diagnostics.length,
       duplicates,
       oversized: digests.filter(digest => digest.text.length > TELEGRAM_TEXT_LIMIT).length

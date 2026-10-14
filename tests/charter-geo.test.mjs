@@ -109,11 +109,12 @@ test("an unresolvable city is reported, never published under an invented countr
   assert.equal(isPublishableCategory(result.category), false);
 });
 
-test("a round trip keeps its category when the source gave no return date", () => {
+test("a stated RT without a return date is held for review", () => {
   const result = classifyFlight({
     from: "Алматы", to: "Анталия", trip: "RT", departureDate: "2026-10-13", price: 263000
   });
-  assert.equal(result.category, TICKET_CATEGORIES.ROUND_TRIP);
+  assert.equal(result.category, TICKET_CATEGORIES.UNKNOWN);
+  assert.equal(result.reason, "MISSING_RETURN_DATE");
   assert.equal(result.nights, null, "no stay length may be invented");
 });
 
