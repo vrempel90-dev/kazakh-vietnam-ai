@@ -221,13 +221,12 @@ test("a v1 state upgrades without replaying offers or reusing old message ids", 
   assert.equal(planMessageAction(state, CHAT, digest).action, "send");
 });
 
-test("a corrupt state file degrades to an empty state rather than crashing", async () => {
+test("a corrupt state file fails closed without erasing publication history", async () => {
   const dir = await mkdtemp(join(tmpdir(), "charter-state-bad-"));
   const path = join(dir, "state.json");
   await writeFile(path, "{ not json", "utf8");
-  const state = await loadPublicationState(path);
-  assert.equal(state.version, STATE_VERSION);
-  assert.deepEqual(Object.keys(state.channels), []);
+  await assert.rejects(() => loadPublicationState(path), /PUBLICATION_STATE_UNREADABLE/);
+  assert.equal(await readFile(path, "utf8"), "{ not json");
 });
 
 test("the fingerprint tracks every customer-visible field", () => {

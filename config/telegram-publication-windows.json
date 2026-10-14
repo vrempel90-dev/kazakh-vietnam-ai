@@ -1,0 +1,8 @@
+[
+  { "id": "morning", "startHour": 10, "endHour": 12, "kind": "full",
+    "countries": ["VN", "TH", "CN", "MY", "MV", "LK", "IN"], "cities": { "MY": ["KUL"] } },
+  { "id": "afternoon", "startHour": 14, "endHour": 15, "kind": "update",
+    "countries": ["AE", "OM", "EG"] },
+  { "id": "evening", "startHour": 17, "endHour": 18, "kind": "update",
+    "countries": ["IT", "CZ", "RS", "HU", "DE"] }
+]

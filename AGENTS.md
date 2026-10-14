@@ -88,15 +88,23 @@ all came from each stage keeping its own city table, its own notion of
 - `scripts/charter-geo.mjs` is the only place that maps a city spelling to a
   country and a ticket category. Add new cities and aliases (Russian forms,
   Latin transliterations, IATA codes, airport names) here and nowhere else.
-- `scripts/telegram-digest.mjs` renders **one digest per country**, with
-  `БИЛЕТЫ ТУДА` / `ОБРАТНЫЕ БИЛЕТЫ` / `ТУДА И ОБРАТНО` / `МЕЖДУ СТРАНАМИ` as
-  sections inside that single message. Never go back to one message per
+- `scripts/telegram-digest.mjs` renders **one digest per country**, with bold
+  route headings followed immediately by `В одну сторону` / `Обратные билеты`
+  / `Туда обратно` and then the dated offers. Never go back to one message per
   country-and-direction. Oversized digests split into `Часть N/M` and splitting
   must stay lossless.
 - `scripts/telegram-schedule.mjs` owns the only schedule: 10:00-12:00,
   14:00-15:00 and 17:00-18:00 `Asia/Almaty`. Collection may run every 15
-  minutes; sending outside a window is refused. The morning window is the full
-  digest, the later two send updates only.
+  minutes; sending outside a window is refused, including while a run is in
+  progress. Commercial country groups and hours live in
+  `config/telegram-publication-windows.json`, optionally overridden by
+  `TELEGRAM_PUBLICATION_WINDOWS_JSON`. Morning: VN TH CN MY (KUL) MV LK IN;
+  afternoon: AE OM EG; evening: IT CZ RS HU DE. Unlisted countries remain in
+  the feed. A completed window is not reopened by price updates; changes wait
+  for the next occurrence of that country's window and edit the existing post.
+- `scripts/charter-offer.mjs` owns trusted carrier codes and commercial offer
+  identity. Different prices, baggage, seats or fare conditions must survive
+  collection and rendering. Only complete, valid date pairs are published as RT.
 - `scripts/telegram-publication-state.mjs` is schema v2 on the Railway `/data`
   volume. It records chat, local date, window, country, category, offer ids,
   content hash, Telegram message id, status, timestamps and errors, and it
@@ -117,6 +125,11 @@ Rules that must not be weakened:
 - A send whose outcome Telegram never confirmed is recorded as `unconfirmed`
   and held for review, not retried blindly. `TELEGRAM_RETRY_UNCONFIRMED=true`
   is a manual override only.
+- A persisted `pending` attempt is also held after restart. Corrupt state stops
+  delivery without replacing history. A stale lock alone is not proof that
+  its owner died; never steal it on elapsed time during automatic publishing.
+  After a hard kill, check the owner and uncertain deliveries before removing
+  an orphan lock. Railway publication state must be under its mounted volume.
 - Publishing is refused when `GITHUB_ACTIONS` is set. GitHub Actions only
   refreshes `public/flights.json`; Railway owns delivery.
 - Never cap delivery by dropping messages. The per-window ceiling defers and

@@ -32,8 +32,8 @@ const vietnam = [
   { id: "v-out-1", from: "Астана", to: "Фукуок", trip: "OW", departureDate: "2026-10-21", price: 96000, airlineCode: "V", seats: "3 мест" },
   { id: "v-in-1", from: "Фукуок", to: "Астана", trip: "OW", departureDate: "2026-10-29", price: 55000, airlineCode: "S" }
 ];
-const korea = [
-  { id: "k-out-1", from: "Алматы", to: "Seoul", trip: "OW", departureDate: "2026-11-02", price: 190000, airlineCode: "A" }
+const china = [
+  { id: "k-out-1", from: "Алматы", to: "Санья", trip: "OW", departureDate: "2026-11-02", price: 190000, airlineCode: "A" }
 ];
 
 function recorder({ fail = () => null } = {}) {
@@ -69,7 +69,7 @@ test("a morning run publishes one message per country and records every field", 
   const { calls, fetchImpl } = recorder();
 
   const report = await runTelegramPublication({
-    flights: [...vietnam, ...korea],
+    flights: [...vietnam, ...china],
     now: MORNING,
     env: baseEnv(),
     statePath: path,
@@ -79,7 +79,7 @@ test("a morning run publishes one message per country and records every field", 
 
   assert.equal(report.skipped, false);
   assert.equal(report.window.id, "morning");
-  assert.equal(report.totals.sent, 2, "Vietnam and South Korea, one message each");
+  assert.equal(report.totals.sent, 2, "Vietnam and China, one message each");
   assert.equal(report.totals.edited, 0);
   assert.ok(calls.every(call => call.method === "sendMessage"));
   assert.equal(new Set(calls.map(call => call.chatId)).size, 1);
@@ -131,7 +131,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
   // Nothing changed by the afternoon: no message at all.
   const quiet = recorder();
   const quietReport = await runTelegramPublication({
-    flights: vietnam, now: AFTERNOON, env: baseEnv(), statePath: path,
+    flights: vietnam, now: almaty(10, 5, 13), env: baseEnv(), statePath: path,
     fetchImpl: quiet.fetchImpl, logger: null
   });
   assert.equal(quiet.calls.length, 0, "an unchanged country is not reposted");
@@ -141,7 +141,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
   const changed = recorder();
   const changedReport = await runTelegramPublication({
     flights: vietnam.map(f => (f.id === "v-out-1" ? { ...f, price: 99000 } : f)),
-    now: EVENING, env: baseEnv(), statePath: path,
+    now: almaty(10, 5, 14), env: baseEnv(), statePath: path,
     fetchImpl: changed.fetchImpl, logger: null
   });
 
@@ -164,7 +164,7 @@ test("repeated price changes across windows never add a second post for a countr
   let price = 96000;
   const methods = [];
 
-  for (const [index, moment] of [MORNING, AFTERNOON, EVENING, almaty(10, 5, 13), almaty(14, 5, 13)].entries()) {
+  for (const [index, moment] of [MORNING, almaty(10, 5, 13), almaty(10, 5, 14), almaty(10, 5, 15), almaty(10, 5, 16)].entries()) {
     price += 1000;
     const run = recorder();
     await runTelegramPublication({
@@ -244,7 +244,7 @@ test("a missed window is not replayed once it has closed", async () => {
   // The afternoon window publishes the current picture once, not a backlog.
   const afternoon = recorder();
   const afternoonReport = await runTelegramPublication({
-    flights: vietnam, now: AFTERNOON, env: baseEnv(), statePath: path,
+    flights: vietnam, now: almaty(10, 5, 13), env: baseEnv(), statePath: path,
     fetchImpl: afternoon.fetchImpl, logger: null
   });
   assert.equal(afternoon.calls.length, 1);
@@ -253,7 +253,7 @@ test("a missed window is not replayed once it has closed", async () => {
 
 test("scenario 11: a partial failure keeps what Telegram accepted and retries only the gap", async () => {
   const path = await statePath("partial");
-  const flights = [...vietnam, ...korea,
+  const flights = [...vietnam, ...china,
     { id: "t-out-1", from: "Алматы", to: "Пхукет", trip: "OW", departureDate: "2026-11-03", price: 150000, airlineCode: "S" }
   ];
 
@@ -334,7 +334,7 @@ test("a channel the bot cannot post to stops that channel without harming the ot
     fail: ({ body }) => (body.chat_id === CHAT ? "Bad Request: chat not found" : null)
   });
   const report = await runTelegramPublication({
-    flights: [...vietnam, ...korea], now: MORNING,
+    flights: [...vietnam, ...china], now: MORNING,
     env: baseEnv({ TELEGRAM_PUBLISH_CHATS: CHAT + "," + SECOND_CHAT }),
     statePath: path, fetchImpl: run.fetchImpl, logger: null
   });
@@ -391,7 +391,7 @@ test("two overlapping runs cannot publish at the same time", async () => {
   assert.notEqual(afterReport.reason, "ANOTHER_RUN_IN_PROGRESS");
 });
 
-test("a lock left behind by a killed run is taken over once it goes stale", async () => {
+test("a stale mutex is held for review; elapsed time cannot prove the owner is dead", async () => {
   const path = await statePath("stale-lock");
   const { acquireRunLock, runLockPath } = await import("../scripts/telegram-publication-state.mjs");
 
@@ -410,8 +410,8 @@ test("a lock left behind by a killed run is taken over once it goes stale", asyn
     flights: vietnam, now: MORNING, env: baseEnv(), statePath: path,
     fetchImpl: run.fetchImpl, logger: null
   });
-  assert.equal(report.skipped, false, "a 30-minute-old lock is stale and is taken over");
-  assert.equal(run.calls.length, 1);
+  assert.equal(report.reason, "ANOTHER_RUN_IN_PROGRESS");
+  assert.equal(run.calls.length, 0);
   assert.ok(runLockPath(path).endsWith(".lock"));
 });
 
@@ -441,7 +441,7 @@ test("a dry run plans everything and touches neither Telegram nor the state file
   const path = await statePath("dry");
   const run = recorder();
   const report = await runTelegramPublication({
-    flights: [...vietnam, ...korea], now: MORNING, env: baseEnv(),
+    flights: [...vietnam, ...china], now: MORNING, env: baseEnv(),
     statePath: path, fetchImpl: run.fetchImpl, dryRun: true, logger: null
   });
 
@@ -488,7 +488,7 @@ test("the per-window message budget defers rather than silently dropping offers"
   const manyCountries = [
     { id: "c1", from: "Астана", to: "Фукуок", trip: "OW", departureDate: "2026-10-21", price: 96000 },
     { id: "c2", from: "Алматы", to: "Пхукет", trip: "OW", departureDate: "2026-10-22", price: 97000 },
-    { id: "c3", from: "Алматы", to: "Seoul", trip: "OW", departureDate: "2026-10-23", price: 98000 }
+    { id: "c3", from: "Алматы", to: "Санья", trip: "OW", departureDate: "2026-10-23", price: 98000 }
   ];
   const run = recorder();
   const report = await runTelegramPublication({
@@ -527,8 +527,10 @@ test("the report accounts for every eligible offer", async () => {
   });
 
   const coverage = report.channels[0].coverage;
-  assert.equal(coverage.eligible, 4);
+  assert.equal(coverage.targeted, 4);
+  assert.equal(coverage.excludedByRegion, 1);
+  assert.equal(coverage.eligible, 3);
   assert.equal(coverage.rendered, 2);
-  assert.equal(coverage.unclassified, 2);
+  assert.equal(coverage.unclassified, 1);
   assert.equal(coverage.complete, true);
 });

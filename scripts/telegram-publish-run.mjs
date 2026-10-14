@@ -11,8 +11,10 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { isAbsolute, relative, resolve } from "node:path";
 import { buildCountryDigests, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
-import { resolvePublicationWindow, windowKey, describeSchedule } from "./telegram-schedule.mjs";
+import { resolvePublicationWindow, windowKey, describeSchedule, publicationWindows,
+  filterFlightsForWindow } from "./telegram-schedule.mjs";
 import {
   TelegramApiError,
   editDigestMessage,
@@ -75,15 +77,23 @@ export async function runTelegramPublication({
   dryRun = false,
   targets: targetsOverride = null,
   ignoreWindow = false,
-  logger = console
+  logger = console,
+  clock = null
 } = {}) {
+  const startedAt = performance.now();
+  const currentTime = clock || (() => new Date(now.getTime() + performance.now() - startedAt));
   const timeZone = env?.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty";
-  const schedule = resolvePublicationWindow(now, { timeZone });
+  let windows;
+  let configError = null;
+  try { windows = publicationWindows(env); }
+  catch (error) { windows = []; configError = error.message; }
+  if (timeZone !== "Asia/Almaty") configError = "PUBLICATION_TIME_ZONE_MUST_BE_ASIA_ALMATY";
+  const schedule = resolvePublicationWindow(now, { timeZone, windows });
 
   const base = {
     reason,
     dryRun,
-    schedule: describeSchedule(timeZone),
+    schedule: describeSchedule(timeZone, windows),
     window: schedule.window
       ? { ...schedule.window, localDate: schedule.localDate, timeZone }
       : null,
@@ -95,6 +105,15 @@ export async function runTelegramPublication({
     totals: { ...emptyCounts(), countries: 0, offers: 0 },
     diagnostics: []
   };
+
+  if (configError) return { ...base, skipped: true, reason: configError };
+  if (ignoreWindow) {
+    const testChat = String(env?.TELEGRAM_TEST_CHAT_ID || "").trim();
+    if (reason !== "test-chat" || !testChat || targetsOverride?.length !== 1
+      || targetsOverride[0] !== testChat || parsePublishTargets(env?.TELEGRAM_PUBLISH_CHATS).includes(testChat)) {
+      return { ...base, skipped: true, reason: "WINDOW_OVERRIDE_REQUIRES_SEPARATE_TEST_CHAT" };
+    }
+  }
 
   if (!flights.length) {
     return { ...base, skipped: true, reason: "NO_PUBLISHABLE_OFFERS" };
@@ -111,11 +130,24 @@ export async function runTelegramPublication({
     return { ...base, skipped: true, reason: environment.reason };
   }
 
+  if (!dryRun && (env?.RAILWAY_ENVIRONMENT_ID || env?.RAILWAY_DEPLOYMENT_ID)) {
+    const mount = env?.RAILWAY_VOLUME_MOUNT_PATH;
+    const child = mount ? relative(resolve(mount), resolve(statePath)) : "..";
+    if (!mount || !child || child.startsWith("..") || isAbsolute(child)) {
+      return { ...base, skipped: true, reason: "PUBLICATION_STATE_REQUIRES_PERSISTENT_VOLUME" };
+    }
+  }
+
   if (!schedule.open && !ignoreWindow) {
     return { ...base, skipped: true, reason: schedule.reason || "OUTSIDE_PUBLICATION_WINDOW" };
   }
 
   const activeWindow = schedule.window || { id: "manual", kind: "update" };
+  const windowStillOpen = () => {
+    if (ignoreWindow) return true;
+    const current = resolvePublicationWindow(currentTime(), { timeZone, windows });
+    return current.open && current.window.id === activeWindow.id && current.localDate === schedule.localDate;
+  };
   const chatIds = Array.isArray(targetsOverride) && targetsOverride.length
     ? parsePublishTargets(targetsOverride.join(","))
     : parsePublishTargets(env?.TELEGRAM_PUBLISH_CHATS);
@@ -159,19 +191,20 @@ export async function runTelegramPublication({
     }
   }
 
-  const state = await loadPublicationState(statePath);
-  initializePublicationState(state, now.toISOString());
-
-  if (!dryRun) {
-    acquireRunLease(state, { owner: leaseOwner, now, ttlMinutes: 10 });
-    state.meta.lastRunAt = now.toISOString();
-    await savePublicationState(statePath, state);
-  }
-
-  const key = windowKey(schedule.localDate, activeWindow.id);
+  let state;
   const channelReports = [];
-
   try {
+    try { state = await loadPublicationState(statePath); }
+    catch { return { ...base, skipped: true, reason: "PUBLICATION_STATE_UNREADABLE" }; }
+    initializePublicationState(state, now.toISOString());
+
+    if (!dryRun) {
+      acquireRunLease(state, { owner: leaseOwner, now, ttlMinutes: 10 });
+      state.meta.lastRunAt = now.toISOString();
+      await savePublicationState(statePath, state);
+    }
+
+    const key = windowKey(schedule.localDate, activeWindow.id);
     for (const chatId of chatIds) {
       const report = {
         chatId,
@@ -187,20 +220,25 @@ export async function runTelegramPublication({
         error: null
       };
 
-      if (!dryRun && isWindowCompleted(state, chatId, key)) {
+      if (isWindowCompleted(state, chatId, key)) {
         report.status = "skipped";
         report.error = "WINDOW_ALREADY_PUBLISHED";
         channelReports.push(report);
         continue;
       }
 
-      const eligible = filterFlightsForTarget(flights, chatId);
-      const { digests, diagnostics, summary } = buildCountryDigests(eligible, { maxChars });
+      const targeted = filterFlightsForTarget(flights, chatId);
+      const { eligible, excluded } = ignoreWindow
+        ? { eligible: targeted, excluded: [] } : filterFlightsForWindow(targeted, activeWindow);
+      const { digests, diagnostics, summary } = buildCountryDigests(eligible, { maxChars, now });
 
       report.countries = summary.countries;
       report.offers = summary.offers;
       report.diagnostics = diagnostics;
+      report.excluded = excluded;
       report.coverage = {
+        targeted: targeted.length,
+        excludedByRegion: excluded.length,
         eligible: eligible.length,
         rendered: summary.offers,
         unclassified: diagnostics.length,
@@ -253,6 +291,14 @@ export async function runTelegramPublication({
           continue;
         }
 
+        if (!windowStillOpen()) {
+          entry.action = "deferred";
+          entry.reason = "PUBLICATION_WINDOW_CLOSED_DURING_RUN";
+          report.counts.deferred += 1;
+          report.messages.push(entry);
+          continue;
+        }
+
         recordMessageIntent(state, chatId, digest.key, {
           country: digest.country,
           countryName: digest.countryName,
@@ -269,6 +315,16 @@ export async function runTelegramPublication({
         await savePublicationState(statePath, state);
 
         try {
+          // State persistence and earlier calls can cross the closing boundary.
+          if (!windowStillOpen()) {
+            recordMessageFailure(state, chatId, digest.key, { error: "PUBLICATION_WINDOW_CLOSED_DURING_RUN", definitive: true });
+            await savePublicationState(statePath, state);
+            entry.action = "deferred";
+            entry.reason = "PUBLICATION_WINDOW_CLOSED_DURING_RUN";
+            report.counts.deferred += 1;
+            report.messages.push(entry);
+            continue;
+          }
           const messageId = await deliver({
             action: plan.action,
             token,
@@ -345,10 +401,15 @@ export async function runTelegramPublication({
     }
   } finally {
     if (!dryRun) {
-      prunePublicationState(state, { now, retentionDays });
-      releaseRunLease(state, leaseOwner);
-      await savePublicationState(statePath, state);
-      await releaseRunLock(statePath, leaseOwner);
+      try {
+        if (state) {
+          prunePublicationState(state, { now, retentionDays });
+          releaseRunLease(state, leaseOwner);
+          await savePublicationState(statePath, state);
+        }
+      } finally {
+        await releaseRunLock(statePath, leaseOwner);
+      }
     }
   }
 

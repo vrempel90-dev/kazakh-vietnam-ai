@@ -13,7 +13,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { buildCountryDigests } from "./telegram-digest.mjs";
-import { describeSchedule, resolvePublicationWindow } from "./telegram-schedule.mjs";
+import { describeSchedule, resolvePublicationWindow, publicationWindows, filterFlightsForWindow } from "./telegram-schedule.mjs";
 import { runTelegramPublication } from "./telegram-publish-run.mjs";
 
 const args = process.argv.slice(2);
@@ -25,15 +25,19 @@ const feedPath = resolve(
 
 const feed = JSON.parse(await readFile(feedPath, "utf8"));
 const flights = Array.isArray(feed?.flights) ? feed.flights : [];
-const now = new Date();
+const at = args.find(arg => arg.startsWith("--at="))?.slice(5);
+if (sendTest && at) throw new Error("--at is for dry-run only");
+const now = at ? new Date(at) : new Date();
+if (!Number.isFinite(now.getTime())) throw new Error("Invalid --at timestamp");
+const windows = publicationWindows(process.env);
 
 console.log("Feed:", feedPath);
 console.log("Generated at:", feed?.generatedAt || "unknown", "| mode:", feed?.mode || "unknown");
 console.log("Offers in feed:", flights.length);
-console.log("Schedule:", describeSchedule(process.env.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty"));
+console.log("Schedule:", describeSchedule(process.env.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty", windows));
 
 const schedule = resolvePublicationWindow(now, {
-  timeZone: process.env.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty"
+  timeZone: process.env.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty", windows
 });
 console.log(
   "Local time:",
@@ -43,7 +47,14 @@ console.log(
   schedule.window?.id || "CLOSED"
 );
 
-const { digests, diagnostics, summary } = buildCountryDigests(flights, { now });
+// Without --at inspect all approved groups, even when sending is currently closed.
+const selectedWindow = at ? schedule.window : {
+  countries: windows.flatMap(window => window.countries),
+  cities: Object.assign({}, ...windows.map(window => window.cities || {}))
+};
+const { eligible, excluded } = filterFlightsForWindow(flights, selectedWindow);
+const { digests, diagnostics, summary } = buildCountryDigests(eligible, { now });
+console.log("Excluded by regional rules (retained in feed):", excluded.length);
 
 console.log("\nRendered digests:", JSON.stringify(summary));
 for (const digest of digests) {
@@ -57,16 +68,12 @@ for (const digest of digests) {
   );
 }
 
-const covered = new Set(digests.flatMap(digest => digest.offerIds));
-const uncovered = flights.filter(flight => flight.id && !covered.has(flight.id));
 console.log(
-  "\nCompleteness: " + covered.size + " rendered + " + diagnostics.length
-  + " held for review = " + (covered.size + diagnostics.length) + " of " + flights.length
+  "\nCompleteness: " + summary.offers + " rendered + " + diagnostics.length
+  + " held for review + " + summary.duplicates + " exact duplicates + " + excluded.length
+  + " outside regional rules = " + (summary.offers + diagnostics.length + summary.duplicates + excluded.length)
+  + " of " + flights.length
 );
-if (uncovered.length) {
-  console.warn("Offers neither rendered nor reported:", uncovered.length);
-  console.warn(JSON.stringify(uncovered.slice(0, 10), null, 2));
-}
 if (diagnostics.length) {
   console.log("\nHeld for review (country or category could not be established):");
   for (const item of diagnostics.slice(0, 30)) {
@@ -102,6 +109,7 @@ if (!sendTest) {
       status: channel.status,
       counts: channel.counts,
       coverage: channel.coverage,
+      excluded: channel.excluded?.length || 0,
       messages: channel.messages.map(message => message.key + ":" + message.action)
     }))
   }, null, 2));

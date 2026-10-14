@@ -36,9 +36,9 @@ test("one country produces exactly one message with all sections inside it", () 
 
   const text = plain(digests[0].text);
   assert.equal(text.match(/ВЬЕТНАМ/g).length, 1, "the country heading appears once");
-  assert.equal(text.match(/БИЛЕТЫ ТУДА/g).length, 1);
-  assert.equal(text.match(/ОБРАТНЫЕ БИЛЕТЫ/g).length, 1);
-  assert.equal(text.match(/ТУДА И ОБРАТНО/g).length, 1);
+  assert.equal(text.match(/В одну сторону/g).length, 1);
+  assert.equal(text.match(/Обратные билеты/g).length, 3);
+  assert.equal(text.match(/Туда обратно/g).length, 1);
 });
 
 test("the rendered digest matches the agreed reference layout line for line", () => {
@@ -46,33 +46,32 @@ test("the rendered digest matches the agreed reference layout line for line", ()
   assert.equal(plain(digests[0].text), [
     "🇻🇳 ВЬЕТНАМ",
     "",
-    "БИЛЕТЫ ТУДА",
-    "",
     "Астана - Фукуок",
+    "В одну сторону",
     "",
     "V 21.10 - 96 000 ₸ (3)",
     "S 23.10 - 110 000 ₸ (2)",
     "",
-    "ОБРАТНЫЕ БИЛЕТЫ",
-    "",
     "Дананг - Астана",
+    "Обратные билеты",
     "",
     "V 25.10 - 78 000 ₸ (4)",
     "",
     "Нячанг - Алматы",
+    "Обратные билеты",
     "",
     "A 26.10 - 110 000 ₸ (1)",
     "S 27.10 - 122 000 ₸",
     "A 28.10 - 135 000 ₸ (3)",
     "",
     "Фукуок - Астана",
+    "Обратные билеты",
     "",
     "V 29.10 - 55 000 ₸",
     "S 30.10 - 78 000 ₸",
     "",
-    "ТУДА И ОБРАТНО",
-    "",
     "Астана - Фукуок - Астана",
+    "Туда обратно",
     "",
     "21.10–28.10 - 196 000 ₸ (7 ночей)",
     "",
@@ -87,11 +86,11 @@ test("the rendered digest matches the agreed reference layout line for line", ()
 test("sections are ordered outbound, inbound, round trip and never interleaved", () => {
   const { digests } = buildCountryDigests(vietnam, { now: NOW });
   const text = plain(digests[0].text);
-  assert.ok(text.indexOf("БИЛЕТЫ ТУДА") < text.indexOf("ОБРАТНЫЕ БИЛЕТЫ"));
-  assert.ok(text.indexOf("ОБРАТНЫЕ БИЛЕТЫ") < text.indexOf("ТУДА И ОБРАТНО"));
+  assert.ok(text.indexOf("В одну сторону") < text.indexOf("Обратные билеты"));
+  assert.ok(text.indexOf("Обратные билеты") < text.indexOf("Туда обратно"));
 
   // The inbound section must contain only inbound routes.
-  const inbound = text.slice(text.indexOf("ОБРАТНЫЕ БИЛЕТЫ"), text.indexOf("ТУДА И ОБРАТНО"));
+  const inbound = text.slice(text.indexOf("Обратные билеты"), text.indexOf("Астана - Фукуок - Астана"));
   assert.ok(inbound.includes("Фукуок - Астана"));
   assert.ok(!inbound.includes("Астана - Фукуок\n"), "an outbound route must not leak into returns");
 });
@@ -239,7 +238,7 @@ test("seats, stay length and baggage are never invented", () => {
   ], { now: NOW });
   const text = plain(digests[0].text);
   assert.ok(text.includes("21.10 - 96 000 ₸\n"), "unknown availability prints no seat count");
-  assert.ok(text.includes("22.10 - 196 000 ₸"), "a round trip with no return date shows one date");
+  assert.ok(!text.includes("196 000 ₸"), "incomplete RT is held for review");
   assert.ok(!text.includes("22.10–"), "no dangling return-date separator");
   assert.ok(!/ноч/.test(text), "no stay length without a return date");
   assert.ok(!/кг/.test(text), "no baggage claims in the digest");
@@ -252,8 +251,8 @@ test("a departure in another year carries its year so it cannot read as a past d
   assert.ok(plain(digests[0].text).includes("14.09.27 - 200 000 ₸"));
 });
 
-test("carrier letters are taken from the source code first, then from the name", () => {
-  assert.equal(carrierCode({ airlineCode: "V", airline: "Air Astana" }), "V");
+test("carrier codes require a reliable name or an unambiguous agreed code", () => {
+  assert.equal(carrierCode({ airlineCode: "V", airline: "Air Astana" }), "A");
   assert.equal(carrierCode({ airline: "Air Astana" }), "A");
   assert.equal(carrierCode({ airline: "SCAT" }), "S");
   assert.equal(carrierCode({ airline: "VietJet Air" }), "V");

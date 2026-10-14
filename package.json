@@ -22,7 +22,7 @@
     "test:pricing": "node tests/pricing-engine.test.mjs",
     "test:telegram": "node tests/telegram-bot.test.mjs",
     "test:admin-auth": "node tests/telegram-admin-auth.test.mjs",
-    "test:publisher": "node --test tests/charter-geo.test.mjs tests/telegram-digest.test.mjs tests/telegram-schedule.test.mjs tests/telegram-publication-state.test.mjs tests/telegram-publisher.test.mjs tests/telegram-publish-run.test.mjs",
+    "test:publisher": "node --test tests/charter-geo.test.mjs tests/telegram-digest.test.mjs tests/telegram-schedule.test.mjs tests/telegram-publication-state.test.mjs tests/telegram-publisher.test.mjs tests/telegram-publish-run.test.mjs tests/client-publications.test.mjs",
     "test:lifecycle": "node tests/offer-lifecycle.test.mjs",
     "test:sources": "node --test tests/source-registry.test.mjs tests/telegram-source-adapter.test.mjs tests/telegram-channel-discovery.test.mjs tests/flight-validator.test.mjs && node tests/cached-flight-fallback.test.mjs",
     "test:pipeline": "node --test tests/telegram-publication-pipeline.test.mjs",
