@@ -272,3 +272,54 @@ test("writes are atomic, so a reader never sees a half-written file", async () =
   const parsed = JSON.parse(await readFile(path, "utf8"));
   assert.equal(parsed.version, STATE_VERSION);
 });
+
+test("a confirmed message from an earlier day is replaced by a new post, not edited", async () => {
+  const { state } = await freshState();
+
+  recordMessageIntent(state, CHAT, digest.key, {
+    ...digest, action: "send", localDate: "2026-10-12", window: "morning"
+  });
+  recordMessageSent(state, CHAT, digest.key, { messageId: 601 });
+
+  const sameDay = planMessageAction(state, CHAT, { ...digest, contentHash: "hash-b" }, {
+    localDate: "2026-10-12"
+  });
+  assert.equal(sameDay.action, "edit", "the same day keeps editing one post");
+  assert.equal(sameDay.record.messageId, 601);
+
+  const unchanged = planMessageAction(state, CHAT, digest, { localDate: "2026-10-12" });
+  assert.equal(unchanged.action, "skip");
+
+  const nextDay = planMessageAction(state, CHAT, { ...digest, contentHash: "hash-b" }, {
+    localDate: "2026-10-13"
+  });
+  assert.equal(nextDay.action, "send", "a new publication day posts again");
+  assert.equal(nextDay.reason, "NEW_PUBLICATION_DAY");
+
+  const identicalNextDay = planMessageAction(state, CHAT, digest, { localDate: "2026-10-13" });
+  assert.equal(
+    identicalNextDay.action,
+    "send",
+    "an unchanged digest is still a new post on a new day, never a silent skip"
+  );
+});
+
+test("an unconfirmed attempt holds its own day only", async () => {
+  const { state } = await freshState();
+
+  recordMessageIntent(state, CHAT, digest.key, {
+    ...digest, action: "send", localDate: "2026-10-12", window: "morning"
+  });
+  recordMessageFailure(state, CHAT, digest.key, { error: "socket hang up", definitive: false });
+
+  assert.equal(
+    planMessageAction(state, CHAT, digest, { localDate: "2026-10-12" }).action,
+    "hold",
+    "the same day never repeats a send whose outcome is unknown"
+  );
+  assert.equal(
+    planMessageAction(state, CHAT, digest, { localDate: "2026-10-13" }).action,
+    "send",
+    "yesterday's unconfirmed attempt must not silence the country forever"
+  );
+});

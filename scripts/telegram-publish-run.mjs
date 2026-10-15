@@ -214,7 +214,13 @@ export async function runTelegramPublication({
       let delivered = 0;
 
       for (const digest of digests) {
-        const plan = planMessageAction(state, chatId, digest, { retryUnconfirmed });
+        const plan = planMessageAction(state, chatId, digest, {
+          retryUnconfirmed,
+          localDate: schedule.localDate
+        });
+        // Only an edit reuses an existing message id; a send must never carry
+        // the previous day's id into its intent record or its report line.
+        const liveMessageId = plan.action === "edit" ? (plan.record?.messageId ?? null) : null;
         const entry = {
           key: digest.key,
           country: digest.countryName,
@@ -223,7 +229,7 @@ export async function runTelegramPublication({
           chars: digest.text.length,
           action: plan.action,
           reason: plan.reason,
-          messageId: plan.record?.messageId ?? null,
+          messageId: liveMessageId,
           error: null
         };
 
@@ -273,7 +279,7 @@ export async function runTelegramPublication({
             action: plan.action,
             token,
             chatId,
-            messageId: plan.record?.messageId,
+            messageId: liveMessageId,
             text: digest.text,
             managerPhone,
             publicAppUrl,

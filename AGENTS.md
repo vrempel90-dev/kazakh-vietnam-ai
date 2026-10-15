@@ -107,8 +107,12 @@ all came from each stage keeping its own city table, its own notion of
 
 Rules that must not be weakened:
 
-- A changed country digest is **edited in place**; a new post is only created
-  when no confirmed message exists for that digest key.
+- A changed country digest is **edited in place within its publication day**;
+  a new post is created when no confirmed message exists for that digest key
+  **on the current local date**. Editing is bounded to one day on purpose: the
+  digest key is only country+part, so an unbounded edit rule turns a country's
+  first post into its permanent message and the channel stops receiving
+  anything new (this is exactly what happened between 13 and 15 October 2026).
 - An offer that cannot be resolved to a country and a category goes to
   diagnostics. There is no "Другие направления" bucket, and no invented
   country, carrier, seat count, baggage rule or return date.

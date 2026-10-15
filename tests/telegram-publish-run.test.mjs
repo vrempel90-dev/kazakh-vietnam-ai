@@ -159,7 +159,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
   );
 });
 
-test("repeated price changes across windows never add a second post for a country", async () => {
+test("repeated price changes add one post per publication day and edit it afterwards", async () => {
   const path = await statePath("flood");
   let price = 96000;
   const methods = [];
@@ -176,8 +176,11 @@ test("repeated price changes across windows never add a second post for a countr
     assert.ok(run.calls.length <= 1, "run " + index + " sent " + run.calls.length + " messages");
   }
 
-  assert.equal(methods.filter(method => method === "sendMessage").length, 1, "exactly one original post");
-  assert.equal(methods.filter(method => method === "editMessageText").length, 4);
+  assert.deepEqual(
+    methods,
+    ["sendMessage", "editMessageText", "editMessageText", "sendMessage", "editMessageText"],
+    "one original post on each of the two days, edited in place inside that day"
+  );
 });
 
 test("scenario 8: a restart mid-schedule neither repeats nor loses the window", async () => {
@@ -531,4 +534,57 @@ test("the report accounts for every eligible offer", async () => {
   assert.equal(coverage.rendered, 2);
   assert.equal(coverage.unclassified, 2);
   assert.equal(coverage.complete, true);
+});
+
+test("regression: each publication day gets its own post instead of editing the previous day's", async () => {
+  const path = await statePath("new-day");
+  const shared = recorder();
+  const sentIds = [];
+  const editedIds = [];
+
+  // The price moves every day, so the content hash changes and the old code
+  // chose "edit" for the post that was created on the first day.
+  const dayFlights = day => vietnam.map(flight => ({ ...flight, price: flight.price + day * 1000 }));
+
+  for (const day of [12, 13, 14]) {
+    const before = shared.calls.length;
+    const report = await runTelegramPublication({
+      flights: dayFlights(day), now: almaty(10, 5, day), env: baseEnv(), statePath: path,
+      fetchImpl: shared.fetchImpl, logger: null
+    });
+    const calls = shared.calls.slice(before);
+
+    assert.equal(report.localDate, "2026-10-" + day);
+    assert.equal(report.totals.sent, 1, "day " + day + " posts its own digest");
+    assert.equal(report.totals.edited, 0, "day " + day + " edits nothing from an earlier day");
+    assert.equal(report.channels[0].messages[0].reason, day === 12 ? "NEW_DIGEST" : "NEW_PUBLICATION_DAY");
+    assert.deepEqual(calls.map(call => call.method), ["sendMessage"]);
+    assert.equal(calls[0].messageId, null, "a new post carries no message id");
+
+    const stored = await loadPublicationState(path);
+    sentIds.push(stored.channels[CHAT].messages["VN#1"].messageId);
+  }
+
+  assert.equal(new Set(sentIds).size, 3, "three distinct Telegram messages exist");
+
+  // Within the same day the later windows still edit that day's post in place.
+  for (const [hour, minute] of [[14, 10], [17, 5]]) {
+    const before = shared.calls.length;
+    const report = await runTelegramPublication({
+      flights: dayFlights(14).map(flight => ({ ...flight, price: flight.price + hour })),
+      now: almaty(hour, minute, 14), env: baseEnv(), statePath: path,
+      fetchImpl: shared.fetchImpl, logger: null
+    });
+    const calls = shared.calls.slice(before);
+    assert.equal(report.totals.sent, 0, "no second post at " + hour + ":" + minute);
+    assert.equal(report.totals.edited, 1);
+    assert.deepEqual(calls.map(call => call.method), ["editMessageText"]);
+    editedIds.push(calls[0].messageId);
+  }
+
+  assert.deepEqual(
+    editedIds,
+    [sentIds[2], sentIds[2]],
+    "the afternoon and evening windows edit the post this day created"
+  );
 });
