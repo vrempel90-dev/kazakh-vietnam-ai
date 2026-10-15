@@ -135,3 +135,31 @@ test("city keys ignore flags, emoji, markdown and bracketed country hints", () =
   assert.equal(cityKey("🇻🇳 *Фукуок* (Вьетнам)"), cityKey("фукуок"));
   assert.equal(displayCity("PQC"), "Фукуок");
 });
+
+test("a city name that mixes Cyrillic and Latin homoglyphs still resolves", () => {
+  // Real spellings from charterticketsme: a Russian keyboard layout leaves one
+  // Cyrillic letter inside a Latin name, and the offer used to be dropped as
+  // an unresolvable route.
+  assert.equal(resolveCity("Тashkent")?.name, "Ташкент");
+  assert.equal(resolveCity("Аlmaty")?.name, "Алматы");
+  assert.equal(resolveCity("Вudapest")?.name, "Будапешт");
+  assert.equal(resolveCity("Аstana")?.name, "Астана");
+});
+
+test("folding never changes a single-script spelling", () => {
+  // Purely Cyrillic and purely Latin names keep resolving exactly as before,
+  // and a name whose folded form is a different city is not invented.
+  for (const [spelling, expected] of [
+    ["Ташкент", "Ташкент"], ["Tashkent", "Ташкент"],
+    ["Сеул", "Сеул"], ["Seoul", "Сеул"],
+    ["Нячанг", "Нячанг"], ["Phuket", "Пхукет"],
+    ["Куала-Лумпур", "Куала-Лумпур"], ["Kuala Lumpur", "Куала-Лумпур"],
+    ["Мале", "Мале"], ["Male", "Мале"]
+  ]) {
+    assert.equal(resolveCity(spelling)?.name, expected, spelling);
+  }
+  // Cyrillic С is the twin of Latin C, not S, so this is genuinely unknown and
+  // must stay unknown rather than be guessed into Seoul.
+  assert.equal(resolveCity("Сeoul"), null);
+  assert.equal(resolveCity("Нигдеград"), null);
+});
