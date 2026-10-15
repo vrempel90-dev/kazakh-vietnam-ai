@@ -309,3 +309,40 @@ test("canonicalizes Kazakhstan round trips to start and end in Kazakhstan", () =
   assert.equal(offers[0].to, "Нячанг");
   assert.equal(offers[0].notice, "❗ Arrival Card обязательно");
 });
+
+test("regression: a round-trip route whose middle dash lost its space is still a route", () => {
+  // Real channel text from charterticketsme, 13.10.2026. The separator before
+  // "Shymkent" has no leading space, so the old split produced the single
+  // destination "Seoul- Shymkent", which no city table can resolve.
+  assert.deepEqual(
+    parseRouteLine("Shymkent - Seoul- Shymkent"),
+    { from: "Шымкент", to: "Seoul", trip: "RT" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Алматы -Пхукет"),
+    { from: "Алматы", to: "Пхукет", trip: "OW" }
+  );
+  // A hyphen inside a city name carries no surrounding space and must survive.
+  assert.deepEqual(
+    parseRouteLine("Астана - Усть-Каменогорск"),
+    { from: "Астана", to: "Усть-Каменогорск", trip: "OW" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Усть-Каменогорск - Анталья"),
+    { from: "Усть-Каменогорск", to: "Анталия", trip: "OW" }
+  );
+});
+
+test("regression: a fare row is never parsed as a route", () => {
+  // These produced offers with from="V 14.10" and to="Business от 194 000 (1",
+  // which passed validation and reached public/flights.json.
+  for (const line of [
+    "V 14.10 - Business от 194 000 (1 место)",
+    "V 30.10 - Business от 277 000",
+    "S 28.10 - 240 000 ₸",
+    "Эконом - от 96 000",
+    "14.10 - 194 000"
+  ]) {
+    assert.equal(parseRouteLine(line), null, line);
+  }
+});

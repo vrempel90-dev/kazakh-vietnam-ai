@@ -12,7 +12,15 @@
 
 import { randomUUID } from "node:crypto";
 import { buildCountryDigests, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
-import { resolvePublicationWindow, windowKey, describeSchedule } from "./telegram-schedule.mjs";
+import {
+  describeSchedule,
+  isCountryAllowedInWindow,
+  regionForWindow,
+  resolvePublicationWindow,
+  unassignedCountries,
+  unassignedPolicy,
+  windowKey
+} from "./telegram-schedule.mjs";
 import {
   TelegramApiError,
   editDigestMessage,
@@ -34,12 +42,60 @@ import {
   markOffersPublished,
   planMessageAction,
   prunePublicationState,
+  publicationHealth,
   recordMessageFailure,
   recordMessageIntent,
   recordMessageSent,
+  recordRunTelemetry,
   releaseRunLease,
   savePublicationState
 } from "./telegram-publication-state.mjs";
+
+/**
+ * Publication outcomes. An edit is never reported as a new publication: that
+ * conflation is what let three silent days pass as "ok".
+ */
+export const PUBLICATION_STATUS = {
+  SENT: "PUBLISH_SENT",
+  EDITED: "PUBLISH_EDITED",
+  PLANNED: "PUBLISH_PLANNED",
+  NO_NEW_OFFERS: "NO_NEW_OFFERS",
+  BLOCKED: "PUBLISH_BLOCKED",
+  FAILED: "PUBLISH_FAILED"
+};
+
+const STATUS_RANK = [
+  PUBLICATION_STATUS.FAILED,
+  PUBLICATION_STATUS.PLANNED,
+  PUBLICATION_STATUS.SENT,
+  PUBLICATION_STATUS.EDITED,
+  PUBLICATION_STATUS.BLOCKED,
+  PUBLICATION_STATUS.NO_NEW_OFFERS
+];
+
+function channelPublicationStatus(report, fatal, dryRun = false) {
+  // A plan is never reported as a delivery.
+  if (dryRun) {
+    return report.plannedSends > 0 || report.plannedEdits > 0
+      ? PUBLICATION_STATUS.PLANNED
+      : PUBLICATION_STATUS.NO_NEW_OFFERS;
+  }
+  if (fatal || report.counts.failed > 0) return PUBLICATION_STATUS.FAILED;
+  if (report.counts.sent > 0) return PUBLICATION_STATUS.SENT;
+  if (report.counts.edited > 0) return PUBLICATION_STATUS.EDITED;
+  if (report.counts.held > 0 || report.counts.deferred > 0) return PUBLICATION_STATUS.BLOCKED;
+  if (report.error === "WINDOW_ALREADY_PUBLISHED") return PUBLICATION_STATUS.BLOCKED;
+  if (report.counts.skipped > 0) return PUBLICATION_STATUS.NO_NEW_OFFERS;
+  if (report.counts.outOfWindow > 0) return PUBLICATION_STATUS.BLOCKED;
+  return PUBLICATION_STATUS.NO_NEW_OFFERS;
+}
+
+function worstStatus(statuses) {
+  for (const status of STATUS_RANK) {
+    if (statuses.includes(status)) return status;
+  }
+  return PUBLICATION_STATUS.NO_NEW_OFFERS;
+}
 
 const DEFAULT_STATE_PATH = "/data/telegram-publications.json";
 
@@ -55,7 +111,7 @@ function sleep(ms) {
 }
 
 function emptyCounts() {
-  return { sent: 0, edited: 0, skipped: 0, held: 0, failed: 0, deferred: 0 };
+  return { sent: 0, edited: 0, skipped: 0, held: 0, failed: 0, deferred: 0, outOfWindow: 0 };
 }
 
 /**
@@ -80,12 +136,20 @@ export async function runTelegramPublication({
   const timeZone = env?.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty";
   const schedule = resolvePublicationWindow(now, { timeZone });
 
+  const policy = unassignedPolicy(env);
+
   const base = {
     reason,
     dryRun,
     schedule: describeSchedule(timeZone),
+    unassignedPolicy: policy,
     window: schedule.window
-      ? { ...schedule.window, localDate: schedule.localDate, timeZone }
+      ? {
+          ...schedule.window,
+          region: regionForWindow(schedule.window.id),
+          localDate: schedule.localDate,
+          timeZone
+        }
       : null,
     localDate: schedule.localDate,
     localTime: schedule.localHour == null
@@ -93,11 +157,18 @@ export async function runTelegramPublication({
       : String(schedule.localHour).padStart(2, "0") + ":" + String(schedule.localMinute).padStart(2, "0"),
     channels: [],
     totals: { ...emptyCounts(), countries: 0, offers: 0 },
+    publicationStatus: PUBLICATION_STATUS.BLOCKED,
+    health: null,
     diagnostics: []
   };
 
   if (!flights.length) {
-    return { ...base, skipped: true, reason: "NO_PUBLISHABLE_OFFERS" };
+    return {
+      ...base,
+      skipped: true,
+      reason: "NO_PUBLISHABLE_OFFERS",
+      publicationStatus: PUBLICATION_STATUS.NO_NEW_OFFERS
+    };
   }
 
   // A redeploy or crash-restart must never fire an unscheduled package; the
@@ -178,11 +249,16 @@ export async function runTelegramPublication({
         window: activeWindow.id,
         localDate: schedule.localDate,
         status: "ok",
+        publicationStatus: PUBLICATION_STATUS.NO_NEW_OFFERS,
         counts: emptyCounts(),
+        plannedSends: 0,
+        plannedEdits: 0,
         messages: [],
         countries: 0,
         offers: 0,
         coverage: null,
+        region: null,
+        unassigned: [],
         diagnostics: [],
         error: null
       };
@@ -190,6 +266,7 @@ export async function runTelegramPublication({
       if (!dryRun && isWindowCompleted(state, chatId, key)) {
         report.status = "skipped";
         report.error = "WINDOW_ALREADY_PUBLISHED";
+        report.publicationStatus = PUBLICATION_STATUS.BLOCKED;
         channelReports.push(report);
         continue;
       }
@@ -208,12 +285,54 @@ export async function runTelegramPublication({
         complete: summary.offers + diagnostics.length + summary.duplicates >= eligible.length
       };
 
+      // One region owns one window. A country outside this window's region is
+      // not an error and not a loss: its own window publishes it the same day.
+      const regionDecisions = digests.map(digest => ({
+        digest,
+        decision: isCountryAllowedInWindow(digest.country, activeWindow.id, { policy })
+      }));
+      const publishable = regionDecisions.filter(item => item.decision.allowed);
+
+      report.region = regionForWindow(activeWindow.id);
+      report.unassigned = unassignedCountries(digests.map(digest => digest.country));
+
+      for (const { digest, decision } of regionDecisions) {
+        if (decision.allowed) continue;
+        report.counts.outOfWindow += 1;
+        report.messages.push({
+          key: digest.key,
+          country: digest.countryName,
+          part: digest.part + "/" + digest.parts,
+          offers: digest.offers,
+          chars: digest.text.length,
+          action: "out_of_region_window",
+          reason: decision.reason,
+          messageId: null,
+          error: null
+        });
+      }
+
+      // An empty region produces no message at all, and must not burn the
+      // window: a later 15-minute sync inside the same window can still
+      // publish once the collector brings offers in.
+      if (!publishable.length) {
+        report.status = "ok";
+        report.error = report.counts.outOfWindow
+          ? "NO_OFFERS_FOR_WINDOW_REGION"
+          : "NO_PUBLISHABLE_DIGESTS";
+        report.publicationStatus = report.counts.outOfWindow
+          ? PUBLICATION_STATUS.BLOCKED
+          : PUBLICATION_STATUS.NO_NEW_OFFERS;
+        channelReports.push(report);
+        continue;
+      }
+
       if (!dryRun) beginWindowRun(state, chatId, key, { now });
 
       let fatal = null;
       let delivered = 0;
 
-      for (const digest of digests) {
+      for (const { digest } of publishable) {
         const plan = planMessageAction(state, chatId, digest, {
           retryUnconfirmed,
           localDate: schedule.localDate
@@ -221,6 +340,9 @@ export async function runTelegramPublication({
         // Only an edit reuses an existing message id; a send must never carry
         // the previous day's id into its intent record or its report line.
         const liveMessageId = plan.action === "edit" ? (plan.record?.messageId ?? null) : null;
+        // The honest expectation signal: a post the publisher meant to create.
+        if (plan.action === "send") report.plannedSends += 1;
+        if (plan.action === "edit") report.plannedEdits += 1;
         const entry = {
           key: digest.key,
           country: digest.countryName,
@@ -347,10 +469,20 @@ export async function runTelegramPublication({
         report.status = "partial";
       }
 
+      report.publicationStatus = channelPublicationStatus(report, fatal, dryRun);
       channelReports.push(report);
     }
   } finally {
     if (!dryRun) {
+      recordRunTelemetry(state, {
+        // The run's own clock, the same one the schedule resolved: telemetry
+        // and the staleness verdict must never be read against two clocks.
+        now,
+        window: activeWindow.id,
+        region: regionForWindow(activeWindow.id)?.id || null,
+        localDate: schedule.localDate,
+        channels: channelReports
+      });
       prunePublicationState(state, { now, retentionDays });
       releaseRunLease(state, leaseOwner);
       await savePublicationState(statePath, state);
@@ -371,6 +503,11 @@ export async function runTelegramPublication({
     reason: null,
     channels: channelReports,
     totals,
+    publicationStatus: worstStatus(channelReports.map(report => report.publicationStatus)),
+    health: publicationHealth(state, {
+      now,
+      maxSilenceHours: envNumber(env, "TELEGRAM_NO_POST_ALERT_HOURS", 26)
+    }),
     diagnostics: channelReports[0]?.diagnostics || []
   };
 
@@ -378,14 +515,22 @@ export async function runTelegramPublication({
     // One line per run: Railway drops messages past 500 log lines per second,
     // and a multi-line dump makes the publisher's own diagnostics unfilterable.
     logger.log("Telegram publication: " + JSON.stringify({
+      status: result.publicationStatus,
       window: activeWindow.id,
+      region: regionForWindow(activeWindow.id)?.id || null,
       localDate: schedule.localDate,
       localTime: result.localTime,
       dryRun,
       totals,
+      health: {
+        stale: result.health?.stale ?? null,
+        reason: result.health?.reason ?? null,
+        lastNewPostAt: result.health?.lastNewPostAt ?? null,
+        silentHours: result.health?.silentHours ?? null
+      },
       channels: channelReports.map(report => ({
         chatId: report.chatId,
-        status: report.status,
+        status: report.publicationStatus,
         counts: report.counts,
         coverage: report.coverage,
         messages: report.messages.map(message =>

@@ -323,3 +323,33 @@ test("an unconfirmed attempt holds its own day only", async () => {
     "yesterday's unconfirmed attempt must not silence the country forever"
   );
 });
+
+test("a send interrupted mid-flight is held, an interrupted edit is repeated", async () => {
+  const { state } = await freshState();
+
+  // The process died after calling Telegram and before recording the result,
+  // so the record is still `pending` and delivery is genuinely unknown.
+  recordMessageIntent(state, CHAT, digest.key, {
+    ...digest, action: "send", localDate: "2026-10-12", window: "morning"
+  });
+
+  const held = planMessageAction(state, CHAT, digest, { localDate: "2026-10-12" });
+  assert.equal(held.action, "hold");
+  assert.equal(held.reason, "PREVIOUS_RUN_LEFT_PENDING_SEND");
+  assert.equal(
+    planMessageAction(state, CHAT, digest, { localDate: "2026-10-12", retryUnconfirmed: true }).action,
+    "send",
+    "the manual override still exists"
+  );
+
+  // An interrupted edit targets a known message id; repeating it is harmless.
+  recordMessageSent(state, CHAT, digest.key, { messageId: 808 });
+  recordMessageIntent(state, CHAT, digest.key, {
+    ...digest, contentHash: "hash-b", action: "edit", localDate: "2026-10-12", window: "afternoon"
+  });
+  const retried = planMessageAction(state, CHAT, { ...digest, contentHash: "hash-b" }, {
+    localDate: "2026-10-12"
+  });
+  assert.equal(retried.action, "edit");
+  assert.equal(retried.record.messageId, 808);
+});

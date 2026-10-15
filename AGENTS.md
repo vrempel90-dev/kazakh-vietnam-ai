@@ -95,8 +95,16 @@ all came from each stage keeping its own city table, its own notion of
   must stay lossless.
 - `scripts/telegram-schedule.mjs` owns the only schedule: 10:00-12:00,
   14:00-15:00 and 17:00-18:00 `Asia/Almaty`. Collection may run every 15
-  minutes; sending outside a window is refused. The morning window is the full
-  digest, the later two send updates only.
+  minutes; sending outside a window is refused. It also owns the only
+  country-to-window mapping: `REGIONS` gives 10:00-12:00 to Asia (VN, TH, CN,
+  MY, MV, LK, IN), 14:00-15:00 to the Middle East (AE, OM, EG) and 17:00-18:00
+  to Europe (IT, CZ, RS, HU, DE). To move a country, move its code in that
+  table - never add a time check anywhere else. A country no region claims
+  (Turkey and South Korea are over half of the live inventory) follows
+  `TELEGRAM_UNASSIGNED_COUNTRY_POLICY`, default `all-windows`, which is the
+  behaviour every country had before regions existed. A country outside the
+  current window is reported as `out_of_region_window`, never as a loss, and an
+  empty region sends no message and leaves its window open for a later sync.
 - `scripts/telegram-publication-state.mjs` is schema v2 on the Railway `/data`
   volume. It records chat, local date, window, country, category, offer ids,
   content hash, Telegram message id, status, timestamps and errors, and it
@@ -104,6 +112,30 @@ all came from each stage keeping its own city table, its own notion of
   is preserved, but v1 message ids are archived and never reused for edits.
 - `scripts/telegram-publish-run.mjs` is the single entry point and the only
   component allowed to call Telegram during a sync.
+
+- `scripts/telegram-source-adapter.mjs` parses channel text. A route part may
+  not contain a digit, a currency or a fare class: channel posts put fare rows
+  ("V 14.10 - Business от 194 000 (1 место)") right next to route headings, and
+  those rows used to parse as routes and travel into the customer feed. A route
+  separator is a dash with whitespace on at least one side, so
+  "Shymkent - Seoul- Shymkent" splits into three cities while
+  "Усть-Каменогорск" stays one.
+
+Monitoring (added 2026-10-15, after three silent days read as `status: ok`):
+
+- An edit is never a publication. `PUBLICATION_STATUS` in
+  `telegram-publish-run.mjs` reports `PUBLISH_SENT`, `PUBLISH_EDITED`,
+  `PUBLISH_PLANNED` (dry run only), `NO_NEW_OFFERS`, `PUBLISH_BLOCKED` or
+  `PUBLISH_FAILED`, and the sync's source status carries that value, not "ok".
+- `telegram-publication-state.mjs` keeps `meta.monitor` and per-channel
+  `telemetry` with `lastSyncAt`, `lastPublishAttemptAt`, `lastPlannedSendAt`,
+  `lastNewPostAt`, `lastEditAt`, `lastSuccessfulDeliveryAt`, `lastFailureAt`
+  and the window's totals. `/health` serves them and answers 503 while the
+  publisher is stale.
+- `publicationHealth` compares `lastNewPostAt` against `lastPlannedSendAt`:
+  only a post the publisher actually decided to create counts as due, so a
+  quiet source or a closed schedule can never raise a false alert.
+  `TELEGRAM_NO_POST_ALERT_HOURS` (default 26) is the silence budget.
 
 Rules that must not be weakened:
 
@@ -119,8 +151,11 @@ Rules that must not be weakened:
 - A sync whose `SYNC_REASON` is `startup` never publishes, so a redeploy or a
   crash-restart cannot fire an unscheduled package.
 - A send whose outcome Telegram never confirmed is recorded as `unconfirmed`
-  and held for review, not retried blindly. `TELEGRAM_RETRY_UNCONFIRMED=true`
-  is a manual override only.
+  and held for review, not retried blindly. The same applies to a `pending`
+  send left behind by a run that died between the Telegram call and its state
+  write: it is held, because Telegram may already have accepted that post. An
+  interrupted *edit* is repeated instead, since editing the same message twice
+  changes nothing. `TELEGRAM_RETRY_UNCONFIRMED=true` is a manual override only.
 - Publishing is refused when `GITHUB_ACTIONS` is set. GitHub Actions only
   refreshes `public/flights.json`; Railway owns delivery.
 - Never cap delivery by dropping messages. The per-window ceiling defers and

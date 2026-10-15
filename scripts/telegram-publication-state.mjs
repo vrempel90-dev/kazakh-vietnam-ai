@@ -45,7 +45,7 @@ function plainObject(value) {
 }
 
 function emptyChannel() {
-  return { offers: {}, windows: {}, messages: {}, legacy: {} };
+  return { offers: {}, windows: {}, messages: {}, legacy: {}, telemetry: {} };
 }
 
 function normalizeChannel(raw) {
@@ -54,7 +54,8 @@ function normalizeChannel(raw) {
     offers: plainObject(source.offers) || {},
     windows: plainObject(source.windows) || {},
     messages: plainObject(source.messages) || {},
-    legacy: plainObject(source.legacy) || {}
+    legacy: plainObject(source.legacy) || {},
+    telemetry: plainObject(source.telemetry) || {}
   };
 }
 
@@ -480,9 +481,24 @@ export function planMessageAction(state, chatId, digest, {
     return { action: "hold", record, reason: "PREVIOUS_ATTEMPT_UNCONFIRMED" };
   }
 
+  // A run holds the lock, so a `pending` intent can only have been left by a
+  // run that died between the Telegram call and its state write. Telegram may
+  // well have accepted that post, so sending again would duplicate it. An
+  // interrupted edit is different: repeating it changes nothing.
+  if (
+    record.status === MESSAGE_STATUS.PENDING
+    && String(record.action || "") === "send"
+    && !retryUnconfirmed
+  ) {
+    return { action: "hold", record, reason: "PREVIOUS_RUN_LEFT_PENDING_SEND" };
+  }
+
   const liveMessageId = Number(record.messageId);
+  // An interrupted edit still points at a message Telegram confirmed earlier
+  // (`sentAt` proves it), so it must be edited again rather than reposted.
   const hasLiveMessage = Number.isFinite(liveMessageId) && liveMessageId > 0
-    && record.status === MESSAGE_STATUS.SENT;
+    && (record.status === MESSAGE_STATUS.SENT
+      || (record.status === MESSAGE_STATUS.PENDING && Boolean(record.sentAt)));
 
   if (!hasLiveMessage) {
     return { action: "send", record, reason: "NO_CONFIRMED_MESSAGE" };
@@ -512,6 +528,117 @@ export function markOffersPublished(state, chatId, flights, publishedAt = new Da
     };
   }
   return state;
+}
+
+/* --------------------------------------------------------------- telemetry */
+
+/**
+ * Publication outcomes, so a run can never look successful because it edited
+ * something. Between 13 and 15 October 2026 every sync reported "ok" while the
+ * channel received nothing: `sent` was 0 and only `edited` moved, and nothing
+ * recorded or compared those two.
+ *
+ * `lastPlannedSendAt` is the honest expectation signal: it advances only when
+ * the publisher actually decided to create a post. A quiet source or a closed
+ * window never advances it, so a staleness alert built on it cannot fire
+ * falsely.
+ */
+export function recordRunTelemetry(state, {
+  now = new Date(),
+  window = null,
+  region = null,
+  localDate = null,
+  channels = [],
+  blocked = null
+} = {}) {
+  assertState(state);
+  const stamp = now.toISOString();
+  const monitor = plainObject(state.meta.monitor) || {};
+  const totals = { sent: 0, edited: 0, skipped: 0, held: 0, failed: 0, deferred: 0, outOfWindow: 0 };
+
+  let plannedSends = 0;
+  let failures = 0;
+  let lastFailure = null;
+
+  for (const report of Array.isArray(channels) ? channels : []) {
+    const counts = plainObject(report?.counts) || {};
+    for (const field of Object.keys(totals)) totals[field] += Number(counts[field] || 0);
+
+    plannedSends += Number(report?.plannedSends || 0);
+    const channelFailure = (Array.isArray(report?.messages) ? report.messages : [])
+      .find(message => message?.error);
+    if (channelFailure) {
+      failures += 1;
+      lastFailure = { chatId: report?.chatId || null, error: String(channelFailure.error).slice(0, 300) };
+    }
+
+    if (!report?.chatId) continue;
+    const channel = channelState(state, report.chatId);
+    const telemetry = plainObject(channel.telemetry) || {};
+    channel.telemetry = {
+      ...telemetry,
+      lastPublishAttemptAt: stamp,
+      lastNewPostAt: Number(counts.sent) > 0 ? stamp : telemetry.lastNewPostAt || null,
+      lastEditAt: Number(counts.edited) > 0 ? stamp : telemetry.lastEditAt || null,
+      lastSuccessfulDeliveryAt: Number(counts.sent) > 0 || Number(counts.edited) > 0
+        ? stamp
+        : telemetry.lastSuccessfulDeliveryAt || null,
+      lastPlannedSendAt: Number(report?.plannedSends || 0) > 0 ? stamp : telemetry.lastPlannedSendAt || null,
+      lastFailureAt: channelFailure ? stamp : telemetry.lastFailureAt || null,
+      lastStatus: String(report?.publicationStatus || "") || telemetry.lastStatus || null
+    };
+  }
+
+  state.meta.monitor = {
+    ...monitor,
+    lastSyncAt: stamp,
+    lastPublishAttemptAt: blocked ? monitor.lastPublishAttemptAt || null : stamp,
+    lastPlannedSendAt: plannedSends > 0 ? stamp : monitor.lastPlannedSendAt || null,
+    lastNewPostAt: totals.sent > 0 ? stamp : monitor.lastNewPostAt || null,
+    lastEditAt: totals.edited > 0 ? stamp : monitor.lastEditAt || null,
+    lastSuccessfulDeliveryAt: totals.sent > 0 || totals.edited > 0
+      ? stamp
+      : monitor.lastSuccessfulDeliveryAt || null,
+    lastFailureAt: failures > 0 ? stamp : monitor.lastFailureAt || null,
+    lastFailure: failures > 0 ? lastFailure : monitor.lastFailure || null,
+    lastBlockedReason: blocked || null,
+    lastWindow: blocked ? monitor.lastWindow || null : { id: window, region, localDate },
+    lastTotals: blocked ? monitor.lastTotals || null : totals
+  };
+
+  return state.meta.monitor;
+}
+
+/**
+ * Staleness verdict. Only an actual, unfulfilled intent to post counts, so a
+ * day with no offers and a closed schedule never raise an alert.
+ */
+export function publicationHealth(state, { now = new Date(), maxSilenceHours = 26 } = {}) {
+  const monitor = plainObject(state?.meta?.monitor) || {};
+  const planned = Date.parse(monitor.lastPlannedSendAt || "");
+  const posted = Date.parse(monitor.lastNewPostAt || "");
+  const limitMs = Math.max(1, Number(maxSilenceHours) || 26) * 3600000;
+
+  if (!Number.isFinite(planned)) {
+    return { ...monitor, stale: false, reason: "NO_POST_WAS_DUE", silentHours: null };
+  }
+
+  const reference = Number.isFinite(posted) ? posted : planned;
+  const silentMs = now.getTime() - reference;
+  const silentHours = Math.round((silentMs / 3600000) * 10) / 10;
+
+  if (Number.isFinite(posted) && posted >= planned) {
+    return { ...monitor, stale: false, reason: "UP_TO_DATE", silentHours };
+  }
+  if (silentMs < limitMs) {
+    return { ...monitor, stale: false, reason: "WITHIN_GRACE_PERIOD", silentHours };
+  }
+  return {
+    ...monitor,
+    stale: true,
+    reason: Number.isFinite(posted) ? "NO_NEW_POST_DESPITE_PLANNED_SENDS" : "NEVER_POSTED_DESPITE_PLANNED_SENDS",
+    silentHours
+  };
 }
 
 /* ----------------------------------------------------------------- pruning */

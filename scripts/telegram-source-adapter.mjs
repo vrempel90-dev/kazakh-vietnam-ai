@@ -200,6 +200,22 @@ function isRouteNoise(value) {
   return /^(?:OW|RT|туда|обратно|туда[- ]?обратно|в одну сторону|эконом|бизнес|багаж|вылет|последн)/iu.test(value);
 }
 
+/**
+ * City names never carry digits, a currency or a fare class. Channel posts put
+ * fare rows ("V 14.10 - Business от 194 000 (1 место)") next to route headings,
+ * and without this check such a row parsed as the route "V 14.10" -> "Business
+ * от 194 000", which then travelled all the way into the customer feed and was
+ * only stopped by the digest as an unresolvable destination.
+ */
+function isCityLikeRoutePart(value) {
+  const part = String(value || "");
+  if (part.length < 2) return false;
+  if (/\d/u.test(part)) return false;
+  if (/(?:₸|тенге|rub|руб|usd|eur|\$|€)/iu.test(part)) return false;
+  if (/(?:business|economy|эконом|бизнес|промо|тариф|мест|ноч|от\s|цена)/iu.test(part)) return false;
+  return /\p{L}/u.test(part);
+}
+
 export function parseRouteLine(line) {
   const raw = String(line || "")
     .replace(/^[-•]+\s*/, "")
@@ -218,13 +234,13 @@ export function parseRouteLine(line) {
     parts = prose
       ? [normalizeCity(prose[1]), normalizeCity(prose[2])]
       : raw
-          .split(/\s*(?:→|->|⟶|➡|➔|⇄|⇆|↔)\s*|\s+[—–-]\s+/u)
+          .split(/\s*(?:→|->|⟶|➡|➔|⇄|⇆|↔)\s*|\s+[—–-]\s*|\s*[—–-]\s+/u)
           .map(normalizeCity)
           .filter(Boolean);
   }
 
   if (parts.length < 2 || parts.length > 3) return null;
-  if (parts.some(part => /^\d/.test(part) || part.length < 2 || /^(?:₸|тенге)$/iu.test(part))) return null;
+  if (!parts.every(isCityLikeRoutePart)) return null;
 
   const from = parts[0];
   const to = parts[1];

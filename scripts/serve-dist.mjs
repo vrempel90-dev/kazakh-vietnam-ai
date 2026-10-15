@@ -9,6 +9,8 @@ import { loadPricingConfig, savePricingConfig } from "./pricing-engine.mjs";
 import { createTelegramRuntime } from "./telegram-bot.mjs";
 import { isTelegramAdmin, parseAdminTelegramIds, verifyTelegramInitData } from "./telegram-admin-auth.mjs";
 import { readSourceStatus } from "./source-status.mjs";
+import { loadPublicationState, publicationHealth } from "./telegram-publication-state.mjs";
+import { describeSchedule, resolvePublicationWindow, unassignedPolicy } from "./telegram-schedule.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
@@ -220,13 +222,57 @@ function runFlightSync(reason = "scheduled") {
   return true;
 }
 
+async function publicationStatusSnapshot(now = new Date()) {
+  const timeZone = process.env.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty";
+  const schedule = resolvePublicationWindow(now, { timeZone });
+  const state = await loadPublicationState(
+    process.env.TELEGRAM_PUBLISH_STATE_PATH || "/data/telegram-publications.json"
+  ).catch(() => null);
+  const health = state
+    ? publicationHealth(state, {
+        now,
+        maxSilenceHours: Number(process.env.TELEGRAM_NO_POST_ALERT_HOURS || 26)
+      })
+    : null;
+
+  return {
+    schedule: describeSchedule(timeZone),
+    timeZone,
+    localDate: schedule.localDate,
+    localTime: schedule.localHour == null
+      ? null
+      : String(schedule.localHour).padStart(2, "0") + ":" + String(schedule.localMinute).padStart(2, "0"),
+    window: schedule.window?.id || null,
+    region: schedule.window?.region || null,
+    unassignedPolicy: unassignedPolicy(process.env),
+    stale: Boolean(health?.stale),
+    staleReason: health?.stale ? health.reason : null,
+    silentHours: health?.silentHours ?? null,
+    lastSyncAt: health?.lastSyncAt ?? null,
+    lastPublishAttemptAt: health?.lastPublishAttemptAt ?? null,
+    lastPlannedSendAt: health?.lastPlannedSendAt ?? null,
+    lastNewPostAt: health?.lastNewPostAt ?? null,
+    lastEditAt: health?.lastEditAt ?? null,
+    lastSuccessfulDeliveryAt: health?.lastSuccessfulDeliveryAt ?? null,
+    lastFailureAt: health?.lastFailureAt ?? null,
+    lastFailure: health?.lastFailure ?? null,
+    lastStatus: health?.lastTotals
+      ? { window: health.lastWindow, totals: health.lastTotals }
+      : null
+  };
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
 
   if (url.pathname === "/health") {
-    sendJson(res, 200, {
-      ok: true,
+    // The publication block is read from the durable state, not from this
+    // process: a restart must not make a three-day silence look fresh.
+    const publication = await publicationStatusSnapshot();
+    sendJson(res, publication.stale ? 503 : 200, {
+      ok: !publication.stale,
       sync: { ...syncState, enabled: flightSyncEnabled },
+      publication,
       telegram: {
         enabled: telegram.status.enabled,
         configured: telegram.status.configured,

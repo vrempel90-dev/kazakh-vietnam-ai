@@ -312,7 +312,10 @@ test("the scheduler and publisher deliver the chain once and keep durable state"
 
   assert.equal(afternoon.totals.edited, 1);
   assert.equal(afternoon.totals.sent, 0);
-  assert.equal(afternoon.totals.skipped, 2);
+  // Vietnam and Thailand belong to the morning's Asia window, so the afternoon
+  // does not even consider them; South Korea has no region and travels along.
+  assert.equal(afternoon.totals.skipped, 0);
+  assert.equal(afternoon.totals.outOfWindow, 2);
   assert.equal(calls.length, 4);
   assert.equal(calls[3].method, "editMessageText");
   assert.ok(calls[3].text.includes("ЮЖНАЯ КОРЕЯ"));
