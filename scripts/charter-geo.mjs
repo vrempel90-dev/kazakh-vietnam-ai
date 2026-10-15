@@ -242,6 +242,33 @@ export function cityKey(value) {
     .replace(/[^а-яa-z0-9]/giu, "");
 }
 
+/**
+ * Cyrillic letters that are visually identical to a Latin one. Charter channels
+ * type city names on a Russian keyboard layout and routinely mix the two, which
+ * produced "Тashkent" (Cyrillic Т, Latin "ashkent") - a spelling no table can
+ * contain, and the offer was dropped as an unresolvable route.
+ */
+const HOMOGLYPHS_TO_LATIN = new Map([
+  ["а", "a"], ["в", "b"], ["е", "e"], ["к", "k"], ["м", "m"], ["н", "h"],
+  ["о", "o"], ["р", "p"], ["с", "c"], ["т", "t"], ["у", "y"], ["х", "x"]
+]);
+const HOMOGLYPHS_TO_CYRILLIC = new Map(
+  [...HOMOGLYPHS_TO_LATIN].map(([cyrillic, latin]) => [latin, cyrillic])
+);
+
+/**
+ * Candidate spellings for a key that mixes both scripts, normalised to one.
+ *
+ * Only a mixed-script key is folded. A purely Cyrillic or purely Latin name is
+ * left alone, so no existing spelling can start resolving to a different city.
+ */
+function homoglyphVariants(key) {
+  if (!/[а-я]/u.test(key) || !/[a-z]/u.test(key)) return [];
+  const toLatin = [...key].map(char => HOMOGLYPHS_TO_LATIN.get(char) ?? char).join("");
+  const toCyrillic = [...key].map(char => HOMOGLYPHS_TO_CYRILLIC.get(char) ?? char).join("");
+  return [toLatin, toCyrillic].filter(variant => variant !== key);
+}
+
 const CITY_BY_KEY = new Map();
 
 for (const [countryCode, ru, en, iata = [], aliases = []] of CITIES) {
@@ -272,7 +299,15 @@ for (const [countryCode, ru, en, iata = [], aliases = []] of CITIES) {
 export function resolveCity(value) {
   const key = cityKey(value);
   if (!key) return null;
-  return CITY_BY_KEY.get(key) || null;
+
+  const direct = CITY_BY_KEY.get(key);
+  if (direct) return direct;
+
+  for (const variant of homoglyphVariants(key)) {
+    const match = CITY_BY_KEY.get(variant);
+    if (match) return match;
+  }
+  return null;
 }
 
 /** Canonical Russian city name used in published route titles. */
