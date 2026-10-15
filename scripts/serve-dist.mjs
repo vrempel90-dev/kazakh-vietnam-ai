@@ -265,12 +265,18 @@ async function publicationStatusSnapshot(now = new Date()) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
 
-  if (url.pathname === "/health") {
-    // The publication block is read from the durable state, not from this
-    // process: a restart must not make a three-day silence look fresh.
+  // Railway's own healthcheck points at /health with restartPolicy ALWAYS, so
+  // this endpoint answers 200 whenever the process is alive. A stale publisher
+  // is a business problem, not a dead container: failing liveness here would
+  // block every deploy and restart the service in a loop. The staleness lives
+  // in the `publication` block, and /health/publication is the endpoint an
+  // external monitor can treat as a hard failure.
+  if (url.pathname === "/health" || url.pathname === "/health/publication") {
     const publication = await publicationStatusSnapshot();
-    sendJson(res, publication.stale ? 503 : 200, {
-      ok: !publication.stale,
+    const publicationProbe = url.pathname === "/health/publication";
+    sendJson(res, publicationProbe && publication.stale ? 503 : 200, {
+      ok: true,
+      publicationOk: !publication.stale,
       sync: { ...syncState, enabled: flightSyncEnabled },
       publication,
       telegram: {
