@@ -487,10 +487,24 @@ const publicationReport = await runTelegramPublication({
 
 if (publicationReport.skipped) {
   console.log("Telegram publication skipped:", JSON.stringify({
+    status: publicationReport.publicationStatus,
     reason: publicationReport.reason,
     localDate: publicationReport.localDate,
     localTime: publicationReport.localTime,
     schedule: publicationReport.schedule
+  }));
+}
+
+// A run that only edited is not a publication. This is the alert that was
+// missing while three days of windows reported "ok" with sent=0.
+if (publicationReport.health?.stale) {
+  console.error("Telegram publication ALERT:", JSON.stringify({
+    reason: publicationReport.health.reason,
+    silentHours: publicationReport.health.silentHours,
+    lastNewPostAt: publicationReport.health.lastNewPostAt,
+    lastPlannedSendAt: publicationReport.health.lastPlannedSendAt,
+    lastEditAt: publicationReport.health.lastEditAt,
+    lastFailure: publicationReport.health.lastFailure
   }));
 }
 
@@ -509,7 +523,9 @@ if (publicationReport.diagnostics?.length) {
 statuses.push({
   id: "telegram_publisher",
   kind: "publication",
-  status: publicationReport.skipped
+  // `status` is the delivery outcome, never "ok" for a run that only edited.
+  status: publicationReport.publicationStatus,
+  transport: publicationReport.skipped
     ? "skipped"
     : publicationReport.channels.some(channel => channel.status === "error")
       ? "error"
@@ -518,8 +534,12 @@ statuses.push({
         : "ok",
   reason: publicationReport.reason,
   window: publicationReport.window?.id || null,
+  region: publicationReport.window?.region?.id || null,
+  unassignedPolicy: publicationReport.unassignedPolicy || null,
   localDate: publicationReport.localDate,
   totals: publicationReport.totals,
+  stale: Boolean(publicationReport.health?.stale),
+  lastNewPostAt: publicationReport.health?.lastNewPostAt || null,
   unclassified: publicationReport.diagnostics?.length || 0
 });
 

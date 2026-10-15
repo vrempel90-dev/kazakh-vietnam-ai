@@ -35,6 +35,19 @@ const vietnam = [
 const korea = [
   { id: "k-out-1", from: "Алматы", to: "Seoul", trip: "OW", departureDate: "2026-11-02", price: 190000, airlineCode: "A" }
 ];
+// Turkey belongs to no region yet, so it travels with every window under the
+// default `all-windows` policy - the behaviour every country had before.
+const turkey = [
+  { id: "t-out-1", from: "Алматы", to: "Анталия", trip: "OW", departureDate: "2026-10-25", price: 120000, airlineCode: "P" }
+];
+// Hungary owns the 17:00-18:00 Europe window.
+const hungary = [
+  { id: "hu-rt-1", from: "Алматы", to: "Будапешт", trip: "RT", departureDate: "2026-11-05", returnDate: "2026-11-12", price: 310000, airlineCode: "W" }
+];
+// The United Arab Emirates own the 14:00-15:00 Middle East window.
+const emirates = [
+  { id: "ae-out-1", from: "Алматы", to: "Дубай", trip: "OW", departureDate: "2026-10-23", price: 140000, airlineCode: "F" }
+];
 
 function recorder({ fail = () => null } = {}) {
   const calls = [];
@@ -123,7 +136,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
   const path = await statePath("price");
   const morning = recorder();
   await runTelegramPublication({
-    flights: vietnam, now: MORNING, env: baseEnv(), statePath: path,
+    flights: turkey, now: MORNING, env: baseEnv(), statePath: path,
     fetchImpl: morning.fetchImpl, logger: null
   });
   const liveMessageId = morning.calls[0].messageId ?? 1001;
@@ -131,7 +144,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
   // Nothing changed by the afternoon: no message at all.
   const quiet = recorder();
   const quietReport = await runTelegramPublication({
-    flights: vietnam, now: AFTERNOON, env: baseEnv(), statePath: path,
+    flights: turkey, now: AFTERNOON, env: baseEnv(), statePath: path,
     fetchImpl: quiet.fetchImpl, logger: null
   });
   assert.equal(quiet.calls.length, 0, "an unchanged country is not reposted");
@@ -140,7 +153,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
   // A price change edits the existing post instead of adding a new one.
   const changed = recorder();
   const changedReport = await runTelegramPublication({
-    flights: vietnam.map(f => (f.id === "v-out-1" ? { ...f, price: 99000 } : f)),
+    flights: turkey.map(f => (f.id === "t-out-1" ? { ...f, price: 99000 } : f)),
     now: EVENING, env: baseEnv(), statePath: path,
     fetchImpl: changed.fetchImpl, logger: null
   });
@@ -153,7 +166,7 @@ test("scenario 12: an unchanged digest in a later window is skipped, a changed o
 
   const stored = await loadPublicationState(path);
   assert.equal(
-    stored.channels[CHAT].messages["VN#1"].messageId,
+    stored.channels[CHAT].messages["TR#1"].messageId,
     liveMessageId,
     "the post keeps its original message id"
   );
@@ -168,7 +181,7 @@ test("repeated price changes add one post per publication day and edit it afterw
     price += 1000;
     const run = recorder();
     await runTelegramPublication({
-      flights: vietnam.map(f => (f.id === "v-out-1" ? { ...f, price } : f)),
+      flights: turkey.map(f => (f.id === "t-out-1" ? { ...f, price } : f)),
       now: moment, env: baseEnv(), statePath: path,
       fetchImpl: run.fetchImpl, logger: null
     });
@@ -244,10 +257,10 @@ test("a missed window is not replayed once it has closed", async () => {
   assert.equal(afterMorning.calls.length, 0);
   assert.equal(report.reason, "OUTSIDE_PUBLICATION_WINDOW");
 
-  // The afternoon window publishes the current picture once, not a backlog.
+  // The afternoon window publishes its own region once, not a backlog.
   const afternoon = recorder();
   const afternoonReport = await runTelegramPublication({
-    flights: vietnam, now: AFTERNOON, env: baseEnv(), statePath: path,
+    flights: emirates, now: AFTERNOON, env: baseEnv(), statePath: path,
     fetchImpl: afternoon.fetchImpl, logger: null
   });
   assert.equal(afternoon.calls.length, 1);
@@ -567,11 +580,26 @@ test("regression: each publication day gets its own post instead of editing the 
 
   assert.equal(new Set(sentIds).size, 3, "three distinct Telegram messages exist");
 
-  // Within the same day the later windows still edit that day's post in place.
+  assert.equal(editedIds.length, 0);
+});
+
+test("regression: a country that spans windows is edited inside its day, not reposted", async () => {
+  const path = await statePath("in-day-edit");
+  const shared = recorder();
+  const sent = [];
+
+  // Turkey has no region, so it reaches all three windows of the same day.
+  const morning = await runTelegramPublication({
+    flights: turkey, now: almaty(10, 5, 14), env: baseEnv(), statePath: path,
+    fetchImpl: shared.fetchImpl, logger: null
+  });
+  assert.equal(morning.totals.sent, 1);
+  sent.push(shared.calls[0].messageId ?? 1001);
+
   for (const [hour, minute] of [[14, 10], [17, 5]]) {
     const before = shared.calls.length;
     const report = await runTelegramPublication({
-      flights: dayFlights(14).map(flight => ({ ...flight, price: flight.price + hour })),
+      flights: turkey.map(flight => ({ ...flight, price: flight.price + hour })),
       now: almaty(hour, minute, 14), env: baseEnv(), statePath: path,
       fetchImpl: shared.fetchImpl, logger: null
     });
@@ -579,12 +607,229 @@ test("regression: each publication day gets its own post instead of editing the 
     assert.equal(report.totals.sent, 0, "no second post at " + hour + ":" + minute);
     assert.equal(report.totals.edited, 1);
     assert.deepEqual(calls.map(call => call.method), ["editMessageText"]);
-    editedIds.push(calls[0].messageId);
+    assert.equal(calls[0].messageId, sent[0], "the window edits the post this day created");
+  }
+});
+
+test("the three windows publish their own regions and never mix them", async () => {
+  const path = await statePath("regions");
+  const shared = recorder();
+  const feed = [...vietnam, ...emirates, ...hungary, ...turkey];
+
+  const expected = [
+    ["morning", 10, ["VN#1", "TR#1"], ["AE#1", "HU#1"]],
+    ["afternoon", 14, ["AE#1"], ["VN#1", "HU#1"]],
+    ["evening", 17, ["HU#1"], ["VN#1", "AE#1"]]
+  ];
+
+  for (const [windowId, hour, sentKeys, blockedKeys] of expected) {
+    const before = shared.calls.length;
+    const report = await runTelegramPublication({
+      flights: feed, now: almaty(hour, 5, 20), env: baseEnv(), statePath: path,
+      fetchImpl: shared.fetchImpl, logger: null
+    });
+    const calls = shared.calls.slice(before);
+
+    assert.equal(report.window.id, windowId);
+    assert.equal(report.window.region.id, { morning: "asia", afternoon: "middle-east", evening: "europe" }[windowId]);
+
+    const acted = report.channels[0].messages
+      .filter(message => ["send", "edit"].includes(message.action))
+      .map(message => message.key)
+      .sort();
+    assert.deepEqual(acted, [...sentKeys].sort(), windowId + " acted on the wrong countries");
+
+    for (const key of blockedKeys) {
+      const blocked = report.channels[0].messages.find(message => message.key === key);
+      assert.equal(blocked.action, "out_of_region_window", key + " must be out of the " + windowId + " window");
+      assert.match(blocked.reason, /^REGION_WINDOW_IS_/);
+    }
+
+    // Every delivered message names exactly one country.
+    for (const call of calls) {
+      const names = ["ВЬЕТНАМ", "ОАЭ", "ВЕНГРИЯ", "ТУРЦИЯ"].filter(name => call.text.includes(name));
+      assert.equal(names.length, 1, "mixed countries in one post: " + names.join(","));
+    }
   }
 
-  assert.deepEqual(
-    editedIds,
-    [sentIds[2], sentIds[2]],
-    "the afternoon and evening windows edit the post this day created"
+  // Turkey has no region: it posted in the morning and was only edited later.
+  const turkishCalls = shared.calls.filter(call => call.text.includes("ТУРЦИЯ"));
+  assert.equal(turkishCalls.filter(call => call.method === "sendMessage").length, 1);
+});
+
+test("an empty region sends nothing and does not burn its window", async () => {
+  const path = await statePath("empty-region");
+  const early = recorder();
+
+  // 14:05 and the Middle East has nothing: no message, no window record.
+  const quiet = await runTelegramPublication({
+    flights: vietnam, now: almaty(14, 5, 20), env: baseEnv(), statePath: path,
+    fetchImpl: early.fetchImpl, logger: null
+  });
+  assert.equal(early.calls.length, 0, "no empty post is created");
+  assert.equal(quiet.channels[0].error, "NO_OFFERS_FOR_WINDOW_REGION");
+  assert.equal(quiet.channels[0].counts.outOfWindow, 1);
+  const afterQuiet = await loadPublicationState(path);
+  assert.equal(afterQuiet.channels[CHAT]?.windows?.["2026-10-20:afternoon"], undefined);
+
+  // 14:35 the collector brings a UAE offer in: the window still publishes.
+  const late = recorder();
+  const report = await runTelegramPublication({
+    flights: [...vietnam, ...emirates], now: almaty(14, 35, 20), env: baseEnv(), statePath: path,
+    fetchImpl: late.fetchImpl, logger: null
+  });
+  assert.equal(report.totals.sent, 1);
+  assert.deepEqual(late.calls.map(call => call.method), ["sendMessage"]);
+  assert.ok(late.calls[0].text.includes("ОАЭ"));
+  const stored = await loadPublicationState(path);
+  assert.equal(stored.channels[CHAT].windows["2026-10-20:afternoon"].status, "completed");
+});
+
+test("the hold policy keeps a region-less country out of the channel", async () => {
+  const path = await statePath("hold-policy");
+  const run = recorder();
+  const report = await runTelegramPublication({
+    flights: [...vietnam, ...turkey], now: MORNING,
+    env: baseEnv({ TELEGRAM_UNASSIGNED_COUNTRY_POLICY: "hold" }),
+    statePath: path, fetchImpl: run.fetchImpl, logger: null
+  });
+
+  assert.equal(report.unassignedPolicy, "hold");
+  assert.equal(report.totals.sent, 1, "only Vietnam is published");
+  assert.equal(report.totals.outOfWindow, 1);
+  assert.deepEqual(report.channels[0].unassigned, ["TR"]);
+  const blocked = report.channels[0].messages.find(message => message.key === "TR#1");
+  assert.equal(blocked.reason, "COUNTRY_HAS_NO_REGION");
+  assert.ok(run.calls.every(call => !call.text.includes("ТУРЦИЯ")));
+});
+
+test("an edit is never reported as a publication", async () => {
+  const path = await statePath("status");
+  const first = recorder();
+  const sent = await runTelegramPublication({
+    flights: turkey, now: MORNING, env: baseEnv(), statePath: path,
+    fetchImpl: first.fetchImpl, logger: null
+  });
+  assert.equal(sent.publicationStatus, "PUBLISH_SENT");
+  assert.equal(sent.channels[0].publicationStatus, "PUBLISH_SENT");
+
+  const second = recorder();
+  const edited = await runTelegramPublication({
+    flights: turkey.map(f => ({ ...f, price: 130000 })), now: AFTERNOON, env: baseEnv(),
+    statePath: path, fetchImpl: second.fetchImpl, logger: null
+  });
+  assert.equal(edited.totals.sent, 0);
+  assert.equal(edited.totals.edited, 1);
+  assert.equal(edited.publicationStatus, "PUBLISH_EDITED", "an edit has its own status");
+
+  const third = recorder();
+  const unchanged = await runTelegramPublication({
+    flights: turkey.map(f => ({ ...f, price: 130000 })), now: EVENING, env: baseEnv(),
+    statePath: path, fetchImpl: third.fetchImpl, logger: null
+  });
+  assert.equal(unchanged.publicationStatus, "NO_NEW_OFFERS");
+
+  const stored = await loadPublicationState(path);
+  const telemetry = stored.channels[CHAT].telemetry;
+  assert.ok(telemetry.lastNewPostAt, "a new post is stamped");
+  assert.ok(telemetry.lastEditAt, "an edit is stamped separately");
+  assert.notEqual(telemetry.lastNewPostAt, telemetry.lastEditAt);
+  assert.equal(telemetry.lastStatus, "NO_NEW_OFFERS");
+});
+
+test("a failed delivery is reported as a failure, not as a success", async () => {
+  const path = await statePath("status-fail");
+  const run = recorder({ fail: () => "Bad Request: message text is too long" });
+  const report = await runTelegramPublication({
+    flights: vietnam, now: MORNING, env: baseEnv(), statePath: path,
+    fetchImpl: run.fetchImpl, logger: null
+  });
+
+  assert.equal(report.publicationStatus, "PUBLISH_FAILED");
+  assert.equal(report.totals.failed, 1);
+  const stored = await loadPublicationState(path);
+  assert.ok(stored.meta.monitor.lastFailureAt);
+  assert.equal(stored.meta.monitor.lastNewPostAt, null, "a failure never stamps a new post");
+});
+
+test("the staleness alert fires only when a post was actually due", async () => {
+  const path = await statePath("stale");
+
+  // Day 1: Vietnam is published.
+  const day1 = recorder();
+  const first = await runTelegramPublication({
+    flights: vietnam, now: almaty(10, 5, 12), env: baseEnv(), statePath: path,
+    fetchImpl: day1.fetchImpl, logger: null
+  });
+  assert.equal(first.health.stale, false);
+  assert.equal(first.health.reason, "UP_TO_DATE");
+
+  // Three quiet days with no offers at all: nothing was due, so no alert.
+  const quiet = recorder();
+  const silent = await runTelegramPublication({
+    flights: [], now: almaty(10, 5, 15), env: baseEnv(), statePath: path,
+    fetchImpl: quiet.fetchImpl, logger: null
+  });
+  assert.equal(silent.publicationStatus, "NO_NEW_OFFERS");
+  assert.equal(silent.health, null, "a gate-level skip makes no health claim");
+
+  // Three days later a post is due and the delivery keeps failing: alert.
+  const broken = recorder({ fail: () => "Bad Request: chat not found" });
+  const alerted = await runTelegramPublication({
+    flights: vietnam, now: almaty(10, 5, 15), env: baseEnv(), statePath: path,
+    fetchImpl: broken.fetchImpl, logger: null
+  });
+  assert.equal(alerted.publicationStatus, "PUBLISH_FAILED");
+  assert.equal(alerted.health.stale, true);
+  assert.equal(alerted.health.reason, "NO_NEW_POST_DESPITE_PLANNED_SENDS");
+  assert.ok(alerted.health.silentHours >= 72);
+});
+
+test("adding a second channel later delivers one package to it and nothing extra to the first", async () => {
+  const path = await statePath("second-channel");
+  const feed = [...vietnam, ...turkey];
+
+  // Day 1: only the first channel is configured.
+  const alone = recorder();
+  await runTelegramPublication({
+    flights: feed, now: almaty(10, 5, 12), env: baseEnv(), statePath: path,
+    fetchImpl: alone.fetchImpl, logger: null
+  });
+  assert.equal(alone.calls.length, 2, "Vietnam and Turkey in the morning window");
+  assert.ok(alone.calls.every(call => call.chatId === CHAT));
+
+  // Day 2: the second channel is added to TELEGRAM_PUBLISH_CHATS.
+  const both = recorder();
+  const report = await runTelegramPublication({
+    flights: feed, now: almaty(10, 5, 13),
+    env: baseEnv({ TELEGRAM_PUBLISH_CHATS: CHAT + "," + SECOND_CHAT }),
+    statePath: path, fetchImpl: both.fetchImpl, logger: null
+  });
+
+  const perChannel = new Map(report.channels.map(channel => [channel.chatId, channel]));
+  assert.equal(perChannel.get(CHAT).counts.sent, 2, "the day's own posts, not a backlog");
+  assert.equal(perChannel.get(SECOND_CHAT).counts.sent, 2, "the new channel gets one package");
+  assert.equal(both.calls.filter(call => call.chatId === SECOND_CHAT).length, 2);
+  assert.ok(
+    both.calls.every(call => call.method === "sendMessage"),
+    "a channel with no history has nothing to edit"
   );
+
+  // Each channel keeps its own records, ids and offer history.
+  const stored = await loadPublicationState(path);
+  assert.notEqual(
+    stored.channels[CHAT].messages["VN#1"].messageId,
+    stored.channels[SECOND_CHAT].messages["VN#1"].messageId
+  );
+  assert.ok(stored.channels[CHAT].telemetry.lastNewPostAt);
+  assert.ok(stored.channels[SECOND_CHAT].telemetry.lastNewPostAt);
+
+  // A third sync in the same window adds nothing anywhere.
+  const again = recorder();
+  await runTelegramPublication({
+    flights: feed, now: almaty(10, 35, 13),
+    env: baseEnv({ TELEGRAM_PUBLISH_CHATS: CHAT + "," + SECOND_CHAT }),
+    statePath: path, fetchImpl: again.fetchImpl, logger: null
+  });
+  assert.equal(again.calls.length, 0, "no duplicates after the window closed");
 });
