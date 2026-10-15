@@ -451,15 +451,30 @@ export function recordMessageFailure(state, chatId, digestKey, {
  * Decides what to do with a freshly rendered digest.
  *
  * Returns one of:
- *  - `send`        no live message for this key yet
- *  - `edit`        a live message exists and the content changed
- *  - `skip`        the live message already carries this exact content
- *  - `hold`        a previous attempt was never confirmed; needs review
+ *  - `send`        no live message for this key yet, or the live one belongs
+ *                  to an earlier publication day
+ *  - `edit`        today's message exists and the content changed
+ *  - `skip`        today's message already carries this exact content
+ *  - `hold`        today's earlier attempt was never confirmed; needs review
+ *
+ * `localDate` is what keeps editing bounded to one publication day. The digest
+ * key is only country+part, so without it a country's very first post stays
+ * the live message forever: every later day finds a confirmed record, edits
+ * that post in place and the channel never receives anything new again.
  */
-export function planMessageAction(state, chatId, digest, { retryUnconfirmed = false } = {}) {
+export function planMessageAction(state, chatId, digest, {
+  retryUnconfirmed = false,
+  localDate = null
+} = {}) {
   const record = getMessageRecord(state, chatId, digest.key);
 
   if (!record) return { action: "send", record: null, reason: "NEW_DIGEST" };
+
+  // A new publication day gets its own post. The previous day's message is
+  // left exactly as it was published, so nothing is rewritten retroactively.
+  if (localDate && String(record.localDate || "") !== String(localDate)) {
+    return { action: "send", record, reason: "NEW_PUBLICATION_DAY" };
+  }
 
   if (record.status === MESSAGE_STATUS.UNCONFIRMED && !retryUnconfirmed) {
     return { action: "hold", record, reason: "PREVIOUS_ATTEMPT_UNCONFIRMED" };
