@@ -1,325 +1,13 @@
 {
-  "generatedAt": "2026-10-15T23:01:47.600Z",
+  "generatedAt": "2026-10-16T01:16:14.197Z",
   "mode": "telegram-public-only",
   "note": "Offers are collected only from configured public Telegram charter channels. Source channel identifiers are not exposed to customers.",
   "flights": [
     {
-      "id": "c06a90962fa96333",
-      "from": "Астана",
-      "to": "&gt; Анталья",
-      "offset": 1,
-      "price": 30000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "5 мест",
-      "airline": "Scat",
-      "airlineCode": "S",
-      "baggage": "багаж 23 кг + ручная кладь 10 кг",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T16:54:07.125Z",
-      "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "226987a1c94588aa",
-      "from": "Астана",
-      "to": "&gt; Анталья",
-      "offset": 1,
-      "price": 34000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "Наличие уточняется",
-      "airlineCode": "T",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T16:54:07.125Z",
-      "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "1739177be36d62f9",
-      "from": "Аланья",
-      "to": "Алматы",
-      "offset": 1,
-      "price": 36000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "5 мест",
-      "airline": "SCAT",
-      "airlineCode": "S",
-      "baggage": "багаж 23 кг + ручная кладь 10 кг",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "657c794a20852888",
-      "from": "Аланья",
-      "to": "Алматы",
-      "offset": 1,
-      "price": 37000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "Наличие уточняется",
-      "airlineCode": "T",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "22b715c68779d195",
-      "from": "АСТАНА",
-      "to": "АНТАЛИЯ",
-      "offset": 1,
-      "price": 39000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "6 мест",
-      "airlineCode": "T",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "0634fe55e2d768fb",
-      "from": "АСТАНА",
-      "to": "АНТАЛИЯ",
-      "offset": 1,
-      "price": 39000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "6 мест",
-      "airlineCode": "S",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "f3acb8285279a176",
-      "from": "Нячанг",
-      "to": "&gt; Алматы",
-      "offset": 1,
-      "price": 45000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "Наличие уточняется",
-      "airlineCode": "*",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "1b9a12db224ea24d",
-      "from": "Аланья",
-      "to": "Алматы",
-      "offset": 1,
-      "price": 47000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "4 мест",
-      "airline": "Air Astana",
-      "airlineCode": "A",
-      "baggage": "багаж 23 кг + ручная кладь 8 кг",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "2c7062b13e95fdac",
-      "from": "Алматы",
-      "to": "&gt; Анталья",
-      "offset": 1,
-      "price": 56000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "Наличие уточняется",
-      "airline": "Pegasus",
-      "airlineCode": "P",
-      "baggage": "багаж 20 кг + ручная кладь 5 кг",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "aec0f9d9c7c8d20d",
-      "from": "Алматы",
-      "to": "&gt; Анталья",
-      "offset": 1,
-      "price": 68000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "1 мест",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "fae86b397b37d686",
-      "from": "Астана",
-      "to": "&gt; Анталья",
-      "offset": 1,
-      "price": 70000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "1 мест",
-      "airlineCode": "*",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T16:54:07.125Z",
-      "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "f3d42e1b522e22a5",
-      "from": "Нячанг",
-      "to": "&gt; Алматы",
-      "offset": 1,
-      "price": 74000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "1 мест",
-      "airline": "Scat",
-      "airlineCode": "S",
-      "baggage": "багаж 23 кг + ручная кладь 10 кг",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T16:54:07.125Z",
-      "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "5b449dc8ffdd85da",
-      "from": "Алматы",
-      "to": "&gt; Санья",
-      "offset": 1,
-      "price": 78000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "1 мест",
-      "airline": "Scat",
-      "airlineCode": "S",
-      "baggage": "багаж 23 кг + ручная кладь 10 кг",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T16:54:07.125Z",
-      "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "6eb50183729fe534",
-      "from": "АСТАНА",
-      "to": "АНТАЛИЯ",
-      "offset": 1,
-      "price": 79000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "airlineCode": "A",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T06:35:41.836Z",
-      "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "d1b3586ee764bce7",
-      "from": "Санья",
-      "to": "&gt; Астана",
-      "offset": 1,
-      "price": 98000,
-      "trip": "OW",
-      "hot": true,
-      "seats": "2 мест",
-      "airlineCode": "*",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T16:54:07.125Z",
-      "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "1670ff3a5a3ac18c",
-      "from": "Шарджа",
-      "to": "Алматы",
-      "offset": 1,
-      "price": 117000,
-      "trip": "OW",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "18f02c3dfcc1e2aa",
-      "from": "Алматы",
-      "to": "Анталия",
-      "offset": 1,
-      "price": 251000,
-      "trip": "RT",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T06:35:41.836Z",
-      "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "185b638624c7b969",
-      "from": "Тashkent",
-      "to": "Куала-Лумпур",
-      "offset": 1,
-      "price": 283000,
-      "trip": "RT",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-10-16",
-      "returnDate": "2026-10-23",
-      "updatedAt": "2026-10-15T12:05:03.388Z",
-      "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
-      "id": "7b20e83b0c0a622b",
-      "from": "Астана",
-      "to": "Анталия",
-      "offset": 1,
-      "price": 347000,
-      "trip": "RT",
-      "hot": false,
-      "seats": "Наличие уточняется",
-      "departureDate": "2026-10-16",
-      "updatedAt": "2026-10-15T06:35:41.836Z",
-      "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
-    },
-    {
       "id": "133fe1fb94e4a937",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 2,
+      "offset": 1,
       "price": 49000,
       "trip": "OW",
       "hot": true,
@@ -327,14 +15,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ed153e3b61038eb7",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 2,
+      "offset": 1,
       "price": 51000,
       "trip": "OW",
       "hot": true,
@@ -343,14 +31,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "82fa89253a0333cb",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 2,
+      "offset": 1,
       "price": 54000,
       "trip": "OW",
       "hot": false,
@@ -361,14 +49,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "79150c2d5c265007",
       "from": "Аланья",
       "to": "Алматы",
-      "offset": 2,
+      "offset": 1,
       "price": 57000,
       "trip": "OW",
       "hot": true,
@@ -379,14 +67,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "67ce6e95834320f5",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 2,
+      "offset": 1,
       "price": 58000,
       "trip": "OW",
       "hot": true,
@@ -395,14 +83,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "7c9172029f60f5e6",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 2,
+      "offset": 1,
       "price": 58000,
       "trip": "OW",
       "hot": true,
@@ -411,14 +99,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "26f0944d04d6c340",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Астана",
-      "offset": 2,
+      "offset": 1,
       "price": 68000,
       "trip": "OW",
       "hot": true,
@@ -429,14 +117,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a4de493896efd68d",
       "from": "АЛМАТЫ",
       "to": "АНТАЛИЯ",
-      "offset": 2,
+      "offset": 1,
       "price": 70000,
       "trip": "OW",
       "hot": true,
@@ -445,14 +133,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "205378ca397ac0ad",
       "from": "АЛМАТЫ",
       "to": "АНТАЛИЯ",
-      "offset": 2,
+      "offset": 1,
       "price": 70000,
       "trip": "OW",
       "hot": true,
@@ -460,14 +148,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d1ac49e890b40762",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 2,
+      "offset": 1,
       "price": 104000,
       "trip": "OW",
       "hot": false,
@@ -475,14 +163,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "56ae14f975c043c9",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 2,
+      "offset": 1,
       "price": 116000,
       "trip": "OW",
       "hot": false,
@@ -490,14 +178,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "20da3fd408fe6a27",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 2,
+      "offset": 1,
       "price": 121000,
       "trip": "OW",
       "hot": false,
@@ -508,14 +196,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "11d7dd9cbb1f9559",
       "from": "Астана",
       "to": "&gt; Санья",
-      "offset": 2,
+      "offset": 1,
       "price": 123000,
       "trip": "OW",
       "hot": false,
@@ -526,14 +214,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ec8ea59ec0d518dd",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 2,
+      "offset": 1,
       "price": 128000,
       "trip": "OW",
       "hot": false,
@@ -541,14 +229,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "0af7d06157ea56c3",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 2,
+      "offset": 1,
       "price": 244000,
       "trip": "RT",
       "hot": false,
@@ -557,14 +245,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "604ff6a449f237ad",
       "from": "Алматы",
       "to": "&gt; Дубай",
-      "offset": 2,
+      "offset": 1,
       "price": 245000,
       "trip": "RT",
       "hot": false,
@@ -574,14 +262,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "50a79d7e07291435",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 2,
+      "offset": 1,
       "price": 270000,
       "trip": "RT",
       "hot": false,
@@ -593,14 +281,14 @@
       "returnDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "014d2e562bb6dd46",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 2,
+      "offset": 1,
       "price": 278000,
       "trip": "RT",
       "hot": false,
@@ -609,14 +297,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "0933752ab5ccfc0c",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 2,
+      "offset": 1,
       "price": 283000,
       "trip": "RT",
       "hot": false,
@@ -626,14 +314,14 @@
       "returnDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5c2d7a2ed4fa714b",
       "from": "Астана",
       "to": "&gt; Фукуок",
-      "offset": 2,
+      "offset": 1,
       "price": 286000,
       "trip": "RT",
       "hot": false,
@@ -642,14 +330,14 @@
       "returnDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "69ae1cef1eb0008c",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 2,
+      "offset": 1,
       "price": 296000,
       "trip": "RT",
       "hot": false,
@@ -658,14 +346,14 @@
       "returnDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b579e8621ba7d8e2",
       "from": "Шымкент",
       "to": "Будапешт",
-      "offset": 2,
+      "offset": 1,
       "price": 303000,
       "trip": "RT",
       "hot": false,
@@ -673,14 +361,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-08T07:35:41.391Z",
       "publishedAt": "2026-10-08T07:35:41.391Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "672368fb386dddf9",
       "from": "Астана",
       "to": "Будапешт",
-      "offset": 2,
+      "offset": 1,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -688,14 +376,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-08T07:35:41.391Z",
       "publishedAt": "2026-10-08T07:35:41.391Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b8cdf69bed8f6410",
       "from": "Алматы",
       "to": "Будапешт",
-      "offset": 2,
+      "offset": 1,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -703,14 +391,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-08T07:35:41.391Z",
       "publishedAt": "2026-10-08T07:35:41.391Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "63c03b94409bf7b9",
       "from": "Алматы",
       "to": "Анталия",
-      "offset": 2,
+      "offset": 1,
       "price": 431000,
       "trip": "RT",
       "hot": false,
@@ -718,14 +406,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c990f95c26df5d7e",
       "from": "Алматы",
       "to": "Санья",
-      "offset": 2,
+      "offset": 1,
       "price": 439000,
       "trip": "RT",
       "hot": false,
@@ -734,14 +422,14 @@
       "departureDate": "2026-10-17",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "eaec553346ce58d3",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Астана",
-      "offset": 3,
+      "offset": 2,
       "price": 51000,
       "trip": "OW",
       "hot": true,
@@ -750,14 +438,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1604d87c73e5e87d",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 3,
+      "offset": 2,
       "price": 56000,
       "trip": "OW",
       "hot": true,
@@ -768,14 +456,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "fbd367783a89eb9e",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 3,
+      "offset": 2,
       "price": 56000,
       "trip": "OW",
       "hot": true,
@@ -783,14 +471,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "0cf715d2b7bde81d",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 3,
+      "offset": 2,
       "price": 99000,
       "trip": "OW",
       "hot": true,
@@ -798,14 +486,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "84656055e39a4b3e",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 3,
+      "offset": 2,
       "price": 107000,
       "trip": "OW",
       "hot": false,
@@ -816,14 +504,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "76a6179ac5b736e9",
       "from": "Шарджа",
       "to": "Алматы",
-      "offset": 3,
+      "offset": 2,
       "price": 115000,
       "trip": "OW",
       "hot": false,
@@ -831,14 +519,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5ffdc33dc91a46d7",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 3,
+      "offset": 2,
       "price": 128000,
       "trip": "OW",
       "hot": false,
@@ -846,14 +534,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "afda36ff7efcf414",
       "from": "АНТАЛИЯ",
       "to": "АСТАНА",
-      "offset": 3,
+      "offset": 2,
       "price": 132000,
       "trip": "OW",
       "hot": true,
@@ -864,14 +552,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d725cc5c655d9f69",
       "from": "Анталия",
       "to": "&gt; Астана",
-      "offset": 3,
+      "offset": 2,
       "price": 148000,
       "trip": "OW",
       "hot": false,
@@ -882,14 +570,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9978be9c46c542e1",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 3,
+      "offset": 2,
       "price": 169000,
       "trip": "OW",
       "hot": false,
@@ -897,14 +585,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b5619bf3160ecf24",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 3,
+      "offset": 2,
       "price": 171000,
       "trip": "OW",
       "hot": false,
@@ -912,14 +600,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b71539acd439abfd",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 3,
+      "offset": 2,
       "price": 213000,
       "trip": "OW",
       "hot": false,
@@ -927,14 +615,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c3f2e1b78d51efb1",
       "from": "Астана",
       "to": "&gt; Дубай",
-      "offset": 3,
+      "offset": 2,
       "price": 226000,
       "trip": "RT",
       "hot": false,
@@ -944,14 +632,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "67049bc8e69a5e78",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 3,
+      "offset": 2,
       "price": 241000,
       "trip": "RT",
       "hot": false,
@@ -960,14 +648,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "be80da37ac934d06",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 3,
+      "offset": 2,
       "price": 245000,
       "trip": "RT",
       "hot": false,
@@ -977,14 +665,14 @@
       "returnDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9300a022072cbd41",
       "from": "Астана",
       "to": "Нячанг",
-      "offset": 3,
+      "offset": 2,
       "price": 258000,
       "trip": "RT",
       "hot": false,
@@ -993,14 +681,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e1d40af238eb2614",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 3,
+      "offset": 2,
       "price": 278000,
       "trip": "RT",
       "hot": false,
@@ -1009,14 +697,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "df242aea358219b4",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 3,
+      "offset": 2,
       "price": 316000,
       "trip": "RT",
       "hot": false,
@@ -1026,14 +714,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ecb8e980ce2b86ab",
       "from": "Алматы",
       "to": "Мале",
-      "offset": 3,
+      "offset": 2,
       "price": 391000,
       "trip": "RT",
       "hot": false,
@@ -1042,14 +730,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2e435ed806ee9d88",
       "from": "Астана",
       "to": "Санья",
-      "offset": 3,
+      "offset": 2,
       "price": 408000,
       "trip": "RT",
       "hot": false,
@@ -1058,14 +746,14 @@
       "departureDate": "2026-10-18",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3e184e40a10d1391",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 4,
+      "offset": 3,
       "price": 51000,
       "trip": "OW",
       "hot": true,
@@ -1076,14 +764,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "f3f6e5d27bed60c3",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 4,
+      "offset": 3,
       "price": 51000,
       "trip": "OW",
       "hot": true,
@@ -1091,14 +779,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "765a6698f21a62e2",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 4,
+      "offset": 3,
       "price": 54000,
       "trip": "OW",
       "hot": true,
@@ -1107,14 +795,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "8415be0d6b49a892",
       "from": "Нячанг",
       "to": "&gt; Шымкент",
-      "offset": 4,
+      "offset": 3,
       "price": 74000,
       "trip": "OW",
       "hot": true,
@@ -1125,14 +813,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "fad87ef6b2ac2888",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 4,
+      "offset": 3,
       "price": 97000,
       "trip": "OW",
       "hot": true,
@@ -1141,14 +829,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "beaa748db95e4774",
       "from": "Санья",
       "to": "&gt; Астана",
-      "offset": 4,
+      "offset": 3,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -1157,14 +845,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "f3099a3e23ad10f1",
       "from": "Санья",
       "to": "&gt; Астана",
-      "offset": 4,
+      "offset": 3,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -1175,14 +863,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "128217a42a7fb1da",
       "from": "Нячанг",
       "to": "&gt; Шымкент",
-      "offset": 4,
+      "offset": 3,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -1190,14 +878,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ff49875fd6de759f",
       "from": "Анталия",
       "to": "&gt; Астана",
-      "offset": 4,
+      "offset": 3,
       "price": 135000,
       "trip": "OW",
       "hot": false,
@@ -1208,14 +896,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "82fa50ea0f6a2af4",
       "from": "Алматы",
       "to": "&gt; Дубай",
-      "offset": 4,
+      "offset": 3,
       "price": 174000,
       "trip": "RT",
       "hot": false,
@@ -1225,14 +913,14 @@
       "returnDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "09068f9a5c1ce851",
       "from": "Алматы",
       "to": "&gt; Дубай",
-      "offset": 4,
+      "offset": 3,
       "price": 174000,
       "trip": "RT",
       "hot": false,
@@ -1242,14 +930,14 @@
       "returnDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9b514ba4fe201379",
       "from": "Астана",
       "to": "&gt; Дубай",
-      "offset": 4,
+      "offset": 3,
       "price": 236000,
       "trip": "RT",
       "hot": false,
@@ -1259,14 +947,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "000714bd1447e106",
       "from": "Алматы",
       "to": "Дубай",
-      "offset": 4,
+      "offset": 3,
       "price": 254000,
       "trip": "RT",
       "hot": false,
@@ -1274,14 +962,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "48652e1003e19b9b",
       "from": "Тashkent",
       "to": "Куала-Лумпур",
-      "offset": 4,
+      "offset": 3,
       "price": 283000,
       "trip": "RT",
       "hot": false,
@@ -1290,14 +978,14 @@
       "returnDate": "2026-10-23",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1bf1c3b08e76d1ca",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 4,
+      "offset": 3,
       "price": 283000,
       "trip": "RT",
       "hot": false,
@@ -1306,14 +994,14 @@
       "returnDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ecf25cf46b94bdb0",
       "from": "Алматы",
       "to": "&gt; Санья",
-      "offset": 4,
+      "offset": 3,
       "price": 308000,
       "trip": "RT",
       "hot": false,
@@ -1325,14 +1013,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4288429a6f921490",
       "from": "Алматы",
       "to": "Шанхай",
-      "offset": 4,
+      "offset": 3,
       "price": 310000,
       "trip": "RT",
       "hot": false,
@@ -1341,14 +1029,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-12T16:59:30.692Z",
       "publishedAt": "2026-10-12T16:59:30.692Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "adccb72ee149229b",
       "from": "Алматы",
       "to": "Мале",
-      "offset": 4,
+      "offset": 3,
       "price": 391000,
       "trip": "RT",
       "hot": false,
@@ -1357,14 +1045,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2275ddb15f128af0",
       "from": "Алматы",
       "to": "&gt; Санья",
-      "offset": 4,
+      "offset": 3,
       "price": 439000,
       "trip": "RT",
       "hot": false,
@@ -1373,14 +1061,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5bcf1c43a02f894c",
       "from": "Алматы",
       "to": "Санья",
-      "offset": 4,
+      "offset": 3,
       "price": 454000,
       "trip": "RT",
       "hot": false,
@@ -1389,14 +1077,14 @@
       "departureDate": "2026-10-19",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "12099ef0f1ee334f",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Астана",
-      "offset": 5,
+      "offset": 4,
       "price": 47000,
       "trip": "OW",
       "hot": true,
@@ -1405,14 +1093,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "771a6227ef318dae",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 53000,
       "trip": "OW",
       "hot": true,
@@ -1420,14 +1108,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "7c526ecff3b32b44",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 5,
+      "offset": 4,
       "price": 56000,
       "trip": "OW",
       "hot": true,
@@ -1436,14 +1124,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "92f4003d43566332",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Астана",
-      "offset": 5,
+      "offset": 4,
       "price": 70000,
       "trip": "OW",
       "hot": true,
@@ -1454,14 +1142,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ec553f132ff84379",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 74000,
       "trip": "OW",
       "hot": true,
@@ -1470,14 +1158,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e5d4de23f0800cf1",
       "from": "Шарм-эль-Шейх",
       "to": "Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 74000,
       "trip": "OW",
       "hot": true,
@@ -1486,14 +1174,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "f4ed01292a200623",
       "from": "Санья",
       "to": "&gt; Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 75000,
       "trip": "OW",
       "hot": true,
@@ -1504,14 +1192,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "72283d003b2d9f4d",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -1522,14 +1210,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "298416bb630c3b42",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 5,
+      "offset": 4,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -1538,14 +1226,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "700a7e48843b36d7",
       "from": "Санья",
       "to": "&gt; Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -1554,14 +1242,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "afbbbde84c92a28f",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 5,
+      "offset": 4,
       "price": 150000,
       "trip": "OW",
       "hot": false,
@@ -1569,14 +1257,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2254d51866a80826",
       "from": "Шымкент",
       "to": "&gt; Санья",
-      "offset": 5,
+      "offset": 4,
       "price": 177000,
       "trip": "RT",
       "hot": true,
@@ -1588,14 +1276,14 @@
       "returnDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b2b02334106630fe",
       "from": "Шымкент",
       "to": "&gt; Санья",
-      "offset": 5,
+      "offset": 4,
       "price": 193000,
       "trip": "RT",
       "hot": true,
@@ -1607,14 +1295,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c4cb2b333c0a48c7",
       "from": "Алматы",
       "to": "&gt; Дубай",
-      "offset": 5,
+      "offset": 4,
       "price": 212000,
       "trip": "RT",
       "hot": false,
@@ -1624,14 +1312,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b2b5bffac8c24c5a",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 5,
+      "offset": 4,
       "price": 214000,
       "trip": "OW",
       "hot": false,
@@ -1642,14 +1330,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "68f98df858b93113",
       "from": "Алматы",
       "to": "&gt; Фукуок",
-      "offset": 5,
+      "offset": 4,
       "price": 231000,
       "trip": "OW",
       "hot": false,
@@ -1657,14 +1345,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "33f1ed61eaae698a",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 5,
+      "offset": 4,
       "price": 249000,
       "trip": "RT",
       "hot": false,
@@ -1673,14 +1361,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "81d7bc8ee01d4427",
       "from": "Астана",
       "to": "&gt; Дубай",
-      "offset": 5,
+      "offset": 4,
       "price": 250000,
       "trip": "RT",
       "hot": false,
@@ -1690,14 +1378,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3778b425e73e3cb9",
       "from": "Астана",
       "to": "Анталия",
-      "offset": 5,
+      "offset": 4,
       "price": 256000,
       "trip": "RT",
       "hot": false,
@@ -1705,14 +1393,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b6af90b043461d64",
       "from": "Алматы",
       "to": "Фукуок",
-      "offset": 5,
+      "offset": 4,
       "price": 299000,
       "trip": "RT",
       "hot": false,
@@ -1721,14 +1409,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d38a1120f4682411",
       "from": "Шымкент",
       "to": "Будапешт",
-      "offset": 5,
+      "offset": 4,
       "price": 303000,
       "trip": "RT",
       "hot": false,
@@ -1736,14 +1424,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d6d1e214e8d17042",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 5,
+      "offset": 4,
       "price": 337000,
       "trip": "RT",
       "hot": false,
@@ -1755,14 +1443,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "6fdbf84cb07d1dc8",
       "from": "Астана",
       "to": "Будапешт",
-      "offset": 5,
+      "offset": 4,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -1770,14 +1458,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "43471ed5660ad07e",
       "from": "Алматы",
       "to": "Будапешт",
-      "offset": 5,
+      "offset": 4,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -1785,14 +1473,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d0866103d71362ea",
       "from": "Алматы",
       "to": "Анталия",
-      "offset": 5,
+      "offset": 4,
       "price": 351000,
       "trip": "RT",
       "hot": false,
@@ -1800,14 +1488,14 @@
       "departureDate": "2026-10-20",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "cbdbc56a05951b1e",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 31000,
       "trip": "OW",
       "hot": true,
@@ -1818,14 +1506,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9127af0b3c418890",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 6,
+      "offset": 5,
       "price": 32000,
       "trip": "OW",
       "hot": true,
@@ -1836,14 +1524,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "655ab408a97df706",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 6,
+      "offset": 5,
       "price": 36000,
       "trip": "OW",
       "hot": true,
@@ -1851,14 +1539,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b9f15c98065c7be9",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 44000,
       "trip": "OW",
       "hot": true,
@@ -1869,14 +1557,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "05aa93794b612dc0",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 44000,
       "trip": "OW",
       "hot": true,
@@ -1884,14 +1572,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d6df3f0d6c1f41e7",
       "from": "Санья",
       "to": "&gt; Шымкент",
-      "offset": 6,
+      "offset": 5,
       "price": 49000,
       "trip": "OW",
       "hot": true,
@@ -1902,14 +1590,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9c6535351c986c6c",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 6,
+      "offset": 5,
       "price": 51000,
       "trip": "OW",
       "hot": true,
@@ -1920,14 +1608,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9a73f251df2870d7",
       "from": "Шарджа",
       "to": "Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 85000,
       "trip": "OW",
       "hot": true,
@@ -1935,14 +1623,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1dce74906365be10",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 6,
+      "offset": 5,
       "price": 96000,
       "trip": "OW",
       "hot": true,
@@ -1951,14 +1639,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3becf06524a9214c",
       "from": "Аланья",
       "to": "Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -1969,14 +1657,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "89b8291107bd3110",
       "from": "Аланья",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -1985,14 +1673,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "79a9c6f90b68e2a9",
       "from": "Пхукет",
       "to": "&gt; Уральск",
-      "offset": 6,
+      "offset": 5,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -2001,14 +1689,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "0bfed65d63700737",
       "from": "АСТАНА",
       "to": "АНТАЛИЯ",
-      "offset": 6,
+      "offset": 5,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -2017,14 +1705,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2beda0371a45cff2",
       "from": "Аланья",
       "to": "АЛМАТЫ",
-      "offset": 6,
+      "offset": 5,
       "price": 110000,
       "trip": "OW",
       "hot": true,
@@ -2032,14 +1720,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "233a8052dcb16ab6",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 6,
+      "offset": 5,
       "price": 111000,
       "trip": "OW",
       "hot": false,
@@ -2047,14 +1735,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "55d75869370cc69d",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 144000,
       "trip": "OW",
       "hot": false,
@@ -2062,14 +1750,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e3e7f8627888ca09",
       "from": "АНТАЛИЯ",
       "to": "АЛМАТЫ",
-      "offset": 6,
+      "offset": 5,
       "price": 145000,
       "trip": "OW",
       "hot": false,
@@ -2078,14 +1766,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "8ad9d518b9c5af79",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 150000,
       "trip": "OW",
       "hot": false,
@@ -2093,14 +1781,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "aabd1318a5e5c3a1",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 6,
+      "offset": 5,
       "price": 165000,
       "trip": "OW",
       "hot": false,
@@ -2109,14 +1797,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3436233accd44680",
       "from": "АНТАЛИЯ",
       "to": "АЛМАТЫ",
-      "offset": 6,
+      "offset": 5,
       "price": 168000,
       "trip": "OW",
       "hot": false,
@@ -2125,14 +1813,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "f6d89f83eb5a1049",
       "from": "Астана",
       "to": "&gt; Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 189000,
       "trip": "OW",
       "hot": false,
@@ -2140,14 +1828,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d4c0ac19e9e9e6aa",
       "from": "Алматы",
       "to": "&gt; Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 231000,
       "trip": "OW",
       "hot": false,
@@ -2155,14 +1843,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "70f36b0924cff2cf",
       "from": "Алматы",
       "to": "&gt; Дубай",
-      "offset": 6,
+      "offset": 5,
       "price": 250000,
       "trip": "RT",
       "hot": false,
@@ -2172,14 +1860,14 @@
       "returnDate": "2026-10-28",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c631e1d95928c691",
       "from": "Астана",
       "to": "&gt; Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 287000,
       "trip": "RT",
       "hot": false,
@@ -2188,14 +1876,14 @@
       "returnDate": "2026-10-29",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c56673155d0b4167",
       "from": "Алматы",
       "to": "Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 299000,
       "trip": "RT",
       "hot": false,
@@ -2204,14 +1892,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "27ad81c1f9d2041e",
       "from": "Астана",
       "to": "Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 303000,
       "trip": "RT",
       "hot": false,
@@ -2220,14 +1908,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1368614d7b9d9c4e",
       "from": "Костанай",
       "to": "Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -2236,14 +1924,14 @@
       "departureDate": "2026-10-21",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1723bd6fa7d71165",
       "from": "Астана",
       "to": "&gt; Фукуок",
-      "offset": 6,
+      "offset": 5,
       "price": 370000,
       "trip": "RT",
       "hot": false,
@@ -2252,14 +1940,14 @@
       "returnDate": "2026-10-28",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2a9b0ef8ca6b1730",
       "from": "Астана",
       "to": "&gt; Санья",
-      "offset": 6,
+      "offset": 5,
       "price": 392000,
       "trip": "RT",
       "hot": false,
@@ -2271,14 +1959,14 @@
       "returnDate": "2026-10-30",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5915aa9c42095230",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 7,
+      "offset": 6,
       "price": 31000,
       "trip": "OW",
       "hot": true,
@@ -2289,14 +1977,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "da02b63c59a1fd6b",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 7,
+      "offset": 6,
       "price": 31000,
       "trip": "OW",
       "hot": false,
@@ -2304,14 +1992,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4902a73556993aac",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Астана",
-      "offset": 7,
+      "offset": 6,
       "price": 62000,
       "trip": "OW",
       "hot": true,
@@ -2320,14 +2008,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3d717f849125a4ab",
       "from": "Нячанг",
       "to": "&gt; Шымкент",
-      "offset": 7,
+      "offset": 6,
       "price": 74000,
       "trip": "OW",
       "hot": true,
@@ -2338,14 +2026,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "958a4a15f38f64f5",
       "from": "Шарм-эль-Шейх",
       "to": "&gt; Астана",
-      "offset": 7,
+      "offset": 6,
       "price": 88000,
       "trip": "OW",
       "hot": true,
@@ -2356,14 +2044,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1eb328b8d7a002ad",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 7,
+      "offset": 6,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -2374,14 +2062,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1efe3b7c243531ac",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 7,
+      "offset": 6,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -2389,14 +2077,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c59f83fb504f7430",
       "from": "Нячанг",
       "to": "&gt; Шымкент",
-      "offset": 7,
+      "offset": 6,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -2404,14 +2092,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a423c62ca0144612",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 7,
+      "offset": 6,
       "price": 121000,
       "trip": "OW",
       "hot": false,
@@ -2419,14 +2107,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "62d9eae49bbc4699",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 7,
+      "offset": 6,
       "price": 136000,
       "trip": "OW",
       "hot": false,
@@ -2435,14 +2123,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c4d4518241584b71",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 7,
+      "offset": 6,
       "price": 149000,
       "trip": "OW",
       "hot": false,
@@ -2450,14 +2138,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c8abb75c1f7726a6",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 190000,
       "trip": "OW",
       "hot": false,
@@ -2465,14 +2153,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4b9ef39310276873",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 7,
+      "offset": 6,
       "price": 191000,
       "trip": "OW",
       "hot": false,
@@ -2483,14 +2171,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c0b091cb0563c929",
       "from": "Анталия",
       "to": "&gt; Астана",
-      "offset": 7,
+      "offset": 6,
       "price": 191000,
       "trip": "OW",
       "hot": false,
@@ -2498,14 +2186,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a27cd9975f03f1a5",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 213000,
       "trip": "OW",
       "hot": false,
@@ -2513,14 +2201,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "971c17af1daa8ad4",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 287000,
       "trip": "RT",
       "hot": false,
@@ -2529,14 +2217,14 @@
       "returnDate": "2026-10-29",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e823afb0f7bd65c6",
       "from": "Алматы",
       "to": "Дубай",
-      "offset": 7,
+      "offset": 6,
       "price": 291000,
       "trip": "RT",
       "hot": false,
@@ -2544,14 +2232,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "7c45be97ed5bc367",
       "from": "Алматы",
       "to": "Шанхай",
-      "offset": 7,
+      "offset": 6,
       "price": 310000,
       "trip": "RT",
       "hot": false,
@@ -2560,14 +2248,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-12T16:59:30.692Z",
       "publishedAt": "2026-10-12T16:59:30.692Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "af70984fd3c1f10c",
       "from": "Алматы",
       "to": "Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 326000,
       "trip": "RT",
       "hot": false,
@@ -2576,14 +2264,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "fa8035549ddbb2c1",
       "from": "Астана",
       "to": "Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 337000,
       "trip": "RT",
       "hot": false,
@@ -2592,14 +2280,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3134af21baf57327",
       "from": "Астана",
       "to": "Будапешт",
-      "offset": 7,
+      "offset": 6,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -2607,14 +2295,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "03e1c88fad1dec62",
       "from": "Алматы",
       "to": "Будапешт",
-      "offset": 7,
+      "offset": 6,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -2622,14 +2310,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a3d9708d718d879e",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 356000,
       "trip": "RT",
       "hot": false,
@@ -2638,14 +2326,14 @@
       "returnDate": "2026-10-29",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "af087db532263fd8",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 7,
+      "offset": 6,
       "price": 358000,
       "trip": "RT",
       "hot": false,
@@ -2657,14 +2345,14 @@
       "returnDate": "2026-10-29",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "8acf43b5c6022b68",
       "from": "Астана",
       "to": "Санья",
-      "offset": 7,
+      "offset": 6,
       "price": 595000,
       "trip": "RT",
       "hot": false,
@@ -2673,14 +2361,14 @@
       "departureDate": "2026-10-22",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ab353c85c4e56af3",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 8,
+      "offset": 7,
       "price": 31000,
       "trip": "OW",
       "hot": true,
@@ -2691,14 +2379,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "42ef992b1a2fea80",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 8,
+      "offset": 7,
       "price": 31000,
       "trip": "OW",
       "hot": false,
@@ -2706,14 +2394,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "02b52438729b5a02",
       "from": "Пхукет",
       "to": "&gt; Астана",
-      "offset": 8,
+      "offset": 7,
       "price": 39000,
       "trip": "OW",
       "hot": true,
@@ -2724,14 +2412,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "40ea1b272025cd3c",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 8,
+      "offset": 7,
       "price": 58000,
       "trip": "OW",
       "hot": true,
@@ -2740,14 +2428,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2780b0b1bff8b710",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 8,
+      "offset": 7,
       "price": 65000,
       "trip": "OW",
       "hot": true,
@@ -2756,14 +2444,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2839c9d73495dafe",
       "from": "АСТАНА",
       "to": "АНТАЛИЯ",
-      "offset": 8,
+      "offset": 7,
       "price": 68000,
       "trip": "OW",
       "hot": true,
@@ -2772,14 +2460,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a57feaaa0151f62e",
       "from": "Гоа",
       "to": "&gt; Алматы",
-      "offset": 8,
+      "offset": 7,
       "price": 75000,
       "trip": "OW",
       "hot": true,
@@ -2790,14 +2478,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "52a9a43f189d9554",
       "from": "Санья",
       "to": "&gt; Астана",
-      "offset": 8,
+      "offset": 7,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -2806,14 +2494,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "cef40c5489594c5a",
       "from": "Санья",
       "to": "&gt; Астана",
-      "offset": 8,
+      "offset": 7,
       "price": 123000,
       "trip": "OW",
       "hot": false,
@@ -2824,14 +2512,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a4fb6bfb73b51ba1",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 8,
+      "offset": 7,
       "price": 171000,
       "trip": "OW",
       "hot": false,
@@ -2840,14 +2528,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "503aa8f63fc00321",
       "from": "Астана",
       "to": "&gt; Анталья",
-      "offset": 8,
+      "offset": 7,
       "price": 249000,
       "trip": "RT",
       "hot": false,
@@ -2856,14 +2544,14 @@
       "returnDate": "2026-10-30",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "00de2ee04db729a6",
       "from": "Алматы",
       "to": "&gt; Гоа",
-      "offset": 8,
+      "offset": 7,
       "price": 251000,
       "trip": "RT",
       "hot": false,
@@ -2875,14 +2563,14 @@
       "returnDate": "2026-10-30",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b22a81528aa632ac",
       "from": "Астана",
       "to": "Анталия",
-      "offset": 8,
+      "offset": 7,
       "price": 256000,
       "trip": "RT",
       "hot": false,
@@ -2890,14 +2578,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "482f1b8c4a733cca",
       "from": "Алматы",
       "to": "Гоа (Индия)",
-      "offset": 8,
+      "offset": 7,
       "price": 268000,
       "trip": "RT",
       "hot": false,
@@ -2905,14 +2593,14 @@
       "departureDate": "2026-10-23",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "cb4b6704517bc508",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 8,
+      "offset": 7,
       "price": 292000,
       "trip": "RT",
       "hot": false,
@@ -2924,14 +2612,14 @@
       "returnDate": "2026-11-04",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "84e65682269308dd",
       "from": "Алматы",
       "to": "&gt; Санья",
-      "offset": 8,
+      "offset": 7,
       "price": 293000,
       "trip": "RT",
       "hot": false,
@@ -2943,14 +2631,14 @@
       "returnDate": "2026-10-27",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "79aa3cf2040e9a50",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 8,
+      "offset": 7,
       "price": 320000,
       "trip": "RT",
       "hot": false,
@@ -2962,14 +2650,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "6dd9651c5e28083f",
       "from": "Алматы",
       "to": "&gt; Санья",
-      "offset": 8,
+      "offset": 7,
       "price": 345000,
       "trip": "RT",
       "hot": false,
@@ -2981,14 +2669,14 @@
       "returnDate": "2026-10-31",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "7890ef55524ff739",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 31000,
       "trip": "OW",
       "hot": true,
@@ -2999,14 +2687,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e26eea5b813f3ae1",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 36000,
       "trip": "OW",
       "hot": true,
@@ -3017,14 +2705,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "777d108f2635cf51",
       "from": "Пхукет",
       "to": "&gt; Астана",
-      "offset": 9,
+      "offset": 8,
       "price": 39000,
       "trip": "OW",
       "hot": true,
@@ -3035,14 +2723,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "dbe229960a2d2dd1",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 9,
+      "offset": 8,
       "price": 51000,
       "trip": "OW",
       "hot": true,
@@ -3053,14 +2741,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9d2156430cd047d9",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 9,
+      "offset": 8,
       "price": 55000,
       "trip": "OW",
       "hot": true,
@@ -3068,14 +2756,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "94403e63ead4870c",
       "from": "Шарджа",
       "to": "Tashkent",
-      "offset": 9,
+      "offset": 8,
       "price": 85000,
       "trip": "OW",
       "hot": true,
@@ -3083,14 +2771,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "553442238109555f",
       "from": "Алматы",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 9,
+      "offset": 8,
       "price": 97000,
       "trip": "OW",
       "hot": true,
@@ -3099,14 +2787,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e2dcc7419a7e6565",
       "from": "Алматы",
       "to": "Шарм-эль-Шейх",
-      "offset": 9,
+      "offset": 8,
       "price": 97000,
       "trip": "OW",
       "hot": true,
@@ -3117,14 +2805,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4d3dca718264eac5",
       "from": "Аланья",
       "to": "Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 98000,
       "trip": "OW",
       "hot": true,
@@ -3135,14 +2823,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9ad895724d277506",
       "from": "Аланья",
       "to": "&gt; Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -3151,14 +2839,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a7eccbe9f76de371",
       "from": "Пхукет",
       "to": "&gt; Уральск",
-      "offset": 9,
+      "offset": 8,
       "price": 98000,
       "trip": "OW",
       "hot": false,
@@ -3167,14 +2855,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "22c8f2e94cedda35",
       "from": "Санья",
       "to": "&gt; Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 100000,
       "trip": "OW",
       "hot": false,
@@ -3185,14 +2873,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "7ccaa907ff0ae46a",
       "from": "Аланья",
       "to": "АЛМАТЫ",
-      "offset": 9,
+      "offset": 8,
       "price": 110000,
       "trip": "OW",
       "hot": true,
@@ -3200,14 +2888,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "db606257e6f19d7b",
       "from": "АЛМАТЫ",
       "to": "АНТАЛИЯ",
-      "offset": 9,
+      "offset": 8,
       "price": 115000,
       "trip": "OW",
       "hot": false,
@@ -3216,14 +2904,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4ff5977d7eba8d91",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 9,
+      "offset": 8,
       "price": 116000,
       "trip": "OW",
       "hot": false,
@@ -3232,14 +2920,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "28253b0e473df540",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 9,
+      "offset": 8,
       "price": 125000,
       "trip": "OW",
       "hot": false,
@@ -3250,14 +2938,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "67ec233680df7762",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 9,
+      "offset": 8,
       "price": 144000,
       "trip": "OW",
       "hot": false,
@@ -3265,14 +2953,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9f7004af01568998",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 149000,
       "trip": "OW",
       "hot": false,
@@ -3280,14 +2968,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "be96d94edd76028e",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 9,
+      "offset": 8,
       "price": 187000,
       "trip": "OW",
       "hot": false,
@@ -3295,14 +2983,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1bceff82d314d67a",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 9,
+      "offset": 8,
       "price": 212000,
       "trip": "OW",
       "hot": false,
@@ -3310,14 +2998,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2bf2b2986e727e9c",
       "from": "Алматы",
       "to": "Дубай",
-      "offset": 9,
+      "offset": 8,
       "price": 300000,
       "trip": "RT",
       "hot": false,
@@ -3325,14 +3013,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-14T12:21:41.342Z",
       "publishedAt": "2026-10-14T12:21:41.342Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "00afa5586e69b34a",
       "from": "Шымкент",
       "to": "Будапешт",
-      "offset": 9,
+      "offset": 8,
       "price": 303000,
       "trip": "RT",
       "hot": false,
@@ -3340,14 +3028,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b15cfcc6f983b3da",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 9,
+      "offset": 8,
       "price": 308000,
       "trip": "RT",
       "hot": false,
@@ -3356,14 +3044,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "9733b43833f51d64",
       "from": "Алматы",
       "to": "Анталия",
-      "offset": 9,
+      "offset": 8,
       "price": 315000,
       "trip": "RT",
       "hot": false,
@@ -3371,14 +3059,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1e759055b28962fd",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 9,
+      "offset": 8,
       "price": 339000,
       "trip": "RT",
       "hot": false,
@@ -3390,14 +3078,14 @@
       "returnDate": "2026-11-05",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "bab8c33ed79a6a6b",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 9,
+      "offset": 8,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -3409,14 +3097,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c2a49842c4def8d4",
       "from": "Астана",
       "to": "Будапешт",
-      "offset": 9,
+      "offset": 8,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -3424,14 +3112,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "09c0ed90e6f3e602",
       "from": "Алматы",
       "to": "Будапешт",
-      "offset": 9,
+      "offset": 8,
       "price": 349000,
       "trip": "RT",
       "hot": false,
@@ -3439,14 +3127,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1cd6f89c781b4e62",
       "from": "Алматы",
       "to": "&gt; Нячанг",
-      "offset": 9,
+      "offset": 8,
       "price": 396000,
       "trip": "RT",
       "hot": false,
@@ -3455,14 +3143,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "bfac69a30aba5f75",
       "from": "Алматы",
       "to": "&gt; Пхукет",
-      "offset": 9,
+      "offset": 8,
       "price": 457000,
       "trip": "RT",
       "hot": false,
@@ -3474,14 +3162,14 @@
       "returnDate": "2026-10-31",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "17095667e868814d",
       "from": "Алматы",
       "to": "Пхукет",
-      "offset": 9,
+      "offset": 8,
       "price": 470000,
       "trip": "RT",
       "hot": false,
@@ -3490,14 +3178,14 @@
       "departureDate": "2026-10-24",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b986bbe2638bfd15",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 26000,
       "trip": "OW",
       "hot": true,
@@ -3505,14 +3193,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5b37e68a22d709df",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 31000,
       "trip": "OW",
       "hot": true,
@@ -3523,14 +3211,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c70cebf777fe1a17",
       "from": "Маттала",
       "to": "&gt; Астана",
-      "offset": 10,
+      "offset": 9,
       "price": 38000,
       "trip": "OW",
       "hot": true,
@@ -3541,14 +3229,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "537019a17ce55eec",
       "from": "Пхукет",
       "to": "&gt; Уральск",
-      "offset": 10,
+      "offset": 9,
       "price": 50000,
       "trip": "OW",
       "hot": false,
@@ -3559,14 +3247,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5d7a6975263095e8",
       "from": "Санья",
       "to": "&gt; Шымкент",
-      "offset": 10,
+      "offset": 9,
       "price": 50000,
       "trip": "OW",
       "hot": true,
@@ -3577,14 +3265,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "523337b452ee7923",
       "from": "Шарджа",
       "to": "Tashkent",
-      "offset": 10,
+      "offset": 9,
       "price": 85000,
       "trip": "OW",
       "hot": false,
@@ -3592,14 +3280,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "da3bc1d11bc8f8ad",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 97000,
       "trip": "OW",
       "hot": true,
@@ -3610,14 +3298,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "618c200fb22358e2",
       "from": "Нячанг",
       "to": "&gt; Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 97000,
       "trip": "OW",
       "hot": true,
@@ -3625,14 +3313,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "666751818e185646",
       "from": "Шарджа",
       "to": "Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 114000,
       "trip": "OW",
       "hot": false,
@@ -3640,14 +3328,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e735f7b1f2d4b370",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 10,
+      "offset": 9,
       "price": 149000,
       "trip": "OW",
       "hot": false,
@@ -3655,14 +3343,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "5cbe173d5281751f",
       "from": "АНТАЛИЯ",
       "to": "АЛМАТЫ",
-      "offset": 10,
+      "offset": 9,
       "price": 150000,
       "trip": "OW",
       "hot": false,
@@ -3671,14 +3359,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "520fcd1bd912fa91",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 163000,
       "trip": "OW",
       "hot": false,
@@ -3686,14 +3374,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "446a7a8a4ae29036",
       "from": "Алматы",
       "to": "Урумчи",
-      "offset": 10,
+      "offset": 9,
       "price": 183000,
       "trip": "RT",
       "hot": false,
@@ -3702,14 +3390,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-12T16:59:30.692Z",
       "publishedAt": "2026-10-12T16:59:30.692Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "18944672b60bb07f",
       "from": "Нячанг",
       "to": "&gt; Астана",
-      "offset": 10,
+      "offset": 9,
       "price": 190000,
       "trip": "OW",
       "hot": false,
@@ -3717,14 +3405,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1d130b6a47d4e446",
       "from": "Анталия",
       "to": "&gt; Алматы",
-      "offset": 10,
+      "offset": 9,
       "price": 212000,
       "trip": "OW",
       "hot": false,
@@ -3732,14 +3420,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4f1f17c6cf0aee6e",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 10,
+      "offset": 9,
       "price": 213000,
       "trip": "OW",
       "hot": false,
@@ -3747,14 +3435,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "b081f2d73ea29e0e",
       "from": "Анталия",
       "to": "&gt; Астана",
-      "offset": 10,
+      "offset": 9,
       "price": 229000,
       "trip": "OW",
       "hot": false,
@@ -3762,14 +3450,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "23d3a257a3fe2905",
       "from": "Астана",
       "to": "&gt; Фукуок",
-      "offset": 10,
+      "offset": 9,
       "price": 310000,
       "trip": "RT",
       "hot": false,
@@ -3778,14 +3466,14 @@
       "returnDate": "2026-11-02",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "1ae93d4da0c887f5",
       "from": "Алматы",
       "to": "&gt; Фукуок",
-      "offset": 10,
+      "offset": 9,
       "price": 319000,
       "trip": "RT",
       "hot": false,
@@ -3794,14 +3482,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "d8a9f6382d427c9d",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 10,
+      "offset": 9,
       "price": 328000,
       "trip": "RT",
       "hot": false,
@@ -3810,14 +3498,14 @@
       "returnDate": "2026-11-01",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "dbf0d5bb6c886530",
       "from": "Алматы",
       "to": "Куала-Лумпур",
-      "offset": 10,
+      "offset": 9,
       "price": 383000,
       "trip": "RT",
       "hot": false,
@@ -3828,14 +3516,14 @@
       "returnDate": "2026-10-29",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4719c58e851419ae",
       "from": "Алматы",
       "to": "Куала-Лумпур",
-      "offset": 10,
+      "offset": 9,
       "price": 412000,
       "trip": "RT",
       "hot": false,
@@ -3844,14 +3532,14 @@
       "departureDate": "2026-10-25",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "34d17af6ea34c72d",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 11,
+      "offset": 10,
       "price": 33000,
       "trip": "OW",
       "hot": true,
@@ -3862,14 +3550,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "2225b3fa4d66ba3d",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 11,
+      "offset": 10,
       "price": 47000,
       "trip": "OW",
       "hot": true,
@@ -3880,14 +3568,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4df2cd60abb50b8c",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 11,
+      "offset": 10,
       "price": 47000,
       "trip": "OW",
       "hot": true,
@@ -3898,14 +3586,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "7074f56f53a0affc",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 11,
+      "offset": 10,
       "price": 47000,
       "trip": "OW",
       "hot": true,
@@ -3913,14 +3601,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "cf9df7c7adc94b6e",
       "from": "Фукуок",
       "to": "&gt; Алматы",
-      "offset": 11,
+      "offset": 10,
       "price": 47000,
       "trip": "OW",
       "hot": false,
@@ -3928,14 +3616,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "370b87cc49e72da1",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 11,
+      "offset": 10,
       "price": 75000,
       "trip": "OW",
       "hot": true,
@@ -3946,14 +3634,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "a20002453eb0e7d8",
       "from": "АЛМАТЫ",
       "to": "АНТАЛИЯ",
-      "offset": 11,
+      "offset": 10,
       "price": 95000,
       "trip": "OW",
       "hot": true,
@@ -3962,14 +3650,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ec5ad185c3f0dca7",
       "from": "Шымкент",
       "to": "&gt; Сиань",
-      "offset": 11,
+      "offset": 10,
       "price": 103000,
       "trip": "OW",
       "hot": false,
@@ -3980,14 +3668,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ca30eb6647b76a8e",
       "from": "Астана",
       "to": "&gt; Шарм-эль-Шейх",
-      "offset": 11,
+      "offset": 10,
       "price": 125000,
       "trip": "OW",
       "hot": false,
@@ -3996,14 +3684,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "3b2f14224ee003f6",
       "from": "Алматы",
       "to": "&gt; Анталья",
-      "offset": 11,
+      "offset": 10,
       "price": 149000,
       "trip": "OW",
       "hot": false,
@@ -4011,14 +3699,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "11214a1f2905c34b",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 11,
+      "offset": 10,
       "price": 167000,
       "trip": "OW",
       "hot": false,
@@ -4026,14 +3714,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "33265bcd7ce3e4a3",
       "from": "Алматы",
       "to": "&gt; Гоа",
-      "offset": 11,
+      "offset": 10,
       "price": 198000,
       "trip": "RT",
       "hot": false,
@@ -4045,14 +3733,14 @@
       "returnDate": "2026-11-02",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "10e2718012c24c1c",
       "from": "Сиань",
       "to": "&gt; Шымкент",
-      "offset": 11,
+      "offset": 10,
       "price": 207000,
       "trip": "RT",
       "hot": false,
@@ -4064,14 +3752,14 @@
       "returnDate": "2026-11-03",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c3861ef194ddf299",
       "from": "Алматы",
       "to": "Анталия",
-      "offset": 11,
+      "offset": 10,
       "price": 280000,
       "trip": "RT",
       "hot": false,
@@ -4079,14 +3767,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-15T06:35:41.836Z",
       "publishedAt": "2026-10-15T06:35:41.836Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "ad6975f6a2f37884",
       "from": "Шымкент",
       "to": "Маттала",
-      "offset": 11,
+      "offset": 10,
       "price": 335000,
       "trip": "RT",
       "hot": false,
@@ -4094,14 +3782,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-07T16:43:15.879Z",
       "publishedAt": "2026-10-07T16:43:15.879Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "c03a7fc6b4c04548",
       "from": "Астана",
       "to": "&gt; Фукуок",
-      "offset": 11,
+      "offset": 10,
       "price": 378000,
       "trip": "RT",
       "hot": false,
@@ -4110,14 +3798,14 @@
       "returnDate": "2026-11-02",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "cc40a3d6c5f6fcce",
       "from": "Астана",
       "to": "&gt; Нячанг",
-      "offset": 11,
+      "offset": 10,
       "price": 410000,
       "trip": "RT",
       "hot": false,
@@ -4129,14 +3817,14 @@
       "returnDate": "2026-11-04",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "e3f31de2cd77a393",
       "from": "Алматы",
       "to": "&gt; Пхукет",
-      "offset": 11,
+      "offset": 10,
       "price": 471000,
       "trip": "RT",
       "hot": false,
@@ -4145,14 +3833,14 @@
       "returnDate": "2026-11-02",
       "updatedAt": "2026-10-15T12:05:03.388Z",
       "publishedAt": "2026-10-15T12:05:03.388Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "90f3cd23461749e4",
       "from": "Алматы",
       "to": "Пхукет",
-      "offset": 11,
+      "offset": 10,
       "price": 503000,
       "trip": "RT",
       "hot": false,
@@ -4161,14 +3849,14 @@
       "departureDate": "2026-10-26",
       "updatedAt": "2026-10-14T06:41:12.744Z",
       "publishedAt": "2026-10-14T06:41:12.744Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "4e1375904b3663a6",
       "from": "Пхукет",
       "to": "&gt; Алматы",
-      "offset": 12,
+      "offset": 11,
       "price": 33000,
       "trip": "OW",
       "hot": true,
@@ -4179,14 +3867,14 @@
       "departureDate": "2026-10-27",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     },
     {
       "id": "855fad7c490a0bf5",
       "from": "Фукуок",
       "to": "&gt; Астана",
-      "offset": 12,
+      "offset": 11,
       "price": 38000,
       "trip": "OW",
       "hot": true,
@@ -4197,8 +3885,343 @@
       "departureDate": "2026-10-27",
       "updatedAt": "2026-10-15T16:54:07.125Z",
       "publishedAt": "2026-10-15T16:54:07.125Z",
-      "lastSeenAt": "2026-10-15T23:01:44.917Z",
-      "expiresAt": "2026-10-16T23:01:44.917Z"
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "92032afa009f977b",
+      "from": "Фукуок",
+      "to": "&gt; Астана",
+      "offset": 11,
+      "price": 47000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "40f4b2f7645d7a5a",
+      "from": "АСТАНА",
+      "to": "АНТАЛИЯ",
+      "offset": 11,
+      "price": 107000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "airlineCode": "P",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "eff6c700ebc86d49",
+      "from": "Сиань",
+      "to": "&gt; Шымкент",
+      "offset": 11,
+      "price": 115000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 5 кг",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "893ea6686a70c8e0",
+      "from": "Фукуок",
+      "to": "&gt; Алматы",
+      "offset": 11,
+      "price": 121000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "0879720da2b80517",
+      "from": "Санья",
+      "to": "&gt; Алматы",
+      "offset": 11,
+      "price": 125000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "6 мест",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 5 кг",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "cb1941dd54ab1fef",
+      "from": "Алматы",
+      "to": "&gt; Анталья",
+      "offset": 11,
+      "price": 149000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "4 мест",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "c2baf277296e89ea",
+      "from": "АНТАЛИЯ",
+      "to": "АЛМАТЫ",
+      "offset": 11,
+      "price": 150000,
+      "trip": "OW",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "airlineCode": "P",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "ff8467c842407234",
+      "from": "Алматы",
+      "to": "&gt; Анталья",
+      "offset": 11,
+      "price": 234000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "1 мест",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "6b931d35e2595f70",
+      "from": "Астана",
+      "to": "&gt; Анталья",
+      "offset": 11,
+      "price": 249000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "a5a38c449afaddc4",
+      "from": "Астана",
+      "to": "Анталия",
+      "offset": 11,
+      "price": 256000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "bd9dec5a5f64353b",
+      "from": "Астана",
+      "to": "&gt; Фукуок",
+      "offset": 11,
+      "price": 283000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "35d29873a6f007a6",
+      "from": "Астана",
+      "to": "&gt; Шарм-эль-Шейх",
+      "offset": 11,
+      "price": 319000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "1 мест",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 5 кг",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "6b464da9e02675bb",
+      "from": "Алматы",
+      "to": "&gt; Санья",
+      "offset": 11,
+      "price": 342000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "1 мест",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 5 кг",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "f3e254f7f18d699b",
+      "from": "Алматы",
+      "to": "&gt; Санья",
+      "offset": 11,
+      "price": 347000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "9 мест",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 5 кг",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-10-31",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "ab1d3fc9703155c2",
+      "from": "Алматы",
+      "to": "Пхукет",
+      "offset": 11,
+      "price": 349000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "Наличие уточняется",
+      "notice": "❗ TDAC обязательно",
+      "departureDate": "2026-10-27",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "a07be297e69ba446",
+      "from": "Алматы",
+      "to": "&gt; Пхукет",
+      "offset": 11,
+      "price": 361000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "3 мест",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 10 кг",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "4d40cfb510a3d00a",
+      "from": "Алматы",
+      "to": "&gt; Пхукет",
+      "offset": 11,
+      "price": 434000,
+      "trip": "RT",
+      "hot": false,
+      "seats": "7 мест",
+      "departureDate": "2026-10-27",
+      "returnDate": "2026-11-03",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "c7a9561b78caeee6",
+      "from": "Маттала",
+      "to": "&gt; Астана",
+      "offset": 12,
+      "price": 38000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Наличие уточняется",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 10 кг",
+      "departureDate": "2026-10-28",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "af8a956cee9744ef",
+      "from": "Пхукет",
+      "to": "&gt; Астана",
+      "offset": 12,
+      "price": 39000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Наличие уточняется",
+      "airline": "Scat",
+      "airlineCode": "S",
+      "baggage": "багаж 23 кг + ручная кладь 10 кг",
+      "departureDate": "2026-10-28",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
+    },
+    {
+      "id": "59a6bc3291059ccf",
+      "from": "Фукуок",
+      "to": "&gt; Астана",
+      "offset": 12,
+      "price": 67000,
+      "trip": "OW",
+      "hot": true,
+      "seats": "Наличие уточняется",
+      "departureDate": "2026-10-28",
+      "updatedAt": "2026-10-16T01:16:10.299Z",
+      "publishedAt": "2026-10-16T01:16:10.299Z",
+      "lastSeenAt": "2026-10-16T01:16:10.299Z",
+      "expiresAt": "2026-10-17T01:16:10.299Z"
     }
   ]
 }
