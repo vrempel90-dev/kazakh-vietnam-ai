@@ -243,15 +243,16 @@ function dedupeFlights(flights) {
         ? { ...flight }
         : { ...current };
 
-    const freshest = newer ? flight : current;
-    winner.seats = freshest.seats || winner.seats;
+// Seats, carrier and baggage always come from the lowest-priced source:
+    // combining a cheap fare with a different competitor's seat count lies.
+    winner.seats = winner.seats || "Наличие уточняется";
     // Keep carrier and baggage attached to the selected price/source.
     // Never transfer metadata from another offer with a different fare.
     winner.airline = winner.airline || undefined;
     winner.airlineCode = winner.airlineCode || undefined;
     winner.baggage = winner.baggage || undefined;
-    winner.notice = freshest.notice || winner.notice;
-    winner.sourcePostedAt = freshest.sourcePostedAt || winner.sourcePostedAt;
+    winner.notice = winner.notice || undefined;
+    winner.sourcePostedAt = winner.sourcePostedAt || undefined;
     winner.sourceIds = [
       ...new Set([...(current.sourceIds || []), ...(flight.sourceIds || [])])
     ];
