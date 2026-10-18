@@ -366,3 +366,13 @@ test("refuses ambiguous prices, impossible return dates and inverted trips", () 
   assert.equal(parseOfferLine("29.09 - 28.09 = 284 000", now), null);
   assert.equal(parseOfferLine("28.09 - 99 000 ₸", now)?.price, 99000);
 });
+
+
+test("yearless past-month prices are not silently rewritten as next year's flights", () => {
+  const now = new Date("2026-10-18T08:00:00Z");
+  assert.equal(parseOfferLine("03.10 - 78 000 ₸", now), null);
+  assert.equal(parseOfferLine("30.09 - 110 000 ₸", now), null);
+  assert.equal(parseOfferLine("03.10.2027 - 78 000 ₸", now)?.departureDate, "2027-10-03");
+  // January after October is an unambiguous next-calendar-year destination.
+  assert.equal(parseOfferLine("10.01 - 88 000 ₸", now)?.departureDate, "2027-01-10");
+});
