@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { localClock } from "./telegram-schedule.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -297,6 +298,15 @@ function numericPrice(value, multiplier = 1) {
 function priceFromText(value) {
   const text = String(value || "");
   if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(text)) return null;
+  // Fail closed on two distinct plausible fares in one row. Dates (dd.mm)
+  // and seat counts (1-3 digits) are not price candidates.
+  const fareAmounts = [...text.matchAll(/(?<![\d./])(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{5,7})(?!\d)/gu)]
+    .map(match => numericPrice(match[1]))
+    .filter(Boolean);
+  const thousandAmounts = [...text.matchAll(/(?<!\d)(\d{1,4})\s*(?:тыс\.?|к)(?![а-яё\w])/giu)]
+    .map(match => numericPrice(match[1], 1000))
+    .filter(Boolean);
+  if (new Set([...fareAmounts, ...thousandAmounts]).size > 1) return null;
   const thousands = text.match(/(?<![\d.,])(\d{1,4})\s*(?:тыс\.?|к)(?![а-яё\w])/iu);
   if (thousands) return numericPrice(thousands[1], 1000);
   const currency = text.match(/(?<!\d)(\d{1,3}(?:[ \u00a0.,]\d{3})+|\d{4,7})\s*(?:₸|тг\.?|тенге|kzt\b)/iu);
@@ -342,12 +352,14 @@ export function parseOfferLine(line, now) {
   if (range) {
     departureDate = dateFromText(range[1], now);
     returnDate = dateFromText(range[2], now);
+    if (!departureDate || !returnDate || returnDate < departureDate) return null;
     price = priceFromText(text);
   }
 
   if (!departureDate) {
     const compact = compactRangeFromText(text, now);
-    if (compact?.[0] && compact?.[1]) {
+    if (compact) {
+      if (!compact[0] || !compact[1] || compact[1] < compact[0]) return null;
       departureDate = compact[0];
       returnDate = compact[1];
       price = priceFromText(text);
@@ -451,7 +463,7 @@ function extractTravelNotices(lines) {
 
 function daysUntil(iso, now) {
   const target = new Date(iso + "T12:00:00Z");
-  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+  const base = new Date(localClock(now).date + "T12:00:00Z");
   return Math.round((target.getTime() - base.getTime()) / 86400000);
 }
 
@@ -485,7 +497,7 @@ export function parseTelegramPost(text, {
   const appendOffer = parsed => {
     if (!route || !parsed?.departureDate || !parsed?.price) return;
     const offset = daysUntil(parsed.departureDate, now);
-    if (offset <= 0 || offset > 365) return;
+    if (offset < 0 || offset > 365) return;
 
     const effectiveTrip = parsed.returnDate ? "RT" : tripHint;
     const effectiveRoute = canonicalizeRoundTripRoute(route, effectiveTrip);
