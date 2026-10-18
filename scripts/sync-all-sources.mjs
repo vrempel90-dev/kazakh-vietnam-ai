@@ -12,6 +12,8 @@ import { validateFlightsForPublication } from "./flight-validator.mjs";
 import { shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 import { runTelegramPublication } from "./telegram-publish-run.mjs";
 import { classifyFlight } from "./charter-geo.mjs";
+import { localClock } from "./telegram-schedule.mjs";
+import { runHotPublication } from "./telegram-hot-publish-run.mjs";
 
 function envNumber(name) {
   const raw = process.env[name];
@@ -73,12 +75,7 @@ function normalizeOfferForPublication(offer) {
 
 function dayOffset(iso, now) {
   const target = new Date(iso + "T12:00:00Z");
-  const base = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    12
-  ));
+  const base = new Date(localClock(now).date + "T12:00:00Z");
   return Math.round((target.getTime() - base.getTime()) / 86400000);
 }
 
@@ -181,7 +178,7 @@ async function syncTelegramSource(source, now, pricingConfig) {
     }
 
     const offset = dayOffset(offer.departureDate, now);
-    if (offset <= 0 || offset > 365) continue;
+    if (offset < 0 || offset > 365) continue;
 
     flights.push({
       ...publicFlight({
@@ -476,6 +473,18 @@ if (feedChanged) {
 } else {
   console.log("No customer-visible flight changes.");
 }
+
+// Urgent alerts are delivered on every collector sync, even when a regional
+// publication window is closed. They run first so the scheduled country's
+// bookkeeping cannot suppress genuinely new same-day alerts.
+const hotPublicationReport = await runHotPublication({
+  flights,
+  now,
+  env: process.env,
+  reason: process.env.SYNC_REASON || "scheduled",
+  logger: console
+});
+console.log("Hot Telegram publication:", JSON.stringify(hotPublicationReport));
 
 const publicationReport = await runTelegramPublication({
   flights,
