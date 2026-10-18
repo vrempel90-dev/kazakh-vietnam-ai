@@ -158,3 +158,17 @@ test("does not incorrectly quarantine other SCAT cities, outbound flights or rou
   ]);
   assert.equal(result.needsReview.length, 0);
 });
+
+
+test("accepts today's departure in Astana time, rejects yesterday and impossible dates", () => {
+  const moment = new Date("2026-10-12T20:30:00Z"); // 13 October, 01:30 in Astana
+  const result = validateFlightsForPublication([
+    flight({ id: "today", departureDate: "2026-10-13" }),
+    flight({ id: "tomorrow", departureDate: "2026-10-14" }),
+    flight({ id: "old", departureDate: "2026-10-12" }),
+    flight({ id: "invalid", departureDate: "2026-02-30" })
+  ], { now: moment });
+  assert.deepEqual(result.verified.map(item => item.id), ["today", "tomorrow"]);
+  assert.deepEqual(result.rejected.map(item => item.reason),
+    ["DEPARTURE_DATE_OUT_OF_RANGE", "INVALID_DEPARTURE_DATE"]);
+});
