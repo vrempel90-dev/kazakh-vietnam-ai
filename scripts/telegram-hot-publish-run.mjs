@@ -40,7 +40,7 @@ export function selectNearTermOffers(flights, { now = new Date(), timeZone = "As
     const price = Number(flight?.price);
     return (date === today || date === tomorrow)
       && !flight?.cachedFallback
-      && Boolean(flight?.from && flight?.to)
+      && Boolean(flight?.id && flight?.from && flight?.to)
       && Number.isFinite(price) && price > 0;
   });
 }
