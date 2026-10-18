@@ -346,3 +346,33 @@ test("regression: a fare row is never parsed as a route", () => {
     assert.equal(parseRouteLine(line), null, line);
   }
 });
+
+
+test("accepts same-day tickets but never past dates in Astana time", () => {
+  const now = new Date("2026-10-12T20:30:00Z"); // 13 Oct, 01:30 in Astana
+  const offers = parseTelegramPost([
+    "Алматы - Нячанг",
+    "12.10 - 90 000 ₸",
+    "13.10 - 95 000 ₸",
+    "14.10 - 110 000 ₸"
+  ].join("\n"), { sourceId: "test:today", now, postedAt: now.toISOString() });
+  assert.deepEqual(offers.map(offer => offer.departureDate), ["2026-10-13", "2026-10-14"]);
+});
+
+test("refuses ambiguous prices, impossible return dates and inverted trips", () => {
+  const now = new Date("2026-09-27T00:00:00Z");
+  assert.equal(parseOfferLine("28.09 - 99 000 ₸ / 119 000 ₸", now), null);
+  assert.equal(parseOfferLine("29.09 - 30.02 = 284 000", now), null);
+  assert.equal(parseOfferLine("29.09 - 28.09 = 284 000", now), null);
+  assert.equal(parseOfferLine("28.09 - 99 000 ₸", now)?.price, 99000);
+});
+
+
+test("yearless past-month prices are not silently rewritten as next year's flights", () => {
+  const now = new Date("2026-10-18T08:00:00Z");
+  assert.equal(parseOfferLine("03.10 - 78 000 ₸", now), null);
+  assert.equal(parseOfferLine("30.09 - 110 000 ₸", now), null);
+  assert.equal(parseOfferLine("03.10.2027 - 78 000 ₸", now)?.departureDate, "2027-10-03");
+  // January after October is an unambiguous next-calendar-year destination.
+  assert.equal(parseOfferLine("10.01 - 88 000 ₸", now)?.departureDate, "2027-01-10");
+});

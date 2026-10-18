@@ -133,11 +133,8 @@ test("scenario 6: the same offer is never repeated inside a digest", () => {
   const { digests, duplicates } = buildCountryDigests(duplicated, { now: NOW });
   const lines = plain(digests[0].text).split("\n").filter(line => line.includes("96 000 ₸"));
   assert.equal(lines.length, 1, "an identical offer collapses to one line");
-  assert.equal(duplicates, 2, "both the repeated id and the identical copy are counted");
-  assert.ok(
-    plain(digests[0].text).includes("99 000 ₸"),
-    "a genuinely different price on the same date is kept"
-  );
+  assert.equal(duplicates, 3, "all three competing copies are deduplicated");
+  assert.ok(!plain(digests[0].text).includes("99 000 ₸"), "the more expensive competitor is removed");
 });
 
 test("different carriers on the same date are both kept", () => {
@@ -155,7 +152,7 @@ test("scenario 13: a large country list splits into parts without losing an offe
     from: index % 2 ? "Алматы" : "Астана",
     to: "Нячанг",
     trip: "OW",
-    departureDate: "2026-11-" + String(1 + (index % 28)).padStart(2, "0"),
+    departureDate: new Date(Date.UTC(2026, 9, 14 + index, 12)).toISOString().slice(0, 10),
     price: 100000 + index * 137,
     airlineCode: index % 3 === 0 ? "V" : index % 3 === 1 ? "S" : "A",
     seats: String(1 + (index % 9)) + " мест"
@@ -183,7 +180,7 @@ test("a single route longer than one message is chunked and marked as continued"
     from: "Алматы",
     to: "Нячанг",
     trip: "OW",
-    departureDate: "2026-11-" + String(1 + (index % 28)).padStart(2, "0"),
+    departureDate: new Date(Date.UTC(2026, 9, 14 + index, 12)).toISOString().slice(0, 10),
     price: 100000 + index,
     airlineCode: "V"
   }));
@@ -279,4 +276,18 @@ test("the content hash changes only when the rendered text changes", () => {
     { now: NOW }
   ).digests[0];
   assert.notEqual(first.contentHash, changed.contentHash);
+});
+
+
+test("a lower fare replaces an expensive copy without mixing seat counts", () => {
+  const expensive = { id: "source-a", from: "Алматы", to: "Нячанг", trip: "OW",
+    departureDate: "2026-10-22", price: 180000, airlineCode: "V", seats: "9 мест" };
+  const cheap = { ...expensive, id: "source-b", price: 99000, seats: "2 места" };
+  const output = buildCountryDigests([expensive, cheap], { now: NOW });
+  const text = plain(output.digests[0].text);
+  assert.equal(output.duplicates, 1);
+  assert.ok(text.includes("99 000 ₸ (2)"));
+  assert.ok(!text.includes("180 000"));
+  assert.ok(!text.includes("(9)"));
+  assert.deepEqual(output.digests[0].offerIds, ["source-b"]);
 });
