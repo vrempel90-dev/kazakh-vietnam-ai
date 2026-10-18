@@ -169,9 +169,7 @@ function offerSignature(entry) {
     entry.classification.toCity.id,
     String(entry.flight.departureDate || ""),
     String(entry.flight.returnDate || ""),
-    Math.round(Number(entry.flight.price) || 0),
-    entry.code || normalizeAirlineText(entry.flight.airline),
-    String(entry.flight.seats || "")
+    entry.code || normalizeAirlineText(entry.flight.airline)
   ].join("|");
 }
 
@@ -183,7 +181,7 @@ export function groupFlightsByCountry(flights) {
   const countries = new Map();
   const diagnostics = [];
   const seenIds = new Set();
-  const seenSignatures = new Set();
+  const seenSignatures = new Map();
   let duplicates = 0;
 
   for (const flight of Array.isArray(flights) ? flights : []) {
@@ -211,19 +209,26 @@ export function groupFlightsByCountry(flights) {
 
     const entry = { flight, classification, code: carrierCode(flight) };
     const signature = offerSignature(entry);
-    if (seenSignatures.has(signature)) {
+    const previous = seenSignatures.get(signature);
+    if (previous) {
+      // Two competitors selling the same carrier/route/date are one flight.
+      // Keep only the cheapest fare, including metadata from that fare.
+      if (Number(flight.price) < Number(previous.entry.flight.price)) {
+        previous.group.entries[previous.index] = entry;
+        previous.entry = entry;
+      }
       duplicates += 1;
       continue;
     }
 
     if (id) seenIds.add(id);
-    seenSignatures.add(signature);
-
     const code = classification.country.code;
     if (!countries.has(code)) {
       countries.set(code, { country: classification.country, entries: [] });
     }
-    countries.get(code).entries.push(entry);
+    const group = countries.get(code);
+    seenSignatures.set(signature, { group, index: group.entries.length, entry });
+    group.entries.push(entry);
   }
 
   const groups = [...countries.values()].sort((a, b) =>
