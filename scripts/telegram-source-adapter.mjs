@@ -250,11 +250,15 @@ export function parseRouteLine(line) {
 }
 
 function inferYear(day, month, now) {
-  let year = now.getUTCFullYear();
-  const candidate = new Date(Date.UTC(year, month - 1, day, 12));
-  const diffDays = (candidate.getTime() - now.getTime()) / 86400000;
-  if (diffDays < -7) year += 1;
-  return year;
+  const today = localClock(now).date;
+  const year = Number(today.slice(0, 4));
+  const currentMonth = Number(today.slice(5, 7));
+  const target = new Date(Date.UTC(year, month - 1, day, 12)).toISOString().slice(0, 10);
+  if (target >= today) return year;
+  // Only a clear calendar-year rollover is inferred. A date from earlier
+  // this month (or last month) is stale, not a flight 11 months from now.
+  // Ambiguous yearless dates are held unless the source specifies the year.
+  return month < currentMonth && currentMonth - month >= 6 ? year + 1 : null;
 }
 
 function toIso(day, month, explicitYear, now) {
@@ -263,6 +267,7 @@ function toIso(day, month, explicitYear, now) {
   if (!d || !m || d > 31 || m > 12) return null;
   let year = Number(explicitYear);
   if (!Number.isFinite(year) || !year) year = inferYear(d, m, now);
+  if (year == null) return null;
   if (year < 100) year += 2000;
   const date = new Date(Date.UTC(year, m - 1, d, 12));
   if (Number.isNaN(date.getTime()) || date.getUTCDate() !== d || date.getUTCMonth() + 1 !== m) return null;
