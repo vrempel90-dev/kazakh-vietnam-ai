@@ -1,3 +1,5 @@
+import { localClock } from "./telegram-schedule.mjs";
+
 function normalizeCity(value) {
   return String(value || "")
     .toLocaleLowerCase("ru-RU")
@@ -5,14 +7,11 @@ function normalizeCity(value) {
 }
 
 function dayOffset(iso, now) {
-  const target = new Date(String(iso || "") + "T12:00:00Z");
-  if (Number.isNaN(target.getTime())) return null;
-  const base = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    12
-  ));
+  const value = String(iso || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const target = new Date(value + "T12:00:00Z");
+  if (Number.isNaN(target.getTime()) || target.toISOString().slice(0, 10) !== value) return null;
+  const base = new Date(localClock(now).date + "T12:00:00Z");
   return Math.round((target.getTime() - base.getTime()) / 86400000);
 }
 
@@ -38,7 +37,7 @@ function basicRejectReason(flight, now) {
 
   const offset = dayOffset(flight?.departureDate, now);
   if (offset == null) return "INVALID_DEPARTURE_DATE";
-  if (offset <= 0 || offset > 365) return "DEPARTURE_DATE_OUT_OF_RANGE";
+  if (offset < 0 || offset > 365) return "DEPARTURE_DATE_OUT_OF_RANGE";
 
   if (!["OW", "RT"].includes(String(flight?.trip || ""))) {
     return "INVALID_TRIP_TYPE";
