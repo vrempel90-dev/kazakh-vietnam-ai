@@ -18,6 +18,7 @@ import { join } from "node:path";
 
 import { parseTelegramPost } from "../scripts/telegram-source-adapter.mjs";
 import { validateFlightsForPublication } from "../scripts/flight-validator.mjs";
+import { partitionOffersByPolicy } from "../scripts/charter-publication-policy.mjs";
 import { reconcileLifecycle } from "../scripts/offer-lifecycle.mjs";
 import { buildCountryDigests } from "../scripts/telegram-digest.mjs";
 import { classifyFlight } from "../scripts/charter-geo.mjs";
@@ -49,15 +50,15 @@ const VIETNAM_POST = [
   "21.10 → 28.10 — 196 000 ₸ (7)"
 ].join("\n");
 
-const KOREA_POST = [
-  "🇰🇷 ЮЖНАЯ КОРЕЯ",
+const CHINA_POST = [
+  "🇨🇳 КИТАЙ",
   "",
   "Air Astana",
-  "Алматы → Seoul",
+  "Алматы → Sanya",
   "A 02.11 — 190 000 ₸ (6)",
   "A 09.11 — 205 000 ₸",
   "",
-  "Incheon → Алматы",
+  "Хайнань → Алматы",
   "A 10.11 — 185 000 ₸ (2)"
 ].join("\n");
 
@@ -75,8 +76,9 @@ const STALE_POST = [
 ].join("\n");
 
 /**
- * A same-day A->B and B->A pair reported by a single source: the direction is
- * ambiguous, so the validator quarantines it until a second source confirms it.
+ * One aircraft, out and back on the same day, from a single source. This is
+ * what a charter looks like, and the mirrored-route quarantine used to hold
+ * both directions back for want of a second source. Both must publish.
  */
 const MIRRORED_POST = [
   "🇦🇪 ОАЭ",
@@ -86,6 +88,24 @@ const MIRRORED_POST = [
   "",
   "Дубай → Алматы",
   "20.10 — 158 000 ₸ (2)"
+].join("\n");
+
+/**
+ * Countries the client did not agree to, plus a route between two foreign
+ * countries. None of this may reach the channel or the customer feed.
+ */
+const FORBIDDEN_POST = [
+  "🇺🇿 УЗБЕКИСТАН",
+  "",
+  "Centrum Air",
+  "Алматы → Ташкент",
+  "C 22.10 — 60 000 ₸ (4)",
+  "",
+  "Шарджа → Ташкент",
+  "22.10 — 70 000 ₸ (3)",
+  "",
+  "Алматы → Джидда",
+  "23.10 — 180 000 ₸ (2)"
 ].join("\n");
 
 const DISPUTED_POST = [
@@ -126,10 +146,14 @@ function ingest(posts) {
     parseTelegramPost(text, { sourceId, postId, postedAt: NOW.toISOString(), now: NOW })
   );
   const flights = offers.map(toPublishableFlight);
-  const validation = validateFlightsForPublication(flights, { now: NOW, mirroredRouteMinSources: 2 });
+  // The same order sync-all-sources uses: the allowed-route gate first, so a
+  // forbidden route never reaches the validator, the feed or the publisher.
+  const policy = partitionOffersByPolicy(flights);
+  const validation = validateFlightsForPublication(policy.allowed, { now: NOW, mirroredRouteMinSources: 2 });
   return {
     offers,
     flights,
+    policy,
     validation,
     publishable: reconcileLifecycle(validation.verified, null, NOW, 24)
   };
@@ -137,10 +161,11 @@ function ingest(posts) {
 
 const FULL_FEED = [
   [VIETNAM_POST, "telegram:partner-a", 101],
-  [KOREA_POST, "telegram:partner-a", 102],
+  [CHINA_POST, "telegram:partner-a", 102],
   [STALE_POST, "telegram:partner-b", 103],
   [DISPUTED_POST, "telegram:partner-b", 104],
-  [MIRRORED_POST, "telegram:partner-b", 105]
+  [MIRRORED_POST, "telegram:partner-b", 105],
+  [FORBIDDEN_POST, "telegram:partner-c", 106]
 ];
 
 test("the parser turns channel text into offers with carriers, seats and trip types", () => {
@@ -187,7 +212,7 @@ test("scenario 14: stale and unconfirmed offers never reach the renderer", () =>
     departureDate: "2026-09-01", price: 150000, sourceIds: ["telegram:cache"]
   }], { now: NOW, mirroredRouteMinSources: 2 });
   assert.equal(stale.verified.length, 0);
-  assert.equal(stale.rejected[0].reason, "DEPARTURE_DATE_OUT_OF_RANGE");
+  assert.equal(stale.rejected[0].reason, "DEPARTURE_IN_THE_PAST");
 
   // Stage 3 - the disputed SCAT Phuket -> Almaty pairing is held for review.
   assert.ok(
@@ -196,29 +221,42 @@ test("scenario 14: stale and unconfirmed offers never reach the renderer", () =>
   );
   assert.ok(!publishable.some(flight => flight.from === "Пхукет" && flight.to === "Алматы"));
 
-  // Stage 4 - an ambiguous same-day mirrored pair from one source is unconfirmed.
+  // Stage 4 - a same-day Kazakhstan charter pair is NOT quarantined: one
+  // aircraft flies both legs and a single channel carries both.
   assert.ok(
-    validation.needsReview.some(item => item.reason === "MIRRORED_ROUTE_UNCONFIRMED"),
-    "the single-source mirrored pair is quarantined"
+    !validation.needsReview.some(item => item.reason === "MIRRORED_ROUTE_UNCONFIRMED"),
+    "a Kazakhstan charter pair is not treated as ambiguous"
   );
-  assert.ok(!publishable.some(flight => flight.to === "Дубай" || flight.from === "Дубай"));
+  assert.ok(publishable.some(flight => flight.to === "Дубай"), "the outbound leg survives");
+  assert.ok(publishable.some(flight => flight.from === "Дубай"), "the inbound leg survives");
 
-  // Stage 5 - none of it appears in a published message.
+  // Stage 5 - forbidden countries and foreign-to-foreign routes are refused
+  // before the validator, with a named reason each.
+  const { policy } = ingest(FULL_FEED);
+  assert.deepEqual(
+    [...new Set(policy.refused.map(item => item.reason))].sort(),
+    ["COUNTRY_NOT_ALLOWED", "FOREIGN_TO_FOREIGN_ROUTE"]
+  );
+  assert.ok(!publishable.some(flight => flight.to === "Ташкент" || flight.from === "Ташкент"));
+  assert.ok(!publishable.some(flight => flight.to === "Джидда"));
+
+  // Stage 6 - none of it appears in a published message.
   const { digests } = buildCountryDigests(publishable, { now: NOW });
   const allText = digests.map(digest => digest.text).join("\n");
   assert.ok(!allText.includes("01.09"));
   assert.ok(!allText.includes("Пхукет - Алматы"));
-  assert.ok(!allText.includes("ОАЭ"), "a quarantined country produces no post at all");
-  assert.ok(!allText.includes("Дубай"));
+  for (const word of ["УЗБЕКИСТАН", "САУДОВСКАЯ", "Ташкент", "Джидда", "Шарджа"]) {
+    assert.ok(!allText.includes(word), word + " must never be rendered");
+  }
 });
 
 test("the whole chain publishes one message per country in the agreed layout", async () => {
   const { publishable } = ingest(FULL_FEED);
   const { digests, summary } = buildCountryDigests(publishable, { now: NOW });
 
-  assert.equal(summary.countries, 3, "Vietnam, South Korea and Thailand");
-  assert.equal(digests.length, 3, "one message per country");
-  assert.equal(summary.diagnostics, 0);
+  assert.equal(summary.countries, 4, "Vietnam, China, Thailand and the UAE");
+  assert.equal(digests.length, 4, "one message per country");
+  assert.equal(summary.diagnostics, 0, "nothing forbidden reaches the renderer");
 
   const vietnam = digests.find(digest => digest.country === "VN");
   const text = vietnam.text.replace(/<\/?b>/g, "");
@@ -241,13 +279,18 @@ test("the whole chain publishes one message per country in the agreed layout", a
   assert.ok(text.includes("V - VietJet Air"));
   assert.ok(text.endsWith("Цены и наличие уточняются при бронировании."));
 
-  // South Korea is complete and separate.
-  const korea = digests.find(digest => digest.country === "KR").text.replace(/<\/?b>/g, "");
-  assert.ok(korea.includes("🇰🇷 ЮЖНАЯ КОРЕЯ"));
-  assert.ok(korea.includes("Алматы - Сеул"));
-  assert.ok(korea.includes("Сеул - Алматы"), "Incheon is normalised to Seoul");
-  assert.ok(!korea.includes("ВЬЕТНАМ") && !korea.includes("Фукуок"));
-  assert.ok(!text.includes("ЮЖНАЯ КОРЕЯ") && !text.includes("Сеул"));
+  // China is complete and separate.
+  const china = digests.find(digest => digest.country === "CN").text.replace(/<\/?b>/g, "");
+  assert.ok(china.includes("🇨🇳 КИТАЙ"));
+  assert.ok(china.includes("Алматы - Санья"));
+  assert.ok(china.includes("Санья - Алматы"), "Hainan is normalised to Sanya");
+  assert.ok(!china.includes("ВЬЕТНАМ") && !china.includes("Фукуок"));
+  assert.ok(!text.includes("КИТАЙ") && !text.includes("Санья"));
+
+  // The UAE charter pair keeps both directions, in their own sections.
+  const uae = digests.find(digest => digest.country === "AE").text.replace(/<\/?b>/g, "");
+  assert.ok(uae.includes("Алматы - Дубай"));
+  assert.ok(uae.includes("Дубай - Алматы"));
 });
 
 test("the scheduler and publisher deliver the chain once and keep durable state", async () => {
@@ -276,49 +319,66 @@ test("the scheduler and publisher deliver the chain once and keep durable state"
   });
 
   assert.equal(morning.window.id, "morning");
+  // Vietnam, China and Thailand are the Asia window. The UAE belongs to the
+  // 14:00-15:00 Middle East window, so it is reported out of window, not lost.
   assert.equal(morning.totals.sent, 3);
+  assert.equal(morning.totals.outOfWindow, 1);
   assert.equal(morning.channels[0].coverage.complete, true);
   assert.equal(calls.length, 3);
   assert.ok(calls.every(call => call.method === "sendMessage"));
+  assert.ok(calls.every(call => !call.text.includes("ОАЭ")));
 
   // Each delivered message names exactly one country.
   for (const call of calls) {
-    const names = ["ВЬЕТНАМ", "ЮЖНАЯ КОРЕЯ", "ТАИЛАНД"].filter(name => call.text.includes(name));
+    const names = ["ВЬЕТНАМ", "КИТАЙ", "ТАИЛАНД"].filter(name => call.text.includes(name));
     assert.equal(names.length, 1, "mixed countries in one post: " + names.join(","));
   }
 
-  // Every rendered offer is recorded against the channel.
   const stored = await loadPublicationState(path);
-  const recorded = Object.values(stored.channels[CHAT].messages).flatMap(m => m.offerIds);
-  assert.equal(new Set(recorded).size, publishable.length);
   assert.equal(stored.channels[CHAT].windows["2026-10-12:morning"].status, "completed");
 
-  // A later sync in the same window changes nothing.
+  // A later sync in the same window with unchanged content changes nothing.
   const rerun = await runTelegramPublication({
     flights: publishable, now: new Date(NOW.getTime() + 15 * 60000),
     env, statePath: path, fetchImpl, logger: null
   });
   assert.equal(calls.length, 3, "no duplicate posts from the next sync");
-  assert.equal(rerun.channels[0].error, "WINDOW_ALREADY_PUBLISHED");
+  assert.equal(rerun.totals.sent, 0);
+  assert.equal(rerun.totals.skipped, 3, "each unchanged country is skipped");
 
-  // The afternoon window edits only the country whose offers changed.
-  const afternoon = await runTelegramPublication({
+  // A later sync in the same window whose content DID change edits only that
+  // country's live post.
+  const changed = await runTelegramPublication({
     flights: publishable.map(flight =>
-      classifyFlight(flight).country?.code === "KR" ? { ...flight, price: flight.price + 5000 } : flight
+      classifyFlight(flight).country?.code === "CN" ? { ...flight, price: flight.price + 5000 } : flight
     ),
-    now: new Date(Date.UTC(2026, 9, 12, 9, 10)),
+    now: new Date(NOW.getTime() + 30 * 60000),
     env, statePath: path, fetchImpl, logger: null
   });
 
-  assert.equal(afternoon.totals.edited, 1);
-  assert.equal(afternoon.totals.sent, 0);
-  // Vietnam and Thailand belong to the morning's Asia window, so the afternoon
-  // does not even consider them; South Korea has no region and travels along.
-  assert.equal(afternoon.totals.skipped, 0);
-  assert.equal(afternoon.totals.outOfWindow, 2);
+  assert.equal(changed.totals.edited, 1);
+  assert.equal(changed.totals.sent, 0);
+  assert.equal(changed.totals.skipped, 2);
   assert.equal(calls.length, 4);
   assert.equal(calls[3].method, "editMessageText");
-  assert.ok(calls[3].text.includes("ЮЖНАЯ КОРЕЯ"));
+  assert.ok(calls[3].text.includes("КИТАЙ"));
+
+  // The afternoon window publishes the Middle East, and only it.
+  const afternoon = await runTelegramPublication({
+    flights: publishable,
+    now: new Date(Date.UTC(2026, 9, 12, 9, 10)),
+    env, statePath: path, fetchImpl, logger: null
+  });
+  assert.equal(afternoon.window.region.id, "middle-east");
+  assert.equal(afternoon.totals.sent, 1);
+  assert.equal(afternoon.totals.outOfWindow, 3);
+  assert.equal(calls.length, 5);
+  assert.ok(calls[4].text.includes("ОАЭ"));
+
+  // Every rendered offer is recorded against the channel.
+  const finalState = await loadPublicationState(path);
+  const recorded = Object.values(finalState.channels[CHAT].messages).flatMap(m => m.offerIds);
+  assert.equal(new Set(recorded).size, publishable.length);
 });
 
 test("a feed that grows past one message per country still delivers every offer", async () => {

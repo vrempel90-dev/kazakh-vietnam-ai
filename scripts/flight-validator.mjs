@@ -1,20 +1,14 @@
+import { resolveCity } from "./charter-geo.mjs";
+import { localDayOffset } from "./telegram-schedule.mjs";
+
 function normalizeCity(value) {
   return String(value || "")
     .toLocaleLowerCase("ru-RU")
     .replace(/[^а-яёa-z0-9]/giu, "");
 }
 
-function dayOffset(iso, now) {
-  const target = new Date(String(iso || "") + "T12:00:00Z");
-  if (Number.isNaN(target.getTime())) return null;
-  const base = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    12
-  ));
-  return Math.round((target.getTime() - base.getTime()) / 86400000);
-}
+/** Furthest departure we accept, in days. */
+const MAX_DEPARTURE_HORIZON_DAYS = 365;
 
 function sourceCount(flights) {
   const ids = new Set();
@@ -36,9 +30,13 @@ function basicRejectReason(flight, now) {
   const price = Number(flight?.price);
   if (!Number.isFinite(price) || price <= 0) return "INVALID_PRICE";
 
-  const offset = dayOffset(flight?.departureDate, now);
+  // Counted in Asia/Almaty, and `0` - a departure today - is accepted. The
+  // previous `offset <= 0` test, measured against the UTC calendar day,
+  // rejected every same-day charter seat as "out of range".
+  const offset = localDayOffset(flight?.departureDate, now);
   if (offset == null) return "INVALID_DEPARTURE_DATE";
-  if (offset <= 0 || offset > 365) return "DEPARTURE_DATE_OUT_OF_RANGE";
+  if (offset < 0) return "DEPARTURE_IN_THE_PAST";
+  if (offset > MAX_DEPARTURE_HORIZON_DAYS) return "DEPARTURE_BEYOND_HORIZON";
 
   if (!["OW", "RT"].includes(String(flight?.trip || ""))) {
     return "INVALID_TRIP_TYPE";
@@ -89,14 +87,39 @@ function reasonCounts(items) {
 }
 
 /**
+ * A charter flying out and back on the same day is the normal case, not a
+ * suspicious one: one aircraft operates both legs, and channels post the pair
+ * together.
+ *
+ * The mirrored-route quarantine used to fire on exactly that shape, and
+ * because a single channel usually carries both legs it quarantined BOTH
+ * directions - so the whole Astana <-> Phu Quoc programme, outbound and
+ * inbound, was held back for review and never published. Together with the
+ * undecoded `&gt;` this was the second large source of missing tickets.
+ *
+ * A route with exactly one Kazakhstan endpoint has no direction ambiguity to
+ * protect against: the digest renders "БИЛЕТЫ ТУДА" and "ОБРАТНЫЕ БИЛЕТЫ" as
+ * separate sections, and both are legitimate products. The guard is therefore
+ * scoped to routes that are NOT a clean Kazakhstan-to-foreign pair, which is
+ * where a parser mix-up could still produce a direction nobody sells.
+ */
+function isUnambiguousKazakhstanPair(flight) {
+  const from = resolveCity(flight?.from);
+  const to = resolveCity(flight?.to);
+  if (!from || !to) return false;
+  const fromKz = from.country.code === "KZ";
+  const toKz = to.country.code === "KZ";
+  return fromKz !== toKz;
+}
+
+/**
  * Protects auto-publication from ambiguous Telegram route direction.
  *
  * A mirrored same-day one-way pair (A -> B and B -> A) is treated as ambiguous
  * when a direction is supported by fewer than mirroredRouteMinSources distinct
  * sources. Weak directions are quarantined instead of being published.
  *
- * This is intentionally conservative: a valid same-day turnaround can still be
- * published automatically when it is independently corroborated.
+ * Kazakhstan-to-foreign pairs are exempt, for the reason above.
  */
 export function validateFlightsForPublication(flights, {
   now = new Date(),
@@ -130,6 +153,7 @@ export function validateFlightsForPublication(flights, {
   const mirroredGroups = new Map();
   for (const flight of publishCandidates) {
     if (flight.trip !== "OW" || flight.returnDate) continue;
+    if (isUnambiguousKazakhstanPair(flight)) continue;
     const key = pairKey(flight);
     const group = mirroredGroups.get(key) || new Map();
     const direction = directionKey(flight);

@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   PUBLICATION_WINDOWS,
   REGIONS,
+  allowedCountryCodes,
+  disallowedCountries,
   isCountryAllowedInWindow,
-  unassignedCountries,
-  unassignedPolicy,
+  isPublishableCountry,
   localClock,
+  localDayOffset,
   resolvePublicationWindow,
   windowKey
 } from "../scripts/telegram-schedule.mjs";
@@ -120,27 +123,62 @@ test("a country is publishable only in its own region window", () => {
   }
 });
 
-test("a country with no region follows the configured policy", () => {
-  assert.deepEqual(unassignedCountries(["VN", "TR", "KR", "HU", "KG", "UZ", "SA"]), ["KG", "KR", "SA", "TR", "UZ"]);
+test("a country no region claims is never published, in any window", () => {
+  assert.deepEqual(
+    disallowedCountries(["VN", "TR", "KR", "HU", "KG", "UZ", "SA"]),
+    ["KG", "KR", "SA", "TR", "UZ"]
+  );
 
-  // Default: unchanged behaviour, every window.
-  for (const windowId of ["morning", "afternoon", "evening"]) {
-    assert.equal(isCountryAllowedInWindow("TR", windowId, { policy: "all-windows" }).allowed, true);
+  // The `all-windows` default used to publish every one of these, in every
+  // window. That is what put Uzbekistan and Saudi Arabia in the channel.
+  for (const code of ["UZ", "SA", "TR", "KR", "KG", "RU", "GE", "ZZ"]) {
+    assert.equal(isPublishableCountry(code), false, code + " must not be publishable");
+    for (const windowId of ["morning", "afternoon", "evening"]) {
+      const verdict = isCountryAllowedInWindow(code, windowId);
+      assert.equal(verdict.allowed, false, code + " must not publish in " + windowId);
+      assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+    }
   }
-
-  // Held back entirely.
-  const held = isCountryAllowedInWindow("TR", "morning", { policy: "hold" });
-  assert.equal(held.allowed, false);
-  assert.equal(held.reason, "COUNTRY_HAS_NO_REGION");
-
-  // Pinned to one window.
-  assert.equal(isCountryAllowedInWindow("TR", "evening", { policy: "evening" }).allowed, true);
-  assert.equal(isCountryAllowedInWindow("TR", "morning", { policy: "evening" }).reason, "UNASSIGNED_WINDOW_IS_EVENING");
 });
 
-test("the unassigned policy falls back to today's behaviour on a bad value", () => {
-  assert.equal(unassignedPolicy({}), "all-windows");
-  assert.equal(unassignedPolicy({ TELEGRAM_UNASSIGNED_COUNTRY_POLICY: "nonsense" }), "all-windows");
-  assert.equal(unassignedPolicy({ TELEGRAM_UNASSIGNED_COUNTRY_POLICY: "HOLD" }), "hold");
-  assert.equal(unassignedPolicy({ TELEGRAM_UNASSIGNED_COUNTRY_POLICY: "evening" }), "evening");
+test("the allowed list is exactly the fifteen agreed countries", () => {
+  assert.deepEqual(allowedCountryCodes(), [
+    "AE", "CN", "CZ", "DE", "EG", "HU", "IN", "IT",
+    "LK", "MV", "MY", "OM", "RS", "TH", "VN"
+  ]);
+  for (const code of allowedCountryCodes()) {
+    assert.equal(isPublishableCountry(code), true, code + " must be publishable");
+  }
+});
+
+test("there is no environment variable that can publish a country off the list", () => {
+  // Deliberate: the knob itself is gone, not merely defaulted to "hold". Only
+  // the comment explaining why may still name it, so comments are stripped
+  // before the search.
+  const code = readFileSync(new URL("../scripts/telegram-schedule.mjs", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  assert.ok(!code.includes("TELEGRAM_UNASSIGNED_COUNTRY_POLICY"), "the env knob is gone");
+  assert.ok(!code.includes("all-windows"), "the all-windows policy is gone");
+  assert.ok(!code.includes("UNASSIGNED_POLICIES"), "the policy list is gone");
+
+  // The window check takes no options at all, so no caller can pass a policy.
+  assert.equal(isCountryAllowedInWindow.length, 2);
+});
+
+test("day offsets are counted in Asia/Almaty, so today is 0 and tomorrow is 1", () => {
+  // 10:00 Almaty on 12 October is 05:00Z the same day.
+  const morning = atAlmaty(10);
+  assert.equal(localDayOffset("2026-10-12", morning), 0, "today");
+  assert.equal(localDayOffset("2026-10-13", morning), 1, "tomorrow");
+  assert.equal(localDayOffset("2026-10-11", morning), -1, "yesterday");
+
+  // 02:00 Almaty on 13 October is still 21:00Z on 12 October. Counted in UTC
+  // this read "tomorrow" for a flight leaving that very day.
+  const afterMidnight = new Date(Date.UTC(2026, 9, 12, 21, 0, 0));
+  assert.equal(localDayOffset("2026-10-13", afterMidnight), 0, "today in Almaty");
+
+  assert.equal(localDayOffset("not-a-date", morning), null);
+  assert.equal(localDayOffset("", morning), null);
 });

@@ -43,7 +43,7 @@ console.log(
   schedule.window?.id || "CLOSED"
 );
 
-const { digests, diagnostics, summary } = buildCountryDigests(flights, { now });
+const { digests, diagnostics, duplicateIds, summary } = buildCountryDigests(flights, { now });
 
 console.log("\nRendered digests:", JSON.stringify(summary));
 for (const digest of digests) {
@@ -58,19 +58,51 @@ for (const digest of digests) {
 }
 
 const covered = new Set(digests.flatMap(digest => digest.offerIds));
-const uncovered = flights.filter(flight => flight.id && !covered.has(flight.id));
+const reported = new Set(diagnostics.map(item => item.id).filter(Boolean));
+// A diagnostic is an accounted-for offer, not a missing one. Counting it as
+// both "held for review" and "neither rendered nor reported" made the dry run
+// warn about offers it had already explained.
+const collapsed = new Set(duplicateIds);
+const unaccounted = flights.filter(flight =>
+  flight.id && !covered.has(flight.id) && !reported.has(flight.id) && !collapsed.has(flight.id)
+);
+
 console.log(
   "\nCompleteness: " + covered.size + " rendered + " + diagnostics.length
-  + " held for review = " + (covered.size + diagnostics.length) + " of " + flights.length
+  + " refused with a reason + " + summary.duplicates + " duplicates = "
+  + (covered.size + diagnostics.length + summary.duplicates) + " of " + flights.length
 );
-if (uncovered.length) {
-  console.warn("Offers neither rendered nor reported:", uncovered.length);
-  console.warn(JSON.stringify(uncovered.slice(0, 10), null, 2));
+if (unaccounted.length) {
+  console.warn("Offers neither rendered nor reported:", unaccounted.length);
+  console.warn(JSON.stringify(unaccounted.slice(0, 10), null, 2));
+} else {
+  console.log("Every offer in the feed is either published or refused with a named reason.");
 }
+
 if (diagnostics.length) {
-  console.log("\nHeld for review (country or category could not be established):");
-  for (const item of diagnostics.slice(0, 30)) {
-    console.log("  " + item.reason + ": " + item.from + " -> " + item.to + " [" + item.trip + "]");
+  const byReason = {};
+  for (const item of diagnostics) byReason[item.reason] = (byReason[item.reason] || 0) + 1;
+  console.log("\nRefusals by reason:", JSON.stringify(byReason, null, 2));
+
+  const forbidden = diagnostics.filter(item =>
+    item.reason === "COUNTRY_NOT_ALLOWED" || item.reason === "FOREIGN_TO_FOREIGN_ROUTE"
+  );
+  if (forbidden.length) {
+    console.log("\nRefused as not on the allowed list (" + forbidden.length + "):");
+    for (const item of forbidden.slice(0, 20)) {
+      console.log("  " + item.reason + " [" + (item.country || "?") + "] "
+        + item.from + " -> " + item.to);
+    }
+  }
+
+  const unparsed = diagnostics.filter(item =>
+    item.reason !== "COUNTRY_NOT_ALLOWED" && item.reason !== "FOREIGN_TO_FOREIGN_ROUTE"
+  );
+  if (unparsed.length) {
+    console.log("\nCould not be resolved (" + unparsed.length + "):");
+    for (const item of unparsed.slice(0, 20)) {
+      console.log("  " + item.reason + ": " + item.from + " -> " + item.to + " [" + item.trip + "]");
+    }
   }
 }
 

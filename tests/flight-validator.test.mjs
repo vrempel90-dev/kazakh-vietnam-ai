@@ -19,50 +19,70 @@ function flight(overrides = {}) {
   };
 }
 
-test("quarantines an unconfirmed same-day mirrored route pair", () => {
+test("a same-day Kazakhstan charter pair is kept, both directions", () => {
+  // One aircraft flies out and back on the same day; a single channel carries
+  // both legs. The mirrored-route quarantine used to fire on exactly this
+  // shape and, because neither direction had a second source, held BOTH of
+  // them back - which is how whole charter programmes went unpublished.
   const outbound = flight({ id: "out", from: "Алматы", to: "Пхукет", price: 78000 });
   const inbound = flight({
     id: "back",
     from: "Пхукет",
     to: "Алматы",
     price: 79000,
-    sourceIds: ["telegram:source-b"]
+    airline: "Air Astana",
+    airlineCode: "A"
   });
 
   const result = validateFlightsForPublication([outbound, inbound], { now });
+
+  assert.deepEqual(result.verified.map(item => item.id).sort(), ["back", "out"]);
+  assert.equal(result.needsReview.length, 0);
+});
+
+test("Astana to Phu Quoc and back on one source survives validation", () => {
+  const outbound = flight({ id: "out", from: "Астана", to: "Фукуок", departureDate: "2026-10-25" });
+  const inbound = flight({ id: "back", from: "Фукуок", to: "Астана", departureDate: "2026-10-25" });
+
+  const result = validateFlightsForPublication([outbound, inbound], { now });
+
+  assert.deepEqual(result.verified.map(item => item.id).sort(), ["back", "out"]);
+  assert.equal(result.needsReview.length, 0);
+});
+
+test("the quarantine still guards a mirrored pair with no Kazakhstan endpoint", () => {
+  const there = flight({
+    id: "there",
+    from: "Шарджа",
+    to: "Ташкент",
+    departureDate: "2026-10-29"
+  });
+  const back = flight({
+    id: "back",
+    from: "Ташкент",
+    to: "Шарджа",
+    departureDate: "2026-10-29",
+    sourceIds: ["telegram:source-b"]
+  });
+
+  const result = validateFlightsForPublication([there, back], { now });
 
   assert.deepEqual(result.verified, []);
   assert.equal(result.needsReview.length, 2);
   assert.ok(result.needsReview.every(item => item.reason === "MIRRORED_ROUTE_UNCONFIRMED"));
 });
 
-test("keeps a corroborated direction and quarantines only the weak opposite direction", () => {
-  const outbound = flight({
-    id: "out",
-    sourceIds: ["telegram:source-a", "telegram:source-c"]
-  });
-  const inbound = flight({
-    id: "back",
-    from: "Пхукет",
-    to: "Алматы",
-    sourceIds: ["telegram:source-b"]
-  });
-
-  const result = validateFlightsForPublication([outbound, inbound], { now });
-
-  assert.deepEqual(result.verified.map(item => item.id), ["out"]);
-  assert.deepEqual(result.needsReview.map(item => item.flight.id), ["back"]);
-});
-
 test("allows both mirrored directions when both are independently corroborated", () => {
   const outbound = flight({
     id: "out",
+    from: "Шарджа",
+    to: "Ташкент",
     sourceIds: ["telegram:source-a", "telegram:source-c"]
   });
   const inbound = flight({
     id: "back",
-    from: "Пхукет",
-    to: "Алматы",
+    from: "Ташкент",
+    to: "Шарджа",
     sourceIds: ["telegram:source-b", "telegram:source-d"]
   });
 

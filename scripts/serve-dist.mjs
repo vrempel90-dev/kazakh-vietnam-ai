@@ -10,7 +10,7 @@ import { createTelegramRuntime } from "./telegram-bot.mjs";
 import { isTelegramAdmin, parseAdminTelegramIds, verifyTelegramInitData } from "./telegram-admin-auth.mjs";
 import { readSourceStatus } from "./source-status.mjs";
 import { loadPublicationState, publicationHealth } from "./telegram-publication-state.mjs";
-import { describeSchedule, resolvePublicationWindow, unassignedPolicy } from "./telegram-schedule.mjs";
+import { allowedCountryCodes, describeSchedule, resolvePublicationWindow } from "./telegram-schedule.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const root = fileURLToPath(new URL("../dist/client/", import.meta.url));
@@ -244,7 +244,7 @@ async function publicationStatusSnapshot(now = new Date()) {
       : String(schedule.localHour).padStart(2, "0") + ":" + String(schedule.localMinute).padStart(2, "0"),
     window: schedule.window?.id || null,
     region: schedule.window?.region || null,
-    unassignedPolicy: unassignedPolicy(process.env),
+    allowedCountries: allowedCountryCodes(),
     stale: Boolean(health?.stale),
     staleReason: health?.stale ? health.reason : null,
     silentHours: health?.silentHours ?? null,

@@ -105,22 +105,33 @@ test("dates inside a route ascend", () => {
 });
 
 test("scenario 5: data from two countries is never mixed into one message", () => {
-  const { digests } = buildCountryDigests([
+  const { digests, diagnostics } = buildCountryDigests([
     ...vietnam,
-    { id: "kr1", from: "Алматы", to: "Seoul", trip: "OW", departureDate: "2026-11-02", price: 190000, airlineCode: "A" },
     { id: "th1", from: "Алматы", to: "Пхукет", trip: "OW", departureDate: "2026-11-03", price: 150000, airlineCode: "S" },
     { id: "cn1", from: "Алматы", to: "Санья", trip: "OW", departureDate: "2026-11-04", price: 160000 },
+    { id: "in1", from: "Алматы", to: "Гоа", trip: "OW", departureDate: "2026-11-06", price: 170000 },
+    // South Korea and Turkiye carry a large share of the live inventory, but
+    // the client did not include them: they are refused, not rendered.
+    { id: "kr1", from: "Алматы", to: "Seoul", trip: "OW", departureDate: "2026-11-02", price: 190000, airlineCode: "A" },
     { id: "tr1", from: "Астана", to: "Анталия", trip: "OW", departureDate: "2026-11-05", price: 95000, airlineCode: "P" }
   ], { now: NOW });
 
-  assert.equal(digests.length, 5);
-  const names = ["ВЬЕТНАМ", "ЮЖНАЯ КОРЕЯ", "ТАИЛАНД", "КИТАЙ", "ТУРЦИЯ"];
+  assert.equal(digests.length, 4);
+  const names = ["ВЬЕТНАМ", "ТАИЛАНД", "КИТАЙ", "ИНДИЯ"];
   for (const digest of digests) {
     const text = plain(digest.text);
     const present = names.filter(name => text.includes(name));
     assert.equal(present.length, 1, "each message names exactly one country: " + present.join(","));
   }
-  assert.equal(new Set(digests.map(d => d.country)).size, 5);
+  assert.equal(new Set(digests.map(d => d.country)).size, 4);
+
+  assert.deepEqual(
+    diagnostics.map(item => item.id + ":" + item.reason).sort(),
+    ["kr1:COUNTRY_NOT_ALLOWED", "tr1:COUNTRY_NOT_ALLOWED"]
+  );
+  const rendered = plain(digests.map(digest => digest.text).join("\n"));
+  assert.ok(!rendered.includes("КОРЕЯ"));
+  assert.ok(!rendered.includes("ТУРЦИЯ"));
 });
 
 test("scenario 6: the same offer is never repeated inside a digest", () => {
@@ -206,7 +217,7 @@ test("unclassifiable offers go to diagnostics instead of an \"other destinations
   assert.equal(diagnostics.length, 2);
   assert.deepEqual(
     diagnostics.map(item => item.reason).sort(),
-    ["UNRESOLVED_DESTINATION", "domestic".toUpperCase()].sort()
+    ["DOMESTIC_ROUTE", "UNRESOLVED_DESTINATION"]
   );
 });
 

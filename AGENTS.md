@@ -99,12 +99,19 @@ all came from each stage keeping its own city table, its own notion of
   country-to-window mapping: `REGIONS` gives 10:00-12:00 to Asia (VN, TH, CN,
   MY, MV, LK, IN), 14:00-15:00 to the Middle East (AE, OM, EG) and 17:00-18:00
   to Europe (IT, CZ, RS, HU, DE). To move a country, move its code in that
-  table - never add a time check anywhere else. A country no region claims
-  (Turkey and South Korea are over half of the live inventory) follows
-  `TELEGRAM_UNASSIGNED_COUNTRY_POLICY`, default `all-windows`, which is the
-  behaviour every country had before regions existed. A country outside the
-  current window is reported as `out_of_region_window`, never as a loss, and an
-  empty region sends no message and leaves its window open for a later sync.
+  table - never add a time check anywhere else.
+  **`REGIONS` is also the allowed-country list**: a country may be published
+  exactly when some region claims it, and those fifteen codes are the whole of
+  it. A country outside the current window is reported as
+  `out_of_region_window`, never as a loss, and an empty region sends no message
+  and leaves its window open for a later sync.
+- `scripts/charter-publication-policy.mjs` is the only gate that decides
+  whether one offer may be published. The rule: exactly one endpoint in
+  Kazakhstan, and the other endpoint's country on the allowed list. Both
+  directions pass. The customer feed, the digest renderer and the publication
+  orchestrator all ask it, so no stage can admit something another stage would
+  refuse. It is also where `localDayOffset` freshness and route admissibility
+  stay in one order: policy first, then validation.
 - `scripts/telegram-publication-state.mjs` is schema v2 on the Railway `/data`
   volume. It records chat, local date, window, country, category, offer ids,
   content hash, Telegram message id, status, timestamps and errors, and it
@@ -138,6 +145,52 @@ Monitoring (added 2026-10-15, after three silent days read as `status: ok`):
   `TELEGRAM_NO_POST_ALERT_HOURS` (default 26) is the silence budget.
 
 Rules that must not be weakened:
+
+- **Only Kazakhstan-to-allowed-country routes are published, in both
+  directions.** A flight between two foreign countries (Sharjah -> Tashkent) is
+  never published, whichever of the two countries is on the list; there is no
+  "МЕЖДУ СТРАНАМИ" section and `TICKET_CATEGORIES.FOREIGN` is not a publishable
+  category. A country no region claims is never published, in any window.
+  `TELEGRAM_UNASSIGNED_COUNTRY_POLICY` and its `all-windows` default are gone
+  on purpose - that default is what put Uzbekistan and Saudi Arabia in the
+  channel - and no environment variable may bring them back. An unresolved
+  country is a refusal, never a publication.
+- **Freshness is counted in `Asia/Almaty`, and a departure today is valid.**
+  `localDayOffset` in `telegram-schedule.mjs` is the only day arithmetic in the
+  pipeline. The `offset <= 0` guards it replaced measured against the UTC
+  calendar day and silently deleted every same-day charter seat, which is the
+  most urgent inventory there is. Reject only `offset < 0` and beyond
+  `MAX_DEPARTURE_HORIZON_DAYS`, and report which.
+- **Never cap the number of offers.** `dedupeFlights` had a `.slice(0, 300)`
+  that cut the far end of the season, sorted by departure date, reporting
+  nothing. Message size is handled by splitting a country digest into
+  "Часть N/M", which never drops an offer.
+- **Entity decoding is not optional.** t.me serves "Астана -> Фукуок" as
+  "Астана -&gt; Фукуок". `&gt;`/`&lt;` were missing from `decodeHtml`, the
+  route split at the dash and the destination became the literal string
+  "&gt; Фукуок" - about a third of the feed, Astana -> Phu Quoc worst of all.
+  Entities are decoded in `decodeHtml`, again in `parseRouteLine` and
+  `normalizeCity`, and once more in `charter-geo.cityKey`. That redundancy is
+  deliberate.
+- **A route line must have at least one resolvable city.** A country heading
+  written with spaced hyphens ("Шри - Ланка") otherwise parses as a route,
+  becomes the active route and captures the fare rows belonging to the real
+  route beneath it.
+- **A same-day A->B / B->A pair with one Kazakhstan endpoint is not
+  suspicious.** One aircraft flies both legs and one channel carries both, so
+  the mirrored-route quarantine in `flight-validator.mjs` used to hold back
+  BOTH directions of an entire charter programme. It is scoped to routes that
+  are not a clean Kazakhstan-to-foreign pair.
+- **A completed window is re-entered, not refused.** Collection runs every 15
+  minutes but a window is 1-2 hours and each country now belongs to exactly
+  one window; refusing the window after its first run held everything the later
+  syncs collected until the next day, which for a departure today is never.
+  Duplicate protection stays with `planMessageAction`, per digest key, content
+  hash and publication date - not with the window record.
+- **A forbidden country already live in the channel is edited, never
+  reposted.** `retractForbiddenMessages` replaces the body with a withdrawal
+  notice, keeping the message id and its state record, bounded to the current
+  publication day exactly as editing is.
 
 - A changed country digest is **edited in place within its publication day**;
   a new post is created when no confirmed message exists for that digest key

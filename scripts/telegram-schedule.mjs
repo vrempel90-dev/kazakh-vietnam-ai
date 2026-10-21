@@ -32,24 +32,6 @@ export const PUBLICATION_WINDOWS = [
   { id: "evening", startHour: 17, endHour: 18, kind: "update", region: "europe" }
 ];
 
-/**
- * What to do with a country that no region claims (today: Turkey, South Korea,
- * Kyrgyzstan, Uzbekistan, Saudi Arabia and anything new the source starts
- * carrying). Half of the live inventory sits in such countries, so the default
- * preserves the behaviour they have had all along - they travel with every
- * window - until the client assigns them a region.
- *
- *  - `all-windows` (default)  publish in every window, as before
- *  - `hold`                   never publish; report in diagnostics
- *  - `morning|afternoon|evening`  publish only in that window
- */
-export const UNASSIGNED_POLICIES = ["all-windows", "hold", ...PUBLICATION_WINDOWS.map(w => w.id)];
-
-export function unassignedPolicy(env = process.env) {
-  const raw = String(env?.TELEGRAM_UNASSIGNED_COUNTRY_POLICY || "").trim().toLowerCase();
-  return UNASSIGNED_POLICIES.includes(raw) ? raw : "all-windows";
-}
-
 const REGION_BY_ID = new Map(REGIONS.map(region => [region.id, region]));
 const REGION_BY_COUNTRY = new Map(
   REGIONS.flatMap(region => region.countries.map(code => [code, region]))
@@ -57,6 +39,26 @@ const REGION_BY_COUNTRY = new Map(
 
 export function regionForCountry(code) {
   return REGION_BY_COUNTRY.get(String(code || "").toUpperCase()) || null;
+}
+
+/**
+ * The allowed-country list IS the region table above: a country may be
+ * published exactly when some region claims it.
+ *
+ * There used to be a `TELEGRAM_UNASSIGNED_COUNTRY_POLICY` knob whose default,
+ * `all-windows`, published any country no region claimed - in every window.
+ * That is what put Uzbekistan and Saudi Arabia into the channel. The knob is
+ * gone on purpose: a country outside this table is never published, and no
+ * environment variable can re-enable it. To allow a country, add its code to
+ * a region here and nowhere else.
+ */
+export function allowedCountryCodes() {
+  return [...REGION_BY_COUNTRY.keys()].sort();
+}
+
+/** True when the client agreed to publish this country at all. */
+export function isPublishableCountry(code) {
+  return REGION_BY_COUNTRY.has(String(code || "").toUpperCase());
 }
 
 export function regionForWindow(windowId) {
@@ -69,34 +71,30 @@ export function regionForWindow(windowId) {
  *
  * Returns `{ allowed, reason, region }`. `reason` names the decision so the run
  * report can state why a digest was not sent instead of leaving a silent gap.
+ *
+ * A country no region claims is refused outright: there is no policy, no
+ * default and no override that lets it through. `COUNTRY_NOT_ALLOWED` is a
+ * refusal, not a loss - the country is not ours to publish at all.
  */
-export function isCountryAllowedInWindow(code, windowId, { policy = "all-windows" } = {}) {
+export function isCountryAllowedInWindow(code, windowId) {
   const region = regionForCountry(code);
 
-  if (region) {
-    const window = PUBLICATION_WINDOWS.find(item => item.region === region.id);
-    return window && window.id === windowId
-      ? { allowed: true, reason: null, region }
-      : {
-          allowed: false,
-          reason: "REGION_WINDOW_IS_" + String(window?.id || "none").toUpperCase(),
-          region
-        };
+  if (!region) {
+    return { allowed: false, reason: "COUNTRY_NOT_ALLOWED", region: null };
   }
 
-  if (policy === "hold") {
-    return { allowed: false, reason: "COUNTRY_HAS_NO_REGION", region: null };
-  }
-  if (policy === "all-windows") {
-    return { allowed: true, reason: null, region: null };
-  }
-  return policy === windowId
-    ? { allowed: true, reason: null, region: null }
-    : { allowed: false, reason: "UNASSIGNED_WINDOW_IS_" + policy.toUpperCase(), region: null };
+  const window = PUBLICATION_WINDOWS.find(item => item.region === region.id);
+  return window && window.id === windowId
+    ? { allowed: true, reason: null, region }
+    : {
+        allowed: false,
+        reason: "REGION_WINDOW_IS_" + String(window?.id || "none").toUpperCase(),
+        region
+      };
 }
 
-/** Countries present in the data that no region claims yet. */
-export function unassignedCountries(codes) {
+/** Countries present in the data that are not on the allowed list. */
+export function disallowedCountries(codes) {
   return [...new Set((Array.isArray(codes) ? codes : []).map(code => String(code || "").toUpperCase()))]
     .filter(code => code && !REGION_BY_COUNTRY.has(code))
     .sort();
@@ -121,6 +119,40 @@ export function localClock(now = new Date(), timeZone = PUBLICATION_TIME_ZONE) {
     hour: Number(value("hour")),
     minute: Number(value("minute"))
   };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Whole days from "today" to `iso`, counted in the publication time zone.
+ *
+ * `0` is today, `1` tomorrow, a negative number is in the past. Every freshness
+ * check in the pipeline goes through this, because the UTC-based arithmetic it
+ * replaced read a different calendar day than the business does: Almaty is
+ * UTC+5, so between 05:00 and midnight local the UTC date is still yesterday's
+ * and a flight leaving *today* measured as offset 1 - or, after midnight UTC,
+ * today's flight measured as 0 and then thrown away by an `offset <= 0` guard.
+ *
+ * Returns null when the date is unparseable, so callers can report
+ * `INVALID_DEPARTURE_DATE` instead of guessing.
+ */
+export function localDayOffset(iso, now = new Date(), timeZone = PUBLICATION_TIME_ZONE) {
+  const text = String(iso || "");
+  if (!ISO_DATE.test(text)) return null;
+
+  const target = Date.parse(text + "T12:00:00Z");
+  if (!Number.isFinite(target)) return null;
+
+  let today;
+  try {
+    today = localClock(now, timeZone).date;
+  } catch {
+    return null;
+  }
+  const base = Date.parse(today + "T12:00:00Z");
+  if (!Number.isFinite(base)) return null;
+
+  return Math.round((target - base) / 86400000);
 }
 
 /**

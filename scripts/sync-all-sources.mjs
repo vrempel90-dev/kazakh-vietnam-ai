@@ -12,6 +12,8 @@ import { validateFlightsForPublication } from "./flight-validator.mjs";
 import { shouldSkipParsedTelegramMessage } from "./telegram-publisher.mjs";
 import { runTelegramPublication } from "./telegram-publish-run.mjs";
 import { classifyFlight } from "./charter-geo.mjs";
+import { partitionOffersByPolicy, policyReasonCounts } from "./charter-publication-policy.mjs";
+import { allowedCountryCodes, localDayOffset } from "./telegram-schedule.mjs";
 
 function envNumber(name) {
   const raw = process.env[name];
@@ -71,16 +73,8 @@ function normalizeOfferForPublication(offer) {
   };
 }
 
-function dayOffset(iso, now) {
-  const target = new Date(iso + "T12:00:00Z");
-  const base = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    12
-  ));
-  return Math.round((target.getTime() - base.getTime()) / 86400000);
-}
+/** Furthest departure we accept, in days. */
+const MAX_DEPARTURE_HORIZON_DAYS = 365;
 
 function stableId(flight) {
   const raw = [
@@ -120,9 +114,13 @@ function publicFlight(input) {
 
 async function syncTelegramSource(source, now, pricingConfig) {
   const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
+  // 6 pages was roughly 120 posts, which does not cover a full day on a busy
+  // channel: the page walk stops early on its own once it reaches posts older
+  // than the TTL, so a higher ceiling costs nothing on a quiet channel and
+  // stops a loud one from being truncated mid-day.
   const maxPages = Math.max(
     1,
-    Math.min(20, Math.floor(envNumber("TELEGRAM_SOURCE_MAX_PAGES") || 6))
+    Math.min(20, Math.floor(envNumber("TELEGRAM_SOURCE_MAX_PAGES") || 12))
   );
 
   const prefetchedOffers = Array.isArray(source?.prefetchedOffers)
@@ -157,7 +155,18 @@ async function syncTelegramSource(source, now, pricingConfig) {
       });
 
   const flights = [];
+  const dropped = [...(result.dropped || [])];
   let pricingSkipped = 0;
+
+  const drop = (reason, offer) => {
+    dropped.push({
+      reason,
+      sourceId: source.id,
+      from: offer?.from ?? null,
+      to: offer?.to ?? null,
+      departureDate: offer?.departureDate ?? null
+    });
+  };
 
   for (const rawOffer of result.offers || []) {
     const offer = normalizeOfferForPublication(rawOffer);
@@ -177,11 +186,28 @@ async function syncTelegramSource(source, now, pricingConfig) {
 
     if (!priced) {
       pricingSkipped += 1;
+      drop("PRICING_RULE_REJECTED_OFFER", offer);
       continue;
     }
 
-    const offset = dayOffset(offer.departureDate, now);
-    if (offset <= 0 || offset > 365) continue;
+    // Asia/Almaty, and a departure today (`0`) is kept. The `offset <= 0`
+    // guard that used to stand here silently deleted every same-day charter
+    // seat - the most urgent inventory there is - and did so against the UTC
+    // calendar day, which is a different day from the business's for most of
+    // the working hours.
+    const offset = localDayOffset(offer.departureDate, now);
+    if (offset == null) {
+      drop("INVALID_DEPARTURE_DATE", offer);
+      continue;
+    }
+    if (offset < 0) {
+      drop("DEPARTURE_IN_THE_PAST", offer);
+      continue;
+    }
+    if (offset > MAX_DEPARTURE_HORIZON_DAYS) {
+      drop("DEPARTURE_BEYOND_HORIZON", offer);
+      continue;
+    }
 
     flights.push({
       ...publicFlight({
@@ -204,13 +230,21 @@ async function syncTelegramSource(source, now, pricingConfig) {
     });
   }
 
+  const droppedReasons = {};
+  for (const item of dropped) {
+    droppedReasons[item.reason] = (droppedReasons[item.reason] || 0) + 1;
+  }
+
   return {
     flights,
+    dropped,
     status: {
       ...result.status,
       rawOffers: (result.offers || []).length,
       offers: flights.length,
-      pricingSkipped
+      pricingSkipped,
+      dropped: dropped.length,
+      droppedReasons
     }
   };
 }
@@ -262,9 +296,14 @@ function dedupeFlights(flights) {
     map.set(key, winner);
   }
 
+  // No cap. There used to be a `.slice(0, 300)` here, which silently threw
+  // away every offer past the 300th - and because the list is sorted by
+  // departure date, what it cut was always the far end of the schedule, a
+  // whole stretch of the season at a time, with nothing reported anywhere.
+  // Digest size is handled where it belongs: a country's text is split into
+  // "Часть N/M" parts, which never drops an offer.
   return [...map.values()]
-    .sort((a, b) => a.offset - b.offset || a.price - b.price)
-    .slice(0, 300);
+    .sort((a, b) => a.offset - b.offset || a.price - b.price);
 }
 
 function offerTtlHours() {
@@ -292,6 +331,8 @@ function comparablePayload(payload) {
 const now = new Date();
 const collected = [];
 const statuses = [];
+/** Every offer refused before de-duplication, with the reason it was refused. */
+const droppedAtIngestion = [];
 
 const configuredSources = ingestSources();
 const discovery = await discoverLargeTelegramSources({ env: process.env, now });
@@ -314,6 +355,7 @@ for (const source of sources) {
   try {
     const result = await syncTelegramSource(source, now, pricingConfig);
     collected.push(...result.flights);
+    droppedAtIngestion.push(...(result.dropped || []));
     statuses.push(result.status);
   } catch (error) {
     statuses.push({
@@ -325,7 +367,30 @@ for (const source of sources) {
   }
 }
 
-const freshFlights = dedupeFlights(collected);
+const dedupedFlights = dedupeFlights(collected);
+
+// The allowed-route gate runs here, before anything is written anywhere: the
+// customer feed and the Telegram digest are built from the same list, so a
+// forbidden route filtered only at publication time still reached customers
+// through the app. Uzbekistan, Saudi Arabia and every foreign-to-foreign
+// route stop at this line, each with a named reason.
+const routePolicy = partitionOffersByPolicy(dedupedFlights);
+const freshFlights = routePolicy.allowed;
+
+statuses.push({
+  id: "route_policy",
+  kind: "policy",
+  status: routePolicy.refused.length ? "filtered" : "ok",
+  allowedCountries: routePolicy.allowedCountries,
+  checked: dedupedFlights.length,
+  allowed: freshFlights.length,
+  refused: routePolicy.refused.length,
+  reasons: policyReasonCounts(routePolicy.refused),
+  refusedCountries: [...new Set(
+    routePolicy.refused.map(item => item.country).filter(Boolean)
+  )].sort()
+});
+
 const mirroredRouteMinSources = Math.max(
   1,
   Math.floor(envNumber("MIRRORED_ROUTE_MIN_SOURCES") || 2)
@@ -407,8 +472,13 @@ try {
       summary: {
         mode: "telegram_public_only",
         ingestionSources: sources.length,
+        sourceHandles: sources.map(source => source.handle).filter(Boolean).sort(),
+        allowedCountries: allowedCountryCodes(),
         rawOffers: collected.length,
-        deduplicatedOffers: freshFlights.length,
+        deduplicatedOffers: dedupedFlights.length,
+        routePolicyRefused: routePolicy.refused.length,
+        droppedAtIngestion: droppedAtIngestion.length,
+        droppedReasons: policyReasonCounts(droppedAtIngestion),
         validatedOffers: validatedFreshFlights.length,
         needsReviewOffers: validation.needsReview.length,
         rejectedOffers: validation.rejected.length,
@@ -535,7 +605,7 @@ statuses.push({
   reason: publicationReport.reason,
   window: publicationReport.window?.id || null,
   region: publicationReport.window?.region?.id || null,
-  unassignedPolicy: publicationReport.unassignedPolicy || null,
+  allowedCountries: publicationReport.allowedCountries || null,
   localDate: publicationReport.localDate,
   totals: publicationReport.totals,
   stale: Boolean(publicationReport.health?.stale),

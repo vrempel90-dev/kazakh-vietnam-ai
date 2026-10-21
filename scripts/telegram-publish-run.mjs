@@ -11,14 +11,15 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { buildCountryDigests, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
+import { buildCountryDigests, FOOTER_TEXT, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
 import {
+  allowedCountryCodes,
   describeSchedule,
+  disallowedCountries,
   isCountryAllowedInWindow,
+  isPublishableCountry,
   regionForWindow,
   resolvePublicationWindow,
-  unassignedCountries,
-  unassignedPolicy,
   windowKey
 } from "./telegram-schedule.mjs";
 import {
@@ -30,6 +31,7 @@ import {
   sendDigestMessage
 } from "./telegram-publisher.mjs";
 import {
+  MESSAGE_STATUS,
   WINDOW_STATUS,
   acquireRunLease,
   acquireRunLock,
@@ -38,6 +40,7 @@ import {
   finishWindowRun,
   initializePublicationState,
   isWindowCompleted,
+  listMessageRecords,
   loadPublicationState,
   markOffersPublished,
   planMessageAction,
@@ -45,6 +48,7 @@ import {
   publicationHealth,
   recordMessageFailure,
   recordMessageIntent,
+  recordMessageRetracted,
   recordMessageSent,
   recordRunTelemetry,
   releaseRunLease,
@@ -111,8 +115,27 @@ function sleep(ms) {
 }
 
 function emptyCounts() {
-  return { sent: 0, edited: 0, skipped: 0, held: 0, failed: 0, deferred: 0, outOfWindow: 0 };
+  return {
+    sent: 0,
+    edited: 0,
+    skipped: 0,
+    held: 0,
+    failed: 0,
+    deferred: 0,
+    outOfWindow: 0,
+    retracted: 0
+  };
 }
+
+/**
+ * Replaces the body of a message whose country is no longer allowed. Editing
+ * keeps one message id for one digest key, so withdrawing a forbidden post can
+ * never create a duplicate.
+ */
+const RETRACTION_TEXT = "<b>Подборка снята с публикации</b>\n\n"
+  + "Эти направления больше не входят в согласованный список. "
+  + "Актуальные предложения публикуются в следующих подборках.\n\n"
+  + FOOTER_TEXT;
 
 /**
  * @param {object} options
@@ -136,13 +159,11 @@ export async function runTelegramPublication({
   const timeZone = env?.TELEGRAM_PUBLISH_TIMEZONE || "Asia/Almaty";
   const schedule = resolvePublicationWindow(now, { timeZone });
 
-  const policy = unassignedPolicy(env);
-
   const base = {
     reason,
     dryRun,
     schedule: describeSchedule(timeZone),
-    unassignedPolicy: policy,
+    allowedCountries: allowedCountryCodes(),
     window: schedule.window
       ? {
           ...schedule.window,
@@ -258,18 +279,28 @@ export async function runTelegramPublication({
         offers: 0,
         coverage: null,
         region: null,
-        unassigned: [],
+        disallowed: [],
+        retractions: [],
         diagnostics: [],
         error: null
       };
 
-      if (!dryRun && isWindowCompleted(state, chatId, key)) {
-        report.status = "skipped";
-        report.error = "WINDOW_ALREADY_PUBLISHED";
-        report.publicationStatus = PUBLICATION_STATUS.BLOCKED;
-        channelReports.push(report);
-        continue;
-      }
+      // A completed window is re-entered rather than refused.
+      //
+      // Collection runs every 15 minutes but a window is 1-2 hours long, and
+      // each country now belongs to exactly one window. Refusing the window
+      // outright after its first successful run meant everything the later
+      // syncs collected was held until the next day - and for a departure
+      // today, "the next day" is never. A seat found at 10:35 has to reach the
+      // channel in the 10:00-12:00 window or not at all.
+      //
+      // Nothing about duplicate protection is relaxed by this: the decision to
+      // send, edit or skip is made per digest by `planMessageAction`, against
+      // the message record's own content hash and publication date. An
+      // unchanged country is still skipped, a changed one is still edited in
+      // place, and a digest key that already has a confirmed message for today
+      // still never gets a second post.
+      report.windowAlreadyPublished = !dryRun && isWindowCompleted(state, chatId, key);
 
       const eligible = filterFlightsForTarget(flights, chatId);
       const { digests, diagnostics, summary } = buildCountryDigests(eligible, { maxChars });
@@ -289,12 +320,29 @@ export async function runTelegramPublication({
       // not an error and not a loss: its own window publishes it the same day.
       const regionDecisions = digests.map(digest => ({
         digest,
-        decision: isCountryAllowedInWindow(digest.country, activeWindow.id, { policy })
+        decision: isCountryAllowedInWindow(digest.country, activeWindow.id)
       }));
       const publishable = regionDecisions.filter(item => item.decision.allowed);
 
       report.region = regionForWindow(activeWindow.id);
-      report.unassigned = unassignedCountries(digests.map(digest => digest.country));
+      report.disallowed = disallowedCountries(digests.map(digest => digest.country));
+
+      // Runs before the "nothing to publish" exit below on purpose: when every
+      // country a channel carried has become forbidden there are no publishable
+      // digests at all, and that is precisely when the forbidden posts still
+      // standing in the channel most need withdrawing.
+      report.retractions = await retractForbiddenMessages({
+        state,
+        statePath,
+        chatId,
+        localDate: schedule.localDate,
+        dryRun,
+        token,
+        managerPhone,
+        publicAppUrl,
+        fetchImpl,
+        counts: report.counts
+      });
 
       for (const { digest, decision } of regionDecisions) {
         if (decision.allowed) continue;
@@ -331,6 +379,7 @@ export async function runTelegramPublication({
 
       let fatal = null;
       let delivered = 0;
+
 
       for (const { digest } of publishable) {
         const plan = planMessageAction(state, chatId, digest, {
@@ -541,6 +590,83 @@ export async function runTelegramPublication({
   }
 
   return result;
+}
+
+/**
+ * Withdraws messages whose country is no longer on the allowed list.
+ *
+ * A country published before the list tightened still has a live message in
+ * the channel. Reposting would duplicate it, and this publisher never deletes,
+ * so the message is EDITED in place to a withdrawal notice: the forbidden
+ * routes stop being readable, the message id and its state record stay exactly
+ * as they were, and every duplicate guard is left untouched.
+ *
+ * Bounded to the current publication day for the same reason editing is - the
+ * digest key is only country+part, so an unbounded rewrite would reach back
+ * into messages published on earlier days.
+ */
+async function retractForbiddenMessages({
+  state,
+  statePath,
+  chatId,
+  localDate,
+  dryRun,
+  token,
+  managerPhone,
+  publicAppUrl,
+  fetchImpl,
+  counts
+}) {
+  const retractions = [];
+
+  for (const record of listMessageRecords(state, chatId)) {
+    if (isPublishableCountry(record.country)) continue;
+    if (String(record.localDate || "") !== String(localDate)) continue;
+    if (record.status !== MESSAGE_STATUS.SENT) continue;
+    if (record.retractedAt) continue;
+
+    const messageId = Number(record.messageId);
+    if (!Number.isFinite(messageId) || messageId <= 0) continue;
+
+    const entry = {
+      key: record.key,
+      country: record.countryName || record.country || null,
+      action: dryRun ? "would_retract" : "retracted",
+      reason: "COUNTRY_NOT_ALLOWED",
+      messageId,
+      error: null
+    };
+
+    if (dryRun) {
+      retractions.push(entry);
+      continue;
+    }
+
+    try {
+      await editDigestMessage({
+        token,
+        chatId,
+        messageId,
+        text: RETRACTION_TEXT,
+        managerPhone,
+        publicAppUrl,
+        fetchImpl
+      });
+      recordMessageRetracted(state, chatId, record.key, { now: new Date() });
+      await savePublicationState(statePath, state);
+      counts.retracted += 1;
+    } catch (error) {
+      // A failed withdrawal must not take the window down with it: the
+      // forbidden routes are already filtered out of every new digest, so the
+      // worst case is a stale post that the next run tries again.
+      entry.action = "retract_failed";
+      entry.error = String(error?.message || error);
+    }
+
+    retractions.push(entry);
+  }
+
+  return retractions;
 }
 
 async function deliver({

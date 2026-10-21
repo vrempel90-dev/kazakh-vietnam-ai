@@ -18,12 +18,17 @@ function decodeHtml(value) {
   return value
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&(?:nbsp|#160);/gi, " ")
+    // `&gt;` / `&lt;` were missing here as well. t.me serves a channel's
+    // "Астана -> Фукуок" as "Астана -&gt; Фукуок", and an undecoded entity
+    // ends up inside the city name, where no table can resolve it.
+    .replace(/&(?:gt|#62|#x3e);/gi, ">")
+    .replace(/&(?:lt|#60|#x3c);/gi, "<")
+    .replace(/&quot;/gi, '"')
+    .replace(/&(?:#39|apos);/gi, "'")
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&(?:amp|#38);/gi, "&")
     .replace(/\u00a0/g, " ")
     .replace(/[ \t]+/g, " ")
     .replace(/\n[ \t]+/g, "\n")

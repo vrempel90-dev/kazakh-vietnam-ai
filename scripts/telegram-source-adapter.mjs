@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { resolveCity } from "./charter-geo.mjs";
+import { localDayOffset } from "./telegram-schedule.mjs";
 
 const AIRLINES = [
   "Air Astana", "Эйр Астана", "SCAT", "Scat", "VietJet Air", "Вьетжет Эйр",
@@ -45,20 +47,50 @@ const MONTHS = {
   июл: 7, авг: 8, сен: 9, окт: 10, ноя: 11, дек: 12
 };
 
+/**
+ * Tags are stripped first, then entities are decoded, so `&lt;b&gt;` survives
+ * as text instead of being eaten as a tag.
+ *
+ * `&gt;` and `&lt;` used to be missing from this list, and that single gap cost
+ * roughly a third of the inventory: a channel heading "\u0410\u0441\u0442\u0430\u043d\u0430 -> \u0424\u0443\u043a\u0443\u043e\u043a" is
+ * served by t.me as "\u0410\u0441\u0442\u0430\u043d\u0430 -&gt; \u0424\u0443\u043a\u0443\u043e\u043a", the route splitter cut it at the
+ * dash, and the destination became the literal string "&gt; \u0424\u0443\u043a\u0443\u043e\u043a" - a city
+ * no table can resolve. Every such offer travelled through pricing and
+ * de-duplication only to be thrown away as an unresolvable destination at the
+ * very last step. `&amp;` is decoded last, so "&amp;gt;" stays the text
+ * "&gt;" instead of collapsing into ">".
+ */
 function decodeHtml(value) {
   return String(value || "")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;|&#160;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&(?:nbsp|#160);/gi, " ")
+    .replace(/&(?:gt|#62|#x3e);/gi, ">")
+    .replace(/&(?:lt|#60|#x3c);/gi, "<")
+    .replace(/&quot;/gi, '"')
+    .replace(/&(?:#39|apos);/gi, "'")
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&(?:amp|#38);/gi, "&")
     .replace(/\u00a0/g, " ")
     .replace(/[ \t]+/g, " ")
     .replace(/\n[ \t]+/g, "\n")
     .trim();
+}
+
+/**
+ * Entity decoding for text that may not have come through `decodeHtml`.
+ *
+ * Defence in depth: the `&gt;` that reached the city table as part of the name
+ * cost roughly a third of the inventory, so the route and city parsers decode
+ * entities themselves rather than trusting every caller to have done it.
+ */
+function decodeEntities(value) {
+  return String(value ?? "")
+    .replace(/&(?:gt|#62|#x3e);/gi, ">")
+    .replace(/&(?:lt|#60|#x3c);/gi, "<")
+    .replace(/&(?:nbsp|#160);/gi, " ")
+    .replace(/&(?:amp|#38);/gi, "&");
 }
 
 function cleanHandle(value) {
@@ -130,7 +162,7 @@ export function extractPublicTelegramPosts(html) {
 }
 
 function normalizeCity(value) {
-  const clean = String(value || "")
+  const clean = decodeEntities(value)
     .replace(/^\s*(?:OW|RT)\s+/i, "")
     .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
     .replace(/\p{Extended_Pictographic}/gu, "")
@@ -140,6 +172,9 @@ function normalizeCity(value) {
     .replace(/\s*\((?:econom|economy|business)\)\s*$/iu, "")
     .replace(/^\(+|\)+$/g, "")
     .replace(/\s+/g, " ")
+    // A leading arrow fragment left over from a route split is never part of
+    // a city name. Kept as a safety net for the "&gt; Фукуок" class of bug.
+    .replace(/^[<>»]+\s*/, "")
     .replace(/^[\s,.;:|/\\-]+|[\s,.;:|/\\-]+$/g, "")
     .trim();
   const code = clean.toUpperCase();
@@ -217,7 +252,9 @@ function isCityLikeRoutePart(value) {
 }
 
 export function parseRouteLine(line) {
-  const raw = String(line || "")
+  // Decoded first, so an escaped arrow is a separator rather than part of a
+  // city name.
+  const raw = decodeEntities(line)
     .replace(/^[-•]+\s*/, "")
     .replace(/^✈️?\s*/u, "")
     .replace(/,+$/g, "")
@@ -234,13 +271,32 @@ export function parseRouteLine(line) {
     parts = prose
       ? [normalizeCity(prose[1]), normalizeCity(prose[2])]
       : raw
-          .split(/\s*(?:→|->|⟶|➡|➔|⇄|⇆|↔)\s*|\s+[—–-]\s*|\s*[—–-]\s+/u)
+          // A bare ">" is a route separator too: channels use it as often as
+          // "->", and before entities were decoded it never reached this split
+          // at all. It needs whitespace on at least one side, so a city is
+          // never cut on a stray character inside a name.
+          .split(/\s*(?:→|->|-->|⟶|➡|➔|⇄|⇆|↔|»)\s*|\s*>\s+|\s+>\s*|\s+[—–-]\s*|\s*[—–-]\s+/u)
           .map(normalizeCity)
           .filter(Boolean);
   }
 
   if (parts.length < 2 || parts.length > 3) return null;
   if (!parts.every(isCityLikeRoutePart)) return null;
+
+  // At least one endpoint must be a city we actually know.
+  //
+  // Without this, a country heading written with spaced hyphens ("Шри - Ланка")
+  // parsed as the route "Шри" -> "Ланка", became the active route, and then
+  // captured every fare row that followed - rows that belonged to the real
+  // route underneath the heading. The offers were not merely mislabelled, they
+  // were attributed to a route that does not exist and refused at the end of
+  // the pipeline. The same applies to "ОКТЯБРЬ - НОЯБРЬ" and to marketing
+  // lines like "Ближайшие вылеты - бронируйте сейчас!".
+  //
+  // One resolved endpoint is enough, so a real route to a city we have not
+  // catalogued yet still parses and is reported as an unresolved destination
+  // rather than disappearing here.
+  if (!parts.some(part => resolveCity(part))) return null;
 
   const from = parts[0];
   const to = parts[1];
@@ -449,11 +505,8 @@ function extractTravelNotices(lines) {
   return notices;
 }
 
-function daysUntil(iso, now) {
-  const target = new Date(iso + "T12:00:00Z");
-  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
-  return Math.round((target.getTime() - base.getTime()) / 86400000);
-}
+/** Furthest departure we accept, in days. */
+const MAX_DEPARTURE_HORIZON_DAYS = 365;
 
 function stableExternalId(sourceId, postId, index, offer) {
   if (postId != null) return sourceId + ":" + postId + ":" + index;
@@ -461,11 +514,17 @@ function stableExternalId(sourceId, postId, index, offer) {
   return sourceId + ":" + createHash("sha1").update(raw).digest("hex").slice(0, 16);
 }
 
+/**
+ * @param {object} options
+ * @param {Array} [options.dropped]  collects `{reason, ...}` for every offer
+ *   this parser refuses, so a loss is reported rather than silent.
+ */
 export function parseTelegramPost(text, {
   sourceId,
   postId = null,
   postedAt = null,
-  now = new Date()
+  now = new Date(),
+  dropped = null
 } = {}) {
   const lines = String(text || "").split("\n").map(line => line.trim()).filter(Boolean);
   if (/\$|\busd\b|\beur\b|€|₽|\bруб/iu.test(String(text || ""))) return [];
@@ -482,10 +541,42 @@ export function parseTelegramPost(text, {
   let pendingDeparture = null;
   let pendingReturn = null;
 
+  const note = (reason, parsed) => {
+    if (!Array.isArray(dropped)) return;
+    dropped.push({
+      reason,
+      sourceId,
+      postId,
+      from: route?.from ?? null,
+      to: route?.to ?? null,
+      departureDate: parsed?.departureDate ?? null,
+      price: parsed?.price ?? null
+    });
+  };
+
   const appendOffer = parsed => {
-    if (!route || !parsed?.departureDate || !parsed?.price) return;
-    const offset = daysUntil(parsed.departureDate, now);
-    if (offset <= 0 || offset > 365) return;
+    if (!route || !parsed?.departureDate || !parsed?.price) {
+      note(route ? "INCOMPLETE_OFFER_LINE" : "OFFER_WITHOUT_ROUTE", parsed);
+      return;
+    }
+
+    // Counted in Asia/Almaty, not UTC. `offset === 0` is a flight leaving
+    // today: a charter seat on the day of departure is the most urgent offer
+    // there is, and the `offset <= 0` guard that used to live here threw every
+    // single one of them away without a word.
+    const offset = localDayOffset(parsed.departureDate, now);
+    if (offset == null) {
+      note("INVALID_DEPARTURE_DATE", parsed);
+      return;
+    }
+    if (offset < 0) {
+      note("DEPARTURE_IN_THE_PAST", parsed);
+      return;
+    }
+    if (offset > MAX_DEPARTURE_HORIZON_DAYS) {
+      note("DEPARTURE_BEYOND_HORIZON", parsed);
+      return;
+    }
 
     const effectiveTrip = parsed.returnDate ? "RT" : tripHint;
     const effectiveRoute = canonicalizeRoundTripRoute(route, effectiveTrip);
@@ -511,7 +602,10 @@ export function parseTelegramPost(text, {
       sourcePrice: parsed.price,
       currency: "KZT",
       seats: parsed.seats || "Наличие уточняется",
-      hot: Boolean(parsed.hot),
+      // A departure today or tomorrow is urgent whether or not the channel
+      // put a flame on it.
+      hot: Boolean(parsed.hot) || offset <= 1,
+      departureOffset: offset,
       notice: entryRequirementForRoute(effectiveRoute.from, effectiveRoute.to),
       postedAt
     };
@@ -649,6 +743,7 @@ export async function fetchTelegramSourceOffers({
   let skippedOld = 0;
   let skippedAuto = 0;
   const offers = [];
+  const dropped = [];
 
   for (const post of allPosts.values()) {
     if (!isWithinTtl(post.postedAt, now, ttlHours)) {
@@ -664,12 +759,19 @@ export async function fetchTelegramSourceOffers({
       sourceId: source.id,
       postId: post.id,
       postedAt: post.postedAt,
-      now
+      now,
+      dropped
     }));
+  }
+
+  const droppedReasons = {};
+  for (const item of dropped) {
+    droppedReasons[item.reason] = (droppedReasons[item.reason] || 0) + 1;
   }
 
   return {
     offers,
+    dropped,
     status: {
       id: source.id,
       kind: source.kind,
@@ -678,7 +780,11 @@ export async function fetchTelegramSourceOffers({
       posts: postsRead,
       offers: offers.length,
       skippedOld,
-      skippedAuto
+      skippedAuto,
+      // Named reasons, so a loss at the parsing stage is visible in the run
+      // report instead of showing up as a quiet shortfall.
+      droppedAtParse: dropped.length,
+      droppedReasons
     }
   };
 }

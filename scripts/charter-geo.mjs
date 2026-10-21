@@ -227,11 +227,28 @@ const COUNTRY_BY_CODE = new Map(
 );
 
 /**
+ * Decodes the HTML entities t.me puts in post text.
+ *
+ * A channel writing "Астана -> Фукуок" is served as "Астана -&gt; Фукуок", and
+ * an undecoded `&gt;` used to survive all the way into the city name, so the
+ * destination arrived here as "&gt; Фукуок" and resolved to nothing. The
+ * adapter decodes entities now; this is the safety net that keeps a single
+ * missed spot from costing a whole country again.
+ */
+function decodeEntities(value) {
+  return String(value ?? "")
+    .replace(/&(?:gt|#62|#x3e);/gi, ">")
+    .replace(/&(?:lt|#60|#x3c);/gi, "<")
+    .replace(/&(?:nbsp|#160);/gi, " ")
+    .replace(/&(?:amp|#38);/gi, "&");
+}
+
+/**
  * Collapses any human spelling into a comparable key: strips flags, emoji,
  * zero-width characters, markdown, bracketed country hints and punctuation.
  */
 export function cityKey(value) {
-  return String(value ?? "")
+  return decodeEntities(value)
     .toLocaleLowerCase("ru-RU")
     .replace(/\([^)]*(?:\)|$)/g, " ")
     .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, " ")
@@ -282,7 +299,7 @@ export function displayCity(value) {
 
 /** Last-resort cleanup for a city we cannot resolve (diagnostics only). */
 export function cleanCityText(value) {
-  return String(value ?? "")
+  return decodeEntities(value)
     .replace(/^\s*(?:OW|RT)\s+/i, "")
     .replace(/\([^)]*(?:\)|$)/g, " ")
     .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, " ")
@@ -409,7 +426,9 @@ export function classifyFlight(flight) {
     };
   }
 
-  // Third country to third country: its own category, never an inbound ticket.
+  // Third country to third country. Classified, but never publishable: we
+  // sell flights between Kazakhstan and the agreed countries only, so a
+  // Sharjah -> Tashkent fare carries its refusal reason from here on.
   return {
     category: TICKET_CATEGORIES.FOREIGN,
     country: toCity.country,
@@ -417,7 +436,7 @@ export function classifyFlight(flight) {
     toCity,
     nights: null,
     roundTrip: false,
-    reason: null
+    reason: "FOREIGN_TO_FOREIGN_ROUTE"
   };
 }
 
@@ -434,12 +453,19 @@ function unknown(reason, details = {}) {
   };
 }
 
-/** True when the offer can be placed in a country digest. */
+/**
+ * True when the offer can be placed in a country digest.
+ *
+ * `FOREIGN` is deliberately absent: a flight between two foreign countries
+ * (Sharjah -> Tashkent) used to be publishable and rendered under a "МЕЖДУ
+ * СТРАНАМИ" section, which is how foreign-to-foreign routes reached the
+ * channel. Whether the *country* is allowed is a separate question, answered
+ * once in `charter-publication-policy.mjs`.
+ */
 export function isPublishableCategory(category) {
   return category === TICKET_CATEGORIES.OUTBOUND
     || category === TICKET_CATEGORIES.INBOUND
-    || category === TICKET_CATEGORIES.ROUND_TRIP
-    || category === TICKET_CATEGORIES.FOREIGN;
+    || category === TICKET_CATEGORIES.ROUND_TRIP;
 }
 
 export { COUNTRIES, CITIES };
