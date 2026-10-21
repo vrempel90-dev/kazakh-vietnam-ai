@@ -497,3 +497,94 @@ test("classifyFlight marks a foreign-to-foreign route with its own reason", () =
   assert.equal(classification.category, "foreign");
   assert.equal(classification.reason, "FOREIGN_TO_FOREIGN_ROUTE");
 });
+
+/* ------------------- the four unresolved forms found in live channel data */
+
+test("a route heading with a trailing month marker still resolves", () => {
+  // biletuu appends the month to the heading: "Antalya Shymkent
+  // (Анталья -> Шымкент) (ноябрь". An end-anchored search for the bracketed
+  // form picked up "(ноябрь" and the route in the first group was never seen,
+  // so six real offers were reported as an unreadable origin instead of as
+  // Turkiye, which is simply not on the list.
+  assert.deepEqual(
+    parseRouteLine("Antalya Shymkent (Анталья -> Шымкент) (ноябрь"),
+    { from: "Анталия", to: "Шымкент", trip: "OW" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Astana Phu Quoc (Астана -> Фукуок) (декабрь)"),
+    { from: "Астана", to: "Фукуок", trip: "OW" }
+  );
+
+  // The refusal now names the real reason.
+  const verdict = evaluateOfferForPublication(offer({ from: "Анталия", to: "Шымкент" }));
+  assert.equal(verdict.allowed, false);
+  assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+  assert.equal(verdict.countryCode, "TR");
+});
+
+test("a \"Country, City\" destination resolves to the city", () => {
+  // "Астана -> Таиланд, Патонг" is a real Thailand ticket - an allowed
+  // country - that was refused as an unresolvable destination.
+  assert.equal(resolveCity("Таиланд, Патонг")?.name, "Пхукет");
+  assert.equal(resolveCity("Патонг")?.name, "Пхукет", "Patong flies through HKT");
+
+  const verdict = evaluateOfferForPublication(offer({ from: "Астана", to: "Таиланд, Патонг" }));
+  assert.equal(verdict.allowed, true);
+  assert.equal(verdict.countryCode, "TH");
+  assert.equal(verdict.classification.category, "outbound");
+});
+
+test("a comma form naming two cities is refused, never guessed", () => {
+  assert.equal(resolveCity("Алматы, Астана"), null);
+  assert.equal(resolveCity("Фукуок, Нячанг"), null);
+});
+
+test("a Russian city resolves so its refusal names the country, not a parse failure", () => {
+  // Krasnoyarsk was absent from the table, so twelve real offers were reported
+  // as unreadable routes. Russia is not on the allowed list; the refusal must
+  // say that.
+  assert.equal(resolveCity("Красноярск")?.name, "Красноярск");
+  assert.equal(resolveCity("Красноярска")?.name, "Красноярск");
+
+  for (const [from, to] of [["Шымкент", "Красноярск"], ["Красноярск", "Шымкент"]]) {
+    const verdict = evaluateOfferForPublication(offer({ from, to }));
+    assert.equal(verdict.allowed, false, from + " -> " + to);
+    assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+    assert.equal(verdict.countryCode, "RU");
+  }
+});
+
+test("the Phuket to Almaty hold is intact and scoped to that one direction", () => {
+  // Four independent channels carry this route with matching dates and prices,
+  // but charter channels repost each other, so that is corroboration and not
+  // verification. The hold stays until the carrier and the direction are
+  // confirmed from a source that is not the channels themselves.
+  const held = [
+    { id: "scat", from: "Пхукет", to: "Алматы", airlineCode: "S", airline: "Scat" },
+    { id: "named-scat", from: "Пхукет", to: "Алматы", airline: "SCAT" },
+    { id: "no-carrier", from: "Пхукет", to: "Алматы" },
+    { id: "star-no-name", from: "Пхукет", to: "Алматы", airlineCode: "*" }
+  ].map(item => offer({ ...item, airlineCode: item.airlineCode, airline: item.airline }));
+
+  const result = validateFlightsForPublication(held, { now: NOW });
+  assert.equal(result.verified.length, 0, "nothing on this route is published");
+  assert.deepEqual(
+    result.needsReview.map(item => item.flight.id + ":" + item.reason).sort(),
+    [
+      "named-scat:DISPUTED_SCAT_PHUKET_ALMATY_ROUTE",
+      "no-carrier:UNVERIFIED_CARRIER_PHUKET_ALMATY_ROUTE",
+      "scat:DISPUTED_SCAT_PHUKET_ALMATY_ROUTE",
+      "star-no-name:UNVERIFIED_CARRIER_PHUKET_ALMATY_ROUTE"
+    ]
+  );
+
+  // The hold is for Phuket -> Almaty one-way only: the outbound direction and
+  // other Kazakhstan cities are unaffected.
+  const unaffected = [
+    offer({ id: "outbound", from: "Алматы", to: "Пхукет", airlineCode: "S", airline: "Scat" }),
+    offer({ id: "astana", from: "Пхукет", to: "Астана", airlineCode: "S", airline: "Scat" })
+  ];
+  const clean = validateFlightsForPublication(unaffected, { now: NOW });
+  assert.deepEqual(clean.verified.map(item => item.id).sort(), ["astana", "outbound"]);
+  assert.equal(clean.needsReview.length, 0);
+});

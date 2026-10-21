@@ -183,9 +183,11 @@ test("case-ending stripping never maps one catalogued city onto another", () => 
 });
 
 test("a declined form of an uncatalogued city stays unresolved", () => {
-  // Krasnoyarsk is not in the table; stripping its ending must not invent a
-  // city, and an unresolved origin is a reported refusal, never a publication.
-  assert.equal(resolveCity("Красноярска"), null);
+  // Stripping an ending must not invent a city: an unresolved endpoint is a
+  // reported refusal, never a publication. (Krasnoyarsk used to be the example
+  // here; it is catalogued now, so its refusal names Russia instead.)
   assert.equal(resolveCity("Нигдеграда"), null);
   assert.equal(resolveCity("ОКТЯБРЯ"), null);
+  assert.equal(resolveCity("Патонга"), resolveCity("Патонг"), "a catalogued alias still declines");
+  assert.equal(resolveCity("Красноярска")?.name, "Красноярск");
 });

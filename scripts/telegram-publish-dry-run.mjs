@@ -15,6 +15,7 @@ import { resolve } from "node:path";
 import { buildCountryDigests } from "./telegram-digest.mjs";
 import { describeSchedule, resolvePublicationWindow } from "./telegram-schedule.mjs";
 import { runTelegramPublication } from "./telegram-publish-run.mjs";
+import { parsePublishTargets } from "./telegram-publisher.mjs";
 
 const args = process.argv.slice(2);
 const printDigests = args.includes("--print");
@@ -145,8 +146,22 @@ if (!testChat) {
   console.error("TELEGRAM_TEST_CHAT_ID is required for --send-test.");
   process.exit(1);
 }
-if (parseTargetList(process.env.TELEGRAM_PUBLISH_CHATS).includes(testChat)) {
-  console.error("TELEGRAM_TEST_CHAT_ID must not be one of the production channels.");
+// Compared against the targets that would ACTUALLY be used, not against the
+// raw environment variable. `parsePublishTargets` falls back to the hardcoded
+// DEFAULT_PUBLISH_CHATS, so when TELEGRAM_PUBLISH_CHATS is unset the old check
+// compared against an empty list and a test chat id equal to a production
+// channel passed straight through.
+const productionTargets = parsePublishTargets(process.env.TELEGRAM_PUBLISH_CHATS);
+const normalizedTestChat = parsePublishTargets(testChat)[0];
+if (productionTargets.includes(normalizedTestChat)) {
+  console.error(
+    "TELEGRAM_TEST_CHAT_ID (" + testChat + ") is one of the production channels: "
+    + productionTargets.join(", ")
+  );
+  process.exit(1);
+}
+if (!String(process.env.TELEGRAM_BOT_TOKEN || "").trim()) {
+  console.error("TELEGRAM_BOT_TOKEN is required for --send-test.");
   process.exit(1);
 }
 
@@ -164,6 +179,3 @@ const result = await runTelegramPublication({
 console.log("\nTest delivery result:");
 console.log(JSON.stringify(result.channels, null, 2));
 
-function parseTargetList(value) {
-  return String(value || "").split(",").map(item => item.trim()).filter(Boolean);
-}

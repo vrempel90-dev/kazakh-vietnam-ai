@@ -66,8 +66,16 @@ function normalizeOfferForPublication(offer) {
 
   return {
     ...offer,
-    from,
-    to,
+    // Canonical city names, once, at the point the public record is built.
+    //
+    // Whatever spelling the channel used - a Latin heading, a genitive, a
+    // "Таиланд, Патонг" - the feed stores the catalogued name. The customer app
+    // shows this string, and de-duplication keys on it, so leaving the raw form
+    // in meant the app displayed "Таиланд, Патонг" and the same flight written
+    // two ways survived as two offers. An unresolved city keeps its original
+    // text so diagnostics can still quote what arrived.
+    from: classification.fromCity?.name || from,
+    to: classification.toCity?.name || to,
     trip,
     notice: requirement ? "❗ " + requirement : undefined
   };
@@ -341,6 +349,27 @@ function dropAnonymousDuplicates(flights) {
   );
 }
 
+/**
+ * The FX rates the customer feed publishes, from the operator-set
+ * `FX_USD_KZT` / `FX_EUR_KZT` the pricing engine already reads.
+ *
+ * The feed never carried a `rates` field, so `payload.rates` was always
+ * undefined in the client and the USD/EUR buttons were permanently disabled -
+ * the currency switch has never worked in production. Nothing is invented
+ * here: an unset variable means no rate, and the client keeps that currency
+ * disabled rather than converting at a guessed rate.
+ */
+function publishedRates() {
+  const rates = {};
+  for (const [code, field] of [["USD", "USD_KZT"], ["EUR", "EUR_KZT"]]) {
+    const rate = envNumber("FX_" + code + "_KZT");
+    if (rate != null && rate > 0) rates[field] = rate;
+  }
+  return Object.keys(rates).length
+    ? { ...rates, updatedAt: new Date().toISOString() }
+    : undefined;
+}
+
 function offerTtlHours() {
   const configured = envNumber("OFFER_TTL_HOURS");
   return configured != null && configured >= 1 ? configured : 24;
@@ -359,7 +388,12 @@ function comparablePayload(payload) {
   return JSON.stringify({
     mode: payload.mode,
     note: payload.note,
-    flights: payload.flights
+    flights: payload.flights,
+    // `updatedAt` inside rates changes every run, so compare the numbers only;
+    // otherwise the feed would be rewritten on every sync.
+    rates: payload.rates
+      ? { USD_KZT: payload.rates.USD_KZT, EUR_KZT: payload.rates.EUR_KZT }
+      : undefined
   });
 }
 
@@ -582,6 +616,7 @@ const payload = {
   note: cachedFallbackMode
     ? "Previously observed public Telegram offers are shown temporarily. Price and availability must be confirmed before booking."
     : "Offers are collected only from configured public Telegram charter channels. Source channel identifiers are not exposed to customers.",
+  rates: publishedRates(),
   flights: publicFlights
 };
 

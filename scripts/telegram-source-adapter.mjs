@@ -269,11 +269,18 @@ function isCityLikeRoutePart(value) {
  * as a route on its own.
  */
 function routeFromBracketedForm(raw) {
-  const match = String(raw).match(/\(([^()]{3,})\)?\s*$/);
-  if (!match) return null;
-  const inner = match[1].trim();
-  if (!inner || inner === raw.trim()) return null;
-  return parseRouteLine(inner, { allowBracketed: false });
+  const text = String(raw);
+  // EVERY bracketed group is tried, not just the last one. Channels append a
+  // month marker to the heading - "Antalya Shymkent (Анталья -> Шымкент)
+  // (ноябрь" - and an end-anchored match picked up "(ноябрь", so the route in
+  // the first group was never seen and the whole heading stayed unresolved.
+  for (const match of text.matchAll(/\(([^()]{3,})\)?/g)) {
+    const inner = match[1].trim();
+    if (!inner || inner === text.trim()) continue;
+    const route = parseRouteLine(inner, { allowBracketed: false });
+    if (route) return route;
+  }
+  return null;
 }
 
 /**

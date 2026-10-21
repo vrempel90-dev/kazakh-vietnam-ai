@@ -97,7 +97,9 @@ const CITIES = [
   ["VN", "Хошимин", "Ho Chi Minh", ["SGN"], ["ho chi minh", "hochiminh", "сайгон", "saigon", "хо ши мин"]],
 
   // Thailand / South-East Asia
-  ["TH", "Пхукет", "Phuket", ["HKT"], ["phuket", "фукет"]],
+  // Patong is the resort on Phuket island and flies through HKT, the same
+  // relationship Cam Ranh has with Nha Trang.
+  ["TH", "Пхукет", "Phuket", ["HKT"], ["phuket", "фукет", "патонг", "patong"]],
   ["TH", "Бангкок", "Bangkok", ["BKK", "DMK"], ["bangkok"]],
   ["TH", "Паттайя", "Pattaya", ["UTP"], ["pattaya", "паттая"]],
   ["TH", "Самуи", "Samui", ["USM"], ["samui", "ко самуи"]],
@@ -175,6 +177,9 @@ const CITIES = [
   ["RU", "Казань", "Kazan", ["KZN"], ["kazan"]],
   ["RU", "Екатеринбург", "Yekaterinburg", ["SVX"], ["yekaterinburg", "екатеринбурге"]],
   ["RU", "Новосибирск", "Novosibirsk", ["OVB"], ["novosibirsk"]],
+  // Russia is not on the allowed list, but a city that resolves is refused as
+  // COUNTRY_NOT_ALLOWED instead of being reported as an unreadable route.
+  ["RU", "Красноярск", "Krasnoyarsk", ["KJA"], ["krasnoyarsk"]],
   ["BY", "Минск", "Minsk", ["MSQ"], ["minsk"]],
 
   // Europe
@@ -324,13 +329,37 @@ function resolveDeclinedKey(key) {
   return null;
 }
 
+/**
+ * A "Country, City" endpoint, as in "Таиланд, Патонг".
+ *
+ * Exactly one comma-separated segment may resolve. If two of them do the
+ * endpoint names two cities and is genuinely ambiguous, so it is refused
+ * rather than guessed.
+ */
+function resolveCommaSeparated(value) {
+  const segments = String(value ?? "").split(",").map(part => part.trim()).filter(Boolean);
+  if (segments.length < 2) return null;
+
+  const matches = [];
+  for (const segment of segments) {
+    const key = cityKey(segment);
+    if (!key) continue;
+    const city = CITY_BY_KEY.get(key) || resolveDeclinedKey(key);
+    if (city && !matches.some(found => found.id === city.id)) matches.push(city);
+  }
+  return matches.length === 1 ? matches[0] : null;
+}
+
 /** Resolves a city spelling to its canonical record, or null when unknown. */
 export function resolveCity(value) {
   const key = cityKey(value);
   if (!key) return null;
   // The exact spelling always wins; declension stripping only runs on a miss,
   // so a catalogued name can never be rewritten into something else.
-  return CITY_BY_KEY.get(key) || resolveDeclinedKey(key) || null;
+  return CITY_BY_KEY.get(key)
+    || resolveDeclinedKey(key)
+    || resolveCommaSeparated(value)
+    || null;
 }
 
 /** Canonical Russian city name used in published route titles. */

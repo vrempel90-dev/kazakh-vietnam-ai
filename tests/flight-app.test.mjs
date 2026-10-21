@@ -6,9 +6,12 @@ import { createServer } from "vite";
 
 const server = await createServer({ server: { host: "127.0.0.1", port: 4178, strictPort: true } });
 await server.listen();
+// CHROME_PATH wins when set. Without it, Playwright resolves its own browser,
+// which is what works on Linux and CI; the hardcoded Windows path that used to
+// be the default meant this suite could not start anywhere else.
 const browser = await chromium.launch({
   headless: true,
-  executablePath: process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
 });
 const screenshots = resolve(process.env.SCREENSHOT_DIR || "screenshots");
 const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
