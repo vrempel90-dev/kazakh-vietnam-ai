@@ -74,3 +74,40 @@ test("publication channel cannot be re-added as an ingestion source", () => {
     1
   );
 });
+
+test("Step2Travel is a configured ingestion source, not only a discovery seed", () => {
+  // @charterticketsme existed only as a seed in telegram-channel-discovery.mjs.
+  // Discovery is off by default, needs MTProto credentials and rejects channels
+  // under 10 000 subscribers, so the channel was never fetched and none of its
+  // tickets could reach the feed.
+  const handles = ingestSources({}).map(source => source.handle);
+  assert.ok(handles.includes("charterticketsme"), "Step2Travel must be ingested by default");
+
+  const source = ingestSources({}).find(item => item.handle === "charterticketsme");
+  assert.equal(source.url, "https://t.me/s/charterticketsme");
+  assert.equal(source.ingest, true);
+  assert.equal(source.enabled, true);
+
+  // Every previously connected source is still there.
+  for (const handle of ["bilettu", "biletuu", "avia07", "chartersavia", "charter_antalya"]) {
+    assert.ok(handles.includes(handle), handle + " must stay connected");
+  }
+});
+
+test("listing Step2Travel in TELEGRAM_SOURCE_CHANNELS too does not duplicate it", () => {
+  const sources = ingestSources({
+    TELEGRAM_SOURCE_CHANNELS: "charterticketsme,bilettu,biletuu,avia07,chartersavia,charter_antalya"
+  });
+  const handles = sources.map(source => source.handle);
+  assert.equal(new Set(handles).size, handles.length, "no duplicate source ids");
+  assert.ok(handles.includes("charterticketsme"));
+});
+
+test("our own publication channels are never ingested as sources", () => {
+  const handles = ingestSources({
+    TELEGRAM_SOURCE_CHANNELS: "charterticketsme,charter_forever_travel,charterkaz"
+  }).map(source => source.handle);
+  assert.ok(!handles.includes("charter_forever_travel"));
+  assert.ok(!handles.includes("charterkaz"));
+  assert.ok(handles.includes("charterticketsme"));
+});

@@ -346,3 +346,125 @@ test("regression: a fare row is never parsed as a route", () => {
     assert.equal(parseRouteLine(line), null, line);
   }
 });
+
+test("Step2Travel bilingual route headings parse when the two lines arrive joined", () => {
+  // @charterticketsme heads each route with the Latin spelling and repeats it
+  // in Russian in brackets:
+  //
+  //   Astana Phu Quoc
+  //   (Астана -> Фукуок)
+  //
+  // For part of the channel's posts those lines reach us joined. The arrow
+  // split then produced the origin "Astana Phu Quoc (Астана", which resolves
+  // to no city, so every fare row under the heading was attributed to an
+  // unresolvable route and refused at the end of the pipeline. A three-city
+  // round trip lost its RT status the same way.
+  assert.deepEqual(
+    parseRouteLine("Astana Phu Quoc (Астана -> Фукуок)"),
+    { from: "Астана", to: "Фукуок", trip: "OW" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Phu Quoc Astana (Фукуок -> Астана)"),
+    { from: "Фукуок", to: "Астана", trip: "OW" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Astana Phu Quoc Astana (Астана -> Фукуок -> Астана)"),
+    { from: "Астана", to: "Фукуок", trip: "RT" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Nha Trang Shymkent (Нячанг -> Шымкент)"),
+    { from: "Нячанг", to: "Шымкент", trip: "OW" }
+  );
+  // Escaped arrows and a missing closing bracket, both seen in the live feed.
+  assert.deepEqual(
+    parseRouteLine("Astana Phu Quoc (Астана -&gt; Фукуок)"),
+    { from: "Астана", to: "Фукуок", trip: "OW" }
+  );
+  assert.deepEqual(
+    parseRouteLine("Nha Trang Shymkent (Нячанг -> &gt; Шымкент"),
+    { from: "Нячанг", to: "Шымкент", trip: "OW" }
+  );
+
+  // The bracketed form must not hijack a line that is not a route.
+  assert.equal(parseRouteLine("V 14.10 - Business от 194 000 (1 место)"), null);
+  assert.equal(parseRouteLine("S 28.10 - 240 000 ₸ (3)"), null);
+  // A bracketed country hint is still a hint, not the route.
+  assert.deepEqual(
+    parseRouteLine("🇻🇳 Камрань/Нячанг (Вьетнам) ➔ Алматы 🇰🇿 (Econom)"),
+    { from: "Нячанг", to: "Алматы", trip: "OW" }
+  );
+});
+
+test("a full Step2Travel post yields every one-way, inbound and round-trip fare", () => {
+  const now = new Date("2026-10-21T05:30:00Z");
+  const text = [
+    "🇻🇳Vietnam",
+    "",
+    "❗️ Arrival Card обязательно❗️",
+    "",
+    "Astana Phu Quoc (Астана -> Фукуок)",
+    "V 21.10 - 199 000 🔥",
+    "V 22.10 - 205 000 (3)",
+    "* 28.10 - 236 000 (1)",
+    "",
+    "Phu Quoc Astana (Фукуок -> Астана)",
+    "S 29.10 - 155 000 🔥",
+    "",
+    "Astana Phu Quoc Astana (Астана -> Фукуок -> Астана)",
+    "-туда обратно 7",
+    "V 25.10 - 01.11 = 396 000 (2)🔥",
+    "",
+    "Sun Phu Quoc Airways - багаж 23 кг + ручная кладь 7 кг",
+    "Scat - багаж 23 кг + ручная кладь 5 кг",
+    "VietJet Air - багаж 20кг + ручная кладь 5кг",
+    "",
+    "Цены указаны в KZT"
+  ].join("\n");
+
+  const dropped = [];
+  const offers = parseTelegramPost(text, {
+    sourceId: "telegram:charterticketsme",
+    postId: 9001,
+    postedAt: "2026-10-21T04:00:00Z",
+    now,
+    dropped
+  });
+
+  assert.equal(offers.length, 5);
+  assert.equal(dropped.length, 0, "nothing is dropped without a reason");
+
+  assert.deepEqual(
+    offers.map(item => item.from + ">" + item.to + ":" + item.trip),
+    [
+      "Астана>Фукуок:OW",
+      "Астана>Фукуок:OW",
+      "Астана>Фукуок:OW",
+      "Фукуок>Астана:OW",
+      "Астана>Фукуок:RT"
+    ]
+  );
+
+  // A departure today is kept and flagged, which the old freshness guard made
+  // impossible.
+  assert.equal(offers[0].departureDate, "2026-10-21");
+  assert.equal(offers[0].departureOffset, 0);
+  assert.equal(offers[0].hot, true);
+  assert.equal(offers[0].sourcePrice, 199000);
+  assert.equal(offers[0].airlineCode, "V");
+  assert.equal(offers[0].airline, "VietJet Air");
+  assert.equal(offers[0].notice, "❗ Arrival Card обязательно");
+
+  assert.equal(offers[1].departureOffset, 1, "tomorrow");
+
+  // The "*" carrier is resolved from the baggage legend, never invented.
+  assert.equal(offers[2].airlineCode, "*");
+  assert.equal(offers[2].airline, "Sun Phu Quoc Airways");
+
+  assert.equal(offers[3].from, "Фукуок", "the inbound direction is its own offer");
+  assert.equal(offers[3].airline, "Scat");
+
+  const roundTrip = offers[4];
+  assert.equal(roundTrip.departureDate, "2026-10-25");
+  assert.equal(roundTrip.returnDate, "2026-11-01");
+  assert.equal(roundTrip.sourcePrice, 396000);
+});

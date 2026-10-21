@@ -251,7 +251,32 @@ function isCityLikeRoutePart(value) {
   return /\p{L}/u.test(part);
 }
 
-export function parseRouteLine(line) {
+/**
+ * Step2Travel (@charterticketsme) heads each route with the Latin spelling and
+ * repeats it in Russian in brackets:
+ *
+ *   Astana Phu Quoc
+ *   (Астана -> Фукуок)
+ *
+ * When those two lines arrive joined - which is how they reach us for part of
+ * the channel's posts - the split at the arrow produced the origin
+ * "Astana Phu Quoc (Астана", which resolves to no city, so every fare row
+ * under that heading was attributed to an unresolvable route and refused at
+ * the end of the pipeline. A three-city round trip also lost its RT status the
+ * same way.
+ *
+ * The bracketed form is the authoritative one, so it wins whenever it parses
+ * as a route on its own.
+ */
+function routeFromBracketedForm(raw) {
+  const match = String(raw).match(/\(([^()]{3,})\)?\s*$/);
+  if (!match) return null;
+  const inner = match[1].trim();
+  if (!inner || inner === raw.trim()) return null;
+  return parseRouteLine(inner, { allowBracketed: false });
+}
+
+export function parseRouteLine(line, { allowBracketed = true } = {}) {
   // Decoded first, so an escaped arrow is a separator rather than part of a
   // city name.
   const raw = decodeEntities(line)
@@ -261,6 +286,11 @@ export function parseRouteLine(line) {
     .trim();
   if (!raw || /^\d{1,2}[./]\d{1,2}/.test(raw) || isRouteNoise(raw)) return null;
   if (/(?:багаж|ручн(?:ая|ой)\s+клад|airline)/iu.test(raw)) return null;
+
+  if (allowBracketed) {
+    const bracketed = routeFromBracketedForm(raw);
+    if (bracketed) return bracketed;
+  }
 
   const iataRoute = raw.match(/^([A-Z]{3})\s*[-–—→]\s*([A-Z]{3})(?:\s*[-–—→]\s*([A-Z]{3}))?$/);
   let parts;

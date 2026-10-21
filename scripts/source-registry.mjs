@@ -5,12 +5,26 @@ const OWN_PUBLICATION_CHANNEL_HANDLES = new Set([
   "charterkaz"
 ]);
 
+/**
+ * Channels ingested through the public `t.me/s/<handle>` feed. This list needs
+ * no credentials and no discovery run, so a channel is only actually collected
+ * from when it appears here or in `TELEGRAM_SOURCE_CHANNELS`.
+ *
+ * `charterticketsme` (Step2Travel) existed in this codebase only as a
+ * DISCOVERY SEED, in `telegram-channel-discovery.mjs`. Discovery is off by
+ * default, needs `TG_API_ID`/`TG_API_HASH`/`TG_SESSION`, and rejects any
+ * channel under 10 000 subscribers - so the seed never ran and the channel was
+ * never read. That is why its tickets, Astana -> Phu Quoc among them, never
+ * reached the feed: not a parsing failure, the channel was simply never
+ * fetched.
+ */
 const DEFAULT_PUBLIC_TELEGRAM_CHANNELS = [
   "bilettu",
   "biletuu",
   "avia07",
   "chartersavia",
-  "charter_antalya"
+  "charter_antalya",
+  "charterticketsme"
 ];
 
 function uniqueById(sources) {
