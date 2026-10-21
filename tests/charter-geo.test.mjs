@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  CITIES,
   TICKET_CATEGORIES,
   classifyFlight,
   cityKey,
@@ -134,4 +135,57 @@ test("a route to and from the same city is rejected", () => {
 test("city keys ignore flags, emoji, markdown and bracketed country hints", () => {
   assert.equal(cityKey("🇻🇳 *Фукуок* (Вьетнам)"), cityKey("фукуок"));
   assert.equal(displayCity("PQC"), "Фукуок");
+});
+
+test("Russian case endings resolve to the canonical city", () => {
+  // Channels write routes in prose: "из Белграда в Астану", "Шанхая -> Алматы",
+  // "Алматы -> Шарджу". Every such form used to be an unresolved city, so the
+  // whole route was refused - 142 offers on one live sync of @charterticketsme.
+  const cases = {
+    "Белграда": "Белград",
+    "Астану": "Астана",
+    "Астаны": "Астана",
+    "Астане": "Астана",
+    "Шымкента": "Шымкент",
+    "Шанхая": "Шанхай",
+    "Дубая": "Дубай",
+    "Шарджу": "Шарджа",
+    "Сеула": "Сеул",
+    "Измира": "Измир",
+    "Праги": "Прага",
+    "Прагу": "Прага",
+    "Москвы": "Москва",
+    "Фукуоке": "Фукуок",
+    "Анталию": "Анталия",
+    "Милане": "Милан",
+    "Вене": "Вена"
+  };
+  for (const [declined, canonical] of Object.entries(cases)) {
+    assert.equal(resolveCity(declined)?.name, canonical, declined);
+  }
+});
+
+test("case-ending stripping never maps one catalogued city onto another", () => {
+  // The guard that makes the transformations safe: the exact spelling always
+  // wins, and a transformation must land on an exact table entry, so at worst
+  // it declines to resolve. This asserts it never lands on the WRONG city.
+  for (const [, russian, english, iata = [], aliases = []] of CITIES) {
+    for (const spelling of [russian, english, ...iata, ...aliases]) {
+      const resolved = resolveCity(spelling);
+      assert.ok(resolved, spelling + " must resolve");
+      assert.equal(
+        cityKey(resolved.name),
+        cityKey(russian),
+        spelling + " (" + russian + ") must not resolve to " + resolved.name
+      );
+    }
+  }
+});
+
+test("a declined form of an uncatalogued city stays unresolved", () => {
+  // Krasnoyarsk is not in the table; stripping its ending must not invent a
+  // city, and an unresolved origin is a reported refusal, never a publication.
+  assert.equal(resolveCity("Красноярска"), null);
+  assert.equal(resolveCity("Нигдеграда"), null);
+  assert.equal(resolveCity("ОКТЯБРЯ"), null);
 });

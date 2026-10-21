@@ -82,7 +82,8 @@ function normalizeAirlineText(value) {
 /** Letter used in front of an offer line, or null when the carrier is unknown. */
 export function carrierCode(flight) {
   const declared = String(flight?.airlineCode || "").trim().toUpperCase();
-  if (/^[A-Z]$/.test(declared)) return declared;
+  // One or two letters: the source channels use both ("V", "SE").
+  if (/^[A-Z]{1,2}$/.test(declared)) return declared;
 
   const airline = normalizeAirlineText(flight?.airline);
   if (!airline) return null;

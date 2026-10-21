@@ -302,8 +302,43 @@ function dedupeFlights(flights) {
   // whole stretch of the season at a time, with nothing reported anywhere.
   // Digest size is handled where it belongs: a country's text is split into
   // "Часть N/M" parts, which never drops an offer.
-  return [...map.values()]
+  return dropAnonymousDuplicates([...map.values()])
     .sort((a, b) => a.offset - b.offset || a.price - b.price);
+}
+
+/**
+ * Removes an offer that carries no airline when an otherwise identical one
+ * does.
+ *
+ * The de-duplication key above includes the carrier, so the same fare picked up
+ * from two channels - one naming the airline, one not - survived as two offers
+ * and the digest printed the same row twice, once bare and once with its
+ * letter. On one live sync that was 73 redundant rows.
+ *
+ * Two DIFFERENT carriers at the same price on the same date are a real pair and
+ * are both kept; only the nameless one is dropped, and only when a named offer
+ * for exactly the same route, dates, price and seat count exists. It therefore
+ * carries nothing the kept offer does not.
+ */
+function dropAnonymousDuplicates(flights) {
+  const fareKey = flight => [
+    normalizeCity(flight.from),
+    normalizeCity(flight.to),
+    flight.trip,
+    flight.departureDate,
+    flight.returnDate || "",
+    Math.round(Number(flight.price) || 0),
+    String(flight.seats || "")
+  ].join("|");
+
+  const named = new Set();
+  for (const flight of flights) {
+    if (flight.airlineCode || flight.airline) named.add(fareKey(flight));
+  }
+
+  return flights.filter(flight =>
+    Boolean(flight.airlineCode || flight.airline) || !named.has(fareKey(flight))
+  );
 }
 
 function offerTtlHours() {
@@ -386,8 +421,21 @@ statuses.push({
   allowed: freshFlights.length,
   refused: routePolicy.refused.length,
   reasons: policyReasonCounts(routePolicy.refused),
-  refusedCountries: [...new Set(
-    routePolicy.refused.map(item => item.country).filter(Boolean)
+  // Kept apart on purpose. A foreign-to-foreign refusal carries the
+  // DESTINATION country, which is often an allowed one (Antalya -> Dubai is
+  // refused for having no Kazakhstan endpoint, not because the UAE is
+  // blocked), so merging the two lists reads as "the UAE is blocked".
+  notAllowedCountries: [...new Set(
+    routePolicy.refused
+      .filter(item => item.reason === "COUNTRY_NOT_ALLOWED")
+      .map(item => item.country)
+      .filter(Boolean)
+  )].sort(),
+  foreignToForeignCountries: [...new Set(
+    routePolicy.refused
+      .filter(item => item.reason === "FOREIGN_TO_FOREIGN_ROUTE")
+      .map(item => item.country)
+      .filter(Boolean)
   )].sort()
 });
 
@@ -464,10 +512,13 @@ if (!flights.length && cachedFallbackEnabled && existing) {
   }
 }
 
-try {
-  await writeSourceStatus(
-    resolve(process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json"),
-    {
+const sourceStatusPath = resolve(
+  process.env.SOURCE_STATUS_PATH || "/tmp/charter-source-status.json"
+);
+
+async function persistSourceStatus() {
+  try {
+    await writeSourceStatus(sourceStatusPath, {
       statuses,
       summary: {
         mode: "telegram_public_only",
@@ -485,14 +536,20 @@ try {
         publishableOffers: flights.length,
         fallbackOffers: cachedFallbackMode ? flights.length : 0
       }
-    }
-  );
-} catch (error) {
-  console.warn(
-    "Could not persist source diagnostics:",
-    error instanceof Error ? error.message : String(error)
-  );
+    });
+  } catch (error) {
+    console.warn(
+      "Could not persist source diagnostics:",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
 }
+
+// Written once now, so the ingestion diagnostics survive even if publication
+// throws, and once more after publication so the delivery outcome lands in the
+// file too. It used to be written only here, which is why `telegram_publisher`
+// never reached the status file or /health.
+await persistSourceStatus();
 
 const publicFlights = flights.map(sanitizePublicFlight);
 
@@ -613,5 +670,6 @@ statuses.push({
   unclassified: publicationReport.diagnostics?.length || 0
 });
 
+await persistSourceStatus();
 
 console.log("Source status:", JSON.stringify(statuses));

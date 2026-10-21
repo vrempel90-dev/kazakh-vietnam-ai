@@ -90,7 +90,8 @@ const CITIES = [
 
   // Vietnam
   ["VN", "Нячанг", "Nha Trang", ["CXR"], ["камрань", "кам рань", "камрань нячанг", "nha trang", "nhatrang", "cam ranh", "camranh", "ня чанг"]],
-  ["VN", "Фукуок", "Phu Quoc", ["PQC"], ["phu quoc", "phuquoc", "фу куок", "фукуоке"]],
+  // "фукуока" is the genitive the channels use in running text.
+  ["VN", "Фукуок", "Phu Quoc", ["PQC"], ["phu quoc", "phuquoc", "фу куок", "фукуоке", "фукуока"]],
   ["VN", "Дананг", "Da Nang", ["DAD"], ["da nang", "danang", "да нанг"]],
   ["VN", "Ханой", "Hanoi", ["HAN"], ["hanoi", "ha noi"]],
   ["VN", "Хошимин", "Ho Chi Minh", ["SGN"], ["ho chi minh", "hochiminh", "сайгон", "saigon", "хо ши мин"]],
@@ -285,11 +286,51 @@ for (const [countryCode, ru, en, iata = [], aliases = []] of CITIES) {
   }
 }
 
+/**
+ * Russian case endings, as a last resort when the spelling is not in the table.
+ *
+ * Channels write routes in running prose - "из Белграда в Астану", "Шанхая ->
+ * Алматы", "Алматы -> Шарджу" - and every such form used to be an unresolved
+ * city, so the whole route was refused. On one live sync of @charterticketsme
+ * that was 142 offers, Serbia, China, Czechia and the UAE among them.
+ *
+ * Each entry rewrites the END of the key and the result must be an exact hit in
+ * the city table, so a transformation can only ever land on a real city, never
+ * invent one. `tests/charter-geo.test.mjs` asserts that no transformation maps
+ * one catalogued city onto a different one.
+ */
+const CASE_ENDINGS = [
+  [/а$/, ""],   // Белграда -> Белград, Шымкента -> Шымкент, Сеула -> Сеул
+  [/я$/, "й"],  // Шанхая -> Шанхай, Дубая -> Дубай
+  [/ы$/, "а"],  // Астаны -> Астана, Москвы -> Москва
+  [/у$/, "а"],  // Астану -> Астана, Шарджу -> Шарджа, Прагу -> Прага
+  [/и$/, "а"],  // Праги -> Прага
+  [/е$/, "а"],  // Астане -> Астана, Праге -> Прага, Вене -> Вена
+  [/е$/, ""],   // Фукуоке -> Фукуок, Милане -> Милан
+  [/ю$/, "я"],  // Анталию -> Анталия
+  [/ов$/, ""],  // Афинов -> Афин (rare, but harmless)
+  [/ах$/, "ы"]  // Афинах -> Афины
+];
+
+/** The table entry for a declined spelling, or null. */
+function resolveDeclinedKey(key) {
+  for (const [pattern, replacement] of CASE_ENDINGS) {
+    if (!pattern.test(key)) continue;
+    const candidate = key.replace(pattern, replacement);
+    if (candidate === key || candidate.length < 3) continue;
+    const city = CITY_BY_KEY.get(candidate);
+    if (city) return city;
+  }
+  return null;
+}
+
 /** Resolves a city spelling to its canonical record, or null when unknown. */
 export function resolveCity(value) {
   const key = cityKey(value);
   if (!key) return null;
-  return CITY_BY_KEY.get(key) || null;
+  // The exact spelling always wins; declension stripping only runs on a miss,
+  // so a catalogued name can never be rewritten into something else.
+  return CITY_BY_KEY.get(key) || resolveDeclinedKey(key) || null;
 }
 
 /** Canonical Russian city name used in published route titles. */

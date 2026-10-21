@@ -276,6 +276,57 @@ function routeFromBracketedForm(raw) {
   return parseRouteLine(inner, { allowBracketed: false });
 }
 
+/**
+ * A heading that is just city names with no separator at all.
+ *
+ * Step2Travel normally writes the Latin route and repeats it in Russian:
+ *
+ *   Phuket Astana
+ *   (Пхукет -> Астана)
+ *
+ * but some headings have no bracketed line - "Shymkent Bangkok" in the live
+ * channel. With no separator the line was not a route, so the fare rows under
+ * it stayed attached to the PREVIOUS heading: "S 22.10 - 77 000" was published
+ * as Phuket -> Astana. That is not a lost offer, it is an invented one, which
+ * is worse.
+ *
+ * Every group must resolve to a known city, so this can never conjure a city
+ * out of prose: at worst it declines to parse and the caller keeps looking.
+ */
+const MAX_HEADING_TOKENS = 6;
+
+function routeFromUnseparatedCities(raw) {
+  const tokens = String(raw).trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 2 || tokens.length > MAX_HEADING_TOKENS) return null;
+
+  const join = (from, to) => tokens.slice(from, to).join(" ");
+  const city = (from, to) => resolveCity(join(from, to));
+
+  // Two cities: "Shymkent Bangkok", "Nha Trang Almaty".
+  for (let split = 1; split < tokens.length; split += 1) {
+    const from = city(0, split);
+    const to = city(split, tokens.length);
+    // Canonical spellings, as the separator path produces: a Latin heading and
+    // its Russian twin must not survive as two different cities, or the feed's
+    // de-duplication (which keys on the spelling) keeps both.
+    if (from && to) return { from: from.name, to: to.name, trip: "OW" };
+  }
+
+  // Three cities, a round trip: "Astana Phu Quoc Astana".
+  for (let first = 1; first < tokens.length - 1; first += 1) {
+    for (let second = first + 1; second < tokens.length; second += 1) {
+      const a = city(0, first);
+      const b = city(first, second);
+      const c = city(second, tokens.length);
+      if (a && b && c && a.id === c.id) {
+        return { from: a.name, to: b.name, trip: "RT" };
+      }
+    }
+  }
+
+  return null;
+}
+
 export function parseRouteLine(line, { allowBracketed = true } = {}) {
   // Decoded first, so an escaped arrow is a separator rather than part of a
   // city name.
@@ -310,7 +361,10 @@ export function parseRouteLine(line, { allowBracketed = true } = {}) {
           .filter(Boolean);
   }
 
-  if (parts.length < 2 || parts.length > 3) return null;
+  // No separator at all: the heading may still be a sequence of city names.
+  if (parts.length < 2) return routeFromUnseparatedCities(raw);
+
+  if (parts.length > 3) return null;
   if (!parts.every(isCityLikeRoutePart)) return null;
 
   // At least one endpoint must be a city we actually know.
@@ -410,9 +464,18 @@ function detectBaggage(value) {
   return null;
 }
 
+/**
+ * The letter a fare row carries in front of its date.
+ *
+ * Step2Travel uses two-letter codes as well ("SE 28.10 - 87 000"), and a
+ * one-character match dropped the carrier from every such row. "OW" and "RT"
+ * are trip markers, never carriers.
+ */
 function detectOfferAirlineCode(value) {
-  const match = String(value || "").trim().match(/^([A-Z*])\s+(?=\d{1,2}[./]\d{1,2})/u);
-  return match ? match[1] : null;
+  const match = String(value || "").trim().match(/^([A-Z*]{1,2})\s+(?=\d{1,2}[./]\d{1,2})/u);
+  if (!match) return null;
+  const code = match[1];
+  return code === "OW" || code === "RT" ? null : code;
 }
 
 
