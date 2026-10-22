@@ -289,7 +289,7 @@ test("scenario 8: a restart mid-schedule neither repeats nor loses the window", 
   assert.equal(scheduled.calls.length, 1);
 });
 
-test("scenario 10: nothing is sent outside the three windows", async () => {
+test("scenario 10: no new post is ever created outside the three windows", async () => {
   const path = await statePath("closed");
   for (const moment of [almaty(9, 59), almaty(12, 0), almaty(13, 30), almaty(15, 0), almaty(18, 0), almaty(23, 0)]) {
     const run = recorder();
@@ -297,10 +297,82 @@ test("scenario 10: nothing is sent outside the three windows", async () => {
       flights: vietnam, now: moment, env: baseEnv(), statePath: path,
       fetchImpl: run.fetchImpl, logger: null
     });
-    assert.equal(run.calls.length, 0);
-    assert.equal(report.skipped, true);
-    assert.equal(report.reason, "OUTSIDE_PUBLICATION_WINDOW");
+    // Nothing has been posted today, so an edit-only run has nothing to edit.
+    assert.equal(run.calls.length, 0, "no Telegram call at " + moment.toISOString());
+    assert.equal(report.editOnly, true);
+    assert.equal(report.totals.sent, 0);
+    assert.equal(report.totals.edited, 0);
+    assert.ok(
+      report.channels[0].messages.every(message => message.action !== "send"),
+      "no send is ever planned outside a window"
+    );
   }
+
+  // And the window record is untouched, so the real window still publishes.
+  const stored = await loadPublicationState(path);
+  assert.deepEqual(Object.keys(stored.channels[CHAT]?.windows || {}), []);
+});
+
+test("a price change outside the window edits today's post instead of waiting a day", async () => {
+  const path = await statePath("price-outside-window");
+
+  // 10:05 - the Asia window publishes Vietnam.
+  const morning = recorder();
+  await runTelegramPublication({
+    flights: vietnam, now: MORNING, env: baseEnv(), statePath: path,
+    fetchImpl: morning.fetchImpl, logger: null
+  });
+  const liveMessageId = morning.calls[0].messageId ?? 1001;
+  assert.equal(morning.calls.length, 1);
+
+  // 15:00 - the window is long closed and the price moves. The post must
+  // follow, because a wrong price in the channel is worse than a late edit.
+  const cheaper = vietnam.map(flight =>
+    flight.id === "v-out-1" ? { ...flight, price: 61000 } : flight
+  );
+  const afternoon = recorder();
+  const report = await runTelegramPublication({
+    flights: cheaper, now: almaty(15, 0), env: baseEnv(), statePath: path,
+    fetchImpl: afternoon.fetchImpl, logger: null
+  });
+
+  assert.equal(report.editOnly, true);
+  assert.equal(report.totals.sent, 0, "no new post outside the window");
+  assert.equal(report.totals.edited, 1);
+  assert.deepEqual(afternoon.calls.map(call => call.method), ["editMessageText"]);
+  assert.equal(afternoon.calls[0].messageId, liveMessageId, "the same post is updated");
+  assert.ok(afternoon.calls[0].text.includes("61 000 ₸"));
+
+  // An unchanged run right after changes nothing at all.
+  const quiet = recorder();
+  const quietReport = await runTelegramPublication({
+    flights: cheaper, now: almaty(15, 30), env: baseEnv(), statePath: path,
+    fetchImpl: quiet.fetchImpl, logger: null
+  });
+  assert.equal(quiet.calls.length, 0);
+  assert.equal(quietReport.totals.edited, 0);
+});
+
+test("a country with no post today is not published by an edit-only run", async () => {
+  const path = await statePath("no-post-today");
+
+  // Vietnam posts in the morning; the UAE never got its afternoon window.
+  const morning = recorder();
+  await runTelegramPublication({
+    flights: vietnam, now: MORNING, env: baseEnv(), statePath: path,
+    fetchImpl: morning.fetchImpl, logger: null
+  });
+
+  const evening = recorder();
+  const report = await runTelegramPublication({
+    flights: [...vietnam, ...emirates], now: almaty(22, 0), env: baseEnv(),
+    statePath: path, fetchImpl: evening.fetchImpl, logger: null
+  });
+
+  assert.equal(evening.calls.length, 0, "the UAE is not posted out of hours");
+  assert.equal(report.totals.sent, 0);
+  const uae = report.channels[0].messages.find(message => message.key === "AE#1");
+  assert.equal(uae.action, "out_of_window_no_new_post");
 });
 
 test("a missed window is not replayed once it has closed", async () => {
@@ -312,7 +384,8 @@ test("a missed window is not replayed once it has closed", async () => {
     fetchImpl: afterMorning.fetchImpl, logger: null
   });
   assert.equal(afterMorning.calls.length, 0);
-  assert.equal(report.reason, "OUTSIDE_PUBLICATION_WINDOW");
+  assert.equal(report.editOnly, true, "a closed window only ever edits");
+  assert.equal(report.totals.sent, 0, "the missed window is not replayed");
 
   // The afternoon window publishes its own region once, not a backlog.
   const afternoon = recorder();

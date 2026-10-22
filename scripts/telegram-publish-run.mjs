@@ -150,6 +150,7 @@ export async function runTelegramPublication({
   const base = {
     reason,
     dryRun,
+    editOnly: false,
     schedule: describeSchedule(timeZone),
     allowedCountries: allowedCountryCodes(),
     window: schedule.window
@@ -191,11 +192,18 @@ export async function runTelegramPublication({
     return { ...base, skipped: true, reason: environment.reason };
   }
 
-  if (!schedule.open && !ignoreWindow) {
-    return { ...base, skipped: true, reason: schedule.reason || "OUTSIDE_PUBLICATION_WINDOW" };
-  }
+  // Outside a window the run continues in EDIT-ONLY mode.
+  //
+  // A price that moves at 15:00 for a country whose window was 10:00-12:00 used
+  // to sit wrong in the channel until the next day, because the whole run was
+  // refused here. Editing a post that already exists is not publishing: it adds
+  // no message, cannot reach a country that has not been posted today, and
+  // keeps what subscribers are looking at correct. Creating a NEW post stays
+  // restricted to the window.
+  const editOnly = !schedule.open && !ignoreWindow;
 
-  const activeWindow = schedule.window || { id: "manual", kind: "update" };
+  const activeWindow = schedule.window
+    || (editOnly ? { id: "edit-only", kind: "update" } : { id: "manual", kind: "update" });
   const chatIds = Array.isArray(targetsOverride) && targetsOverride.length
     ? parsePublishTargets(targetsOverride.join(","))
     : parsePublishTargets(env?.TELEGRAM_PUBLISH_CHATS);
@@ -312,7 +320,12 @@ export async function runTelegramPublication({
       // not an error and not a loss: its own window publishes it the same day.
       const regionDecisions = digests.map(digest => ({
         digest,
-        decision: isCountryAllowedInWindow(digest.country, activeWindow.id)
+        // In edit-only mode the region does not gate anything: the per-message
+        // plan below decides, and it can only ever return "edit" or "skip"
+        // because a country without a confirmed post for today is dropped.
+        decision: editOnly
+          ? { allowed: true, reason: null, region: null }
+          : isCountryAllowedInWindow(digest.country, activeWindow.id)
       }));
       const publishable = regionDecisions.filter(item => item.decision.allowed);
 
@@ -363,7 +376,7 @@ export async function runTelegramPublication({
         continue;
       }
 
-      if (!dryRun) beginWindowRun(state, chatId, key, { now });
+      if (!dryRun && !editOnly) beginWindowRun(state, chatId, key, { now });
 
       let fatal = null;
       let delivered = 0;
@@ -394,6 +407,15 @@ export async function runTelegramPublication({
 
         if (plan.action === "skip") {
           report.counts.skipped += 1;
+          report.messages.push(entry);
+          continue;
+        }
+
+        // The guarantee that makes edit-only safe: no new message, ever.
+        if (editOnly && plan.action !== "edit") {
+          entry.action = "out_of_window_no_new_post";
+          entry.reason = plan.reason;
+          report.counts.outOfWindow += 1;
           report.messages.push(entry);
           continue;
         }
@@ -483,7 +505,7 @@ export async function runTelegramPublication({
         }
       }
 
-      if (!dryRun) {
+      if (!dryRun && !editOnly) {
         const incomplete = report.counts.failed > 0
           || report.counts.held > 0
           || report.counts.deferred > 0
@@ -537,6 +559,7 @@ export async function runTelegramPublication({
   const result = {
     ...base,
     skipped: false,
+    editOnly,
     reason: null,
     channels: channelReports,
     totals,
