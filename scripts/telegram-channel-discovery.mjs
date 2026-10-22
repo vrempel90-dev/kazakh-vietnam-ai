@@ -50,9 +50,14 @@ export function discoveryConfig(env = process.env) {
     1,
     Math.min(100, Math.floor(Number(env.TELEGRAM_DISCOVERY_MIN_PARSED_OFFERS || 3)))
   );
+  // How deep discovery reads a candidate. 50 with a ceiling of 100 was enough
+  // to JUDGE a channel but far too shallow to READ one: a channel posting more
+  // than that in a day had most of its day invisible. Ingestion no longer
+  // depends on this alone, but a deeper look also makes the qualification
+  // decision better.
   const recentMessages = Math.max(
     10,
-    Math.min(100, Math.floor(Number(env.TELEGRAM_DISCOVERY_RECENT_MESSAGES || 50)))
+    Math.min(500, Math.floor(Number(env.TELEGRAM_DISCOVERY_RECENT_MESSAGES || 200)))
   );
   const maxPostAgeDays = Math.max(
     1,

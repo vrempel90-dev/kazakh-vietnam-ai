@@ -120,6 +120,45 @@ function publicFlight(input) {
   return flight;
 }
 
+/**
+ * Combines the paginated public read with discovery's prefetch.
+ *
+ * `externalId` is stable per source and post, so the overlap collapses here
+ * and the counts stay honest about where each offer came from.
+ */
+function mergeSourceReads({ source, paginated, prefetchedOffers }) {
+  const byId = new Map();
+  const add = offer => {
+    const key = offer?.externalId
+      || [offer?.from, offer?.to, offer?.departureDate, offer?.returnDate || "", offer?.trip, offer?.sourcePrice].join("|");
+    if (!byId.has(key)) byId.set(key, offer);
+  };
+
+  for (const offer of paginated?.offers || []) add(offer);
+  for (const offer of prefetchedOffers || []) add(offer);
+
+  const offers = [...byId.values()];
+  return {
+    offers,
+    dropped: paginated?.dropped || [],
+    status: {
+      id: source.id,
+      kind: source.kind,
+      status: paginated?.status?.status === "error" && !offers.length ? "error" : "ok",
+      reason: paginated?.status?.reason,
+      pages: paginated?.status?.pages ?? 0,
+      posts: paginated?.status?.posts ?? 0,
+      skippedOld: paginated?.status?.skippedOld ?? 0,
+      skippedAuto: paginated?.status?.skippedAuto ?? 0,
+      // Where the offers came from, so a shallow read is visible rather than
+      // showing up as an unexplained shortfall.
+      fromPaginated: paginated?.offers?.length || 0,
+      fromDiscovery: prefetchedOffers?.length || 0,
+      merged: offers.length
+    }
+  };
+}
+
 async function syncTelegramSource(source, now, pricingConfig) {
   const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
   // 6 pages was roughly 120 posts, which does not cover a full day on a busy
@@ -140,27 +179,45 @@ async function syncTelegramSource(source, now, pricingConfig) {
       })
     : null;
 
-  const result = prefetchedOffers
-    ? {
-        offers: prefetchedOffers,
-        status: {
-          id: source.id,
-          kind: "telegram_session",
-          status: "ok",
-          pages: 0,
-          posts: null,
-          offers: prefetchedOffers.length,
-          skippedOld: Math.max(0, source.prefetchedOffers.length - prefetchedOffers.length),
-          skippedAuto: 0
-        }
-      }
-    : await fetchTelegramSourceOffers({
+  // Discovery finds channels; it must not be the only thing that READS them.
+  //
+  // A discovered source arrives with `prefetchedOffers`, and taking those as
+  // the whole of the channel meant the paginated reader never ran for it
+  // (`pages: 0` in every production log). Discovery only looks at the last
+  // TELEGRAM_DISCOVERY_RECENT_MESSAGES messages - 50 by default, 100 at the
+  // old ceiling - so for a channel that posts more than that in a day, most of
+  // the day was invisible. On 22.10.2026 production ingested 702 offers from
+  // @charterticketsme this way; the paginated public feed yields about 1200
+  // from the same channel over the same TTL.
+  //
+  // Both are read now and merged. The public feed goes deeper, the prefetch
+  // can reach posts the public view omits, and de-duplication downstream
+  // collapses the overlap.
+  const paginated = source.url
+    ? await fetchTelegramSourceOffers({
         source,
         now,
         ttlHours,
         maxPages,
         shouldSkipText: shouldSkipParsedTelegramMessage
-      });
+      }).catch(error => ({
+        offers: [],
+        dropped: [],
+        status: {
+          id: source.id,
+          kind: source.kind,
+          status: "error",
+          reason: error instanceof Error ? error.message : String(error),
+          pages: 0,
+          posts: 0,
+          offers: 0,
+          skippedOld: 0,
+          skippedAuto: 0
+        }
+      }))
+    : null;
+
+  const result = mergeSourceReads({ source, paginated, prefetchedOffers });
 
   const flights = [];
   const dropped = [...(result.dropped || [])];

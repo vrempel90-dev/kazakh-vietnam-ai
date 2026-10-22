@@ -426,34 +426,6 @@ export function recordMessageSent(state, chatId, digestKey, {
  * `definitive` distinguishes an explicit Telegram rejection (safe to retry)
  * from a call that never reported back (must not be blindly re-sent).
  */
-/**
- * Marks a message whose body was replaced by a withdrawal notice because its
- * country left the allowed list.
- *
- * The record keeps its message id and stays `sent`, so the duplicate guards
- * still see one live message for this digest key - a withdrawal is an edit,
- * never a new publication. `contentHash` is cleared so that if the country is
- * allowed again on the same day, the next run edits this message back into a
- * real digest instead of reporting it unchanged.
- */
-export function recordMessageRetracted(state, chatId, digestKey, {
-  now = new Date()
-} = {}) {
-  const channel = channelState(state, chatId);
-  const key = String(digestKey);
-  const existing = plainObject(channel.messages[key]);
-  if (!existing) return null;
-
-  channel.messages[key] = {
-    ...existing,
-    contentHash: "",
-    offerIds: [],
-    retractedAt: now.toISOString(),
-    error: null
-  };
-  return channel.messages[key];
-}
-
 export function recordMessageFailure(state, chatId, digestKey, {
   error = "",
   definitive = true,

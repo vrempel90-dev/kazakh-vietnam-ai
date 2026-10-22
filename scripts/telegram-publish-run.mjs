@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { buildCountryDigests, FOOTER_TEXT, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
+import { buildCountryDigests, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
 import {
   allowedCountryCodes,
   describeSchedule,
@@ -48,7 +48,6 @@ import {
   publicationHealth,
   recordMessageFailure,
   recordMessageIntent,
-  recordMessageRetracted,
   recordMessageSent,
   recordRunTelemetry,
   releaseRunLease,
@@ -122,20 +121,9 @@ function emptyCounts() {
     held: 0,
     failed: 0,
     deferred: 0,
-    outOfWindow: 0,
-    retracted: 0
+    outOfWindow: 0
   };
 }
-
-/**
- * Replaces the body of a message whose country is no longer allowed. Editing
- * keeps one message id for one digest key, so withdrawing a forbidden post can
- * never create a duplicate.
- */
-const RETRACTION_TEXT = "<b>Подборка снята с публикации</b>\n\n"
-  + "Эти направления больше не входят в согласованный список. "
-  + "Актуальные предложения публикуются в следующих подборках.\n\n"
-  + FOOTER_TEXT;
 
 /**
  * @param {object} options
@@ -280,7 +268,7 @@ export async function runTelegramPublication({
         coverage: null,
         region: null,
         disallowed: [],
-        retractions: [],
+        forbiddenLiveMessages: [],
         diagnostics: [],
         error: null
       };
@@ -303,7 +291,11 @@ export async function runTelegramPublication({
       report.windowAlreadyPublished = !dryRun && isWindowCompleted(state, chatId, key);
 
       const eligible = filterFlightsForTarget(flights, chatId);
-      const { digests, diagnostics, summary } = buildCountryDigests(eligible, { maxChars });
+      // The run's own clock, not the wall clock: "сегодня"/"завтра" and the
+      // year suffix must be computed against the same moment the schedule was
+      // resolved with, or a run started either side of midnight marks the
+      // wrong departures.
+      const { digests, diagnostics, summary } = buildCountryDigests(eligible, { maxChars, now });
 
       report.countries = summary.countries;
       report.offers = summary.offers;
@@ -327,22 +319,18 @@ export async function runTelegramPublication({
       report.region = regionForWindow(activeWindow.id);
       report.disallowed = disallowedCountries(digests.map(digest => digest.country));
 
-      // Runs before the "nothing to publish" exit below on purpose: when every
-      // country a channel carried has become forbidden there are no publishable
-      // digests at all, and that is precisely when the forbidden posts still
-      // standing in the channel most need withdrawing.
-      report.retractions = await retractForbiddenMessages({
-        state,
-        statePath,
-        chatId,
-        localDate: schedule.localDate,
-        dryRun,
-        token,
-        managerPhone,
-        publicAppUrl,
-        fetchImpl,
-        counts: report.counts
-      });
+      // Live messages are NEVER rewritten. A post that is already in the
+      // channel belongs to the people reading it; the publisher's job is to
+      // stop producing forbidden ones, not to overwrite history.
+      //
+      // This used to call retractForbiddenMessages, which replaced the body of
+      // any same-day post whose country had left the allowed list with a
+      // withdrawal notice. It fired on 22.10.2026: the deploy landed at 11:43
+      // Almaty, inside the morning window, and the next sync rewrote the
+      // Turkiye and South Korea digests that the previous build had published
+      // at 10:06 that morning into a notice with a "Купить билет" button and
+      // no tickets. Reported here instead, for a human to act on.
+      report.forbiddenLiveMessages = listForbiddenLiveMessages(state, chatId);
 
       for (const { digest, decision } of regionDecisions) {
         if (decision.allowed) continue;
@@ -593,80 +581,36 @@ export async function runTelegramPublication({
 }
 
 /**
- * Withdraws messages whose country is no longer on the allowed list.
+ * Reports live messages whose country is no longer on the allowed list.
  *
- * A country published before the list tightened still has a live message in
- * the channel. Reposting would duplicate it, and this publisher never deletes,
- * so the message is EDITED in place to a withdrawal notice: the forbidden
- * routes stop being readable, the message id and its state record stay exactly
- * as they were, and every duplicate guard is left untouched.
- *
- * Bounded to the current publication day for the same reason editing is - the
- * digest key is only country+part, so an unbounded rewrite would reach back
- * into messages published on earlier days.
+ * Read-only on purpose. An earlier version edited these posts in place into a
+ * withdrawal notice; it did exactly that to real customer-facing digests, and
+ * a notice with a "Купить билет" button and no tickets is worse than a stale
+ * post. Removing a published message is a human decision, so the run reports
+ * what is standing and changes nothing.
  */
-async function retractForbiddenMessages({
-  state,
-  statePath,
-  chatId,
-  localDate,
-  dryRun,
-  token,
-  managerPhone,
-  publicAppUrl,
-  fetchImpl,
-  counts
-}) {
-  const retractions = [];
+function listForbiddenLiveMessages(state, chatId) {
+  const found = [];
 
   for (const record of listMessageRecords(state, chatId)) {
+    if (!record.country) continue;
     if (isPublishableCountry(record.country)) continue;
-    if (String(record.localDate || "") !== String(localDate)) continue;
     if (record.status !== MESSAGE_STATUS.SENT) continue;
-    if (record.retractedAt) continue;
 
     const messageId = Number(record.messageId);
     if (!Number.isFinite(messageId) || messageId <= 0) continue;
 
-    const entry = {
+    found.push({
       key: record.key,
-      country: record.countryName || record.country || null,
-      action: dryRun ? "would_retract" : "retracted",
-      reason: "COUNTRY_NOT_ALLOWED",
+      country: record.country,
+      countryName: record.countryName || null,
       messageId,
-      error: null
-    };
-
-    if (dryRun) {
-      retractions.push(entry);
-      continue;
-    }
-
-    try {
-      await editDigestMessage({
-        token,
-        chatId,
-        messageId,
-        text: RETRACTION_TEXT,
-        managerPhone,
-        publicAppUrl,
-        fetchImpl
-      });
-      recordMessageRetracted(state, chatId, record.key, { now: new Date() });
-      await savePublicationState(statePath, state);
-      counts.retracted += 1;
-    } catch (error) {
-      // A failed withdrawal must not take the window down with it: the
-      // forbidden routes are already filtered out of every new digest, so the
-      // worst case is a stale post that the next run tries again.
-      entry.action = "retract_failed";
-      entry.error = String(error?.message || error);
-    }
-
-    retractions.push(entry);
+      localDate: record.localDate || null,
+      reason: "COUNTRY_NOT_ALLOWED"
+    });
   }
 
-  return retractions;
+  return found;
 }
 
 async function deliver({

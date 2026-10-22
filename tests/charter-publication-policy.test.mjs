@@ -12,6 +12,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   extractPublicTelegramPosts,
@@ -403,58 +404,79 @@ test("nothing forbidden is delivered to Telegram, and every refusal is reported"
   }
 });
 
-test("a message published before the list tightened is edited, not duplicated", async () => {
-  const path = await statePath("retract");
+test("a live message is never rewritten, only reported", () => {
+  // This replaces a test that asserted the opposite. An earlier build edited
+  // any same-day post whose country had left the allowed list into a
+  // withdrawal notice, and on 22.10.2026 it did that to real customer-facing
+  // digests: the deploy landed at 11:43 Almaty, inside the morning window, and
+  // the next sync rewrote the Turkiye and South Korea posts published at 10:06
+  // that morning into a notice carrying a "Купить билет" button and no
+  // tickets. Removing a published message is a human decision.
+  const source = readFileSync(
+    new URL("../scripts/telegram-publish-run.mjs", import.meta.url),
+    "utf8"
+  );
+  assert.ok(!source.includes("RETRACTION_TEXT"), "the notice text is gone");
+  assert.ok(!source.includes("Подборка снята с публикации"), "the notice body is gone");
+  assert.ok(!source.includes("recordMessageRetracted"), "the state writer is gone");
 
-  // Day 1 of the fix: the forbidden country is already live in the channel.
-  // Simulate that by publishing it while it is still allowed, then taking it
-  // off the list - which is what the deployment itself does.
+  const state = readFileSync(
+    new URL("../scripts/telegram-publication-state.mjs", import.meta.url),
+    "utf8"
+  );
+  assert.ok(!state.includes("recordMessageRetracted"), "no retraction writer survives");
+});
+
+test("a forbidden country already live is reported without any Telegram call", async () => {
+  const path = await statePath("report-forbidden");
+
   const first = recorder();
   await runTelegramPublication({
-    flights: [offer({ id: "ok-vn", from: "Астана", to: "Фукуок" })],
+    flights: [offer({ id: "vn", from: "Астана", to: "Фукуок" })],
     now: NOW, env: publishEnv, statePath: path, fetchImpl: first.fetchImpl, logger: null
   });
   const liveMessageId = first.calls[0].messageId ?? 5001;
 
-  // Rewrite the stored record so its country is one the list no longer allows,
-  // exactly as a record left over from before the fix looks.
+  // Rewrite the stored record into a country the list no longer allows, as a
+  // record left behind by an earlier build looks.
   const { loadPublicationState, savePublicationState } =
     await import("../scripts/telegram-publication-state.mjs");
   const state = await loadPublicationState(path);
   const channel = state.channels[publishEnv.TELEGRAM_PUBLISH_CHATS];
-  channel.messages["UZ#1"] = {
+  const FORBIDDEN_MESSAGE_ID = liveMessageId + 7;
+  channel.messages["TR#1"] = {
     ...channel.messages["VN#1"],
-    country: "UZ",
-    countryName: "Узбекистан",
-    contentHash: "stale-forbidden-content"
+    messageId: FORBIDDEN_MESSAGE_ID,
+    country: "TR",
+    countryName: "Турция"
   };
-  delete channel.messages["VN#1"];
   await savePublicationState(path, state);
 
   const second = recorder();
   const report = await runTelegramPublication({
-    flights: [offer({ id: "ok-vn2", from: "Астана", to: "Фукуок" })],
+    flights: [offer({ id: "vn2", from: "Астана", to: "Фукуок", price: 260000 })],
     now: NOW, env: publishEnv, statePath: path, fetchImpl: second.fetchImpl, logger: null
   });
 
-  const retraction = second.calls.find(call => call.messageId === liveMessageId);
-  assert.ok(retraction, "the live forbidden message is addressed");
-  assert.equal(retraction.method, "editMessageText", "it is edited, never reposted");
-  assert.ok(retraction.text.includes("снята с публикации"));
-  assert.equal(report.totals.retracted, 1);
+  // Reported, and nothing was done to it.
   assert.deepEqual(
-    report.channels[0].retractions.map(item => item.key + ":" + item.reason),
-    ["UZ#1:COUNTRY_NOT_ALLOWED"]
+    report.channels[0].forbiddenLiveMessages.map(item => item.key + ":" + item.reason),
+    ["TR#1:COUNTRY_NOT_ALLOWED"]
+  );
+  assert.equal(report.channels[0].forbiddenLiveMessages[0].messageId, FORBIDDEN_MESSAGE_ID);
+  assert.ok(
+    second.calls.every(call => call.messageId !== FORBIDDEN_MESSAGE_ID),
+    "the live forbidden message is not touched"
+  );
+  assert.ok(
+    second.calls.every(call => !call.text.includes("снята с публикации")),
+    "no withdrawal notice is ever sent"
   );
 
-  // Running again does not touch it a second time.
-  const third = recorder();
-  const again = await runTelegramPublication({
-    flights: [offer({ id: "ok-vn2", from: "Астана", to: "Фукуок" })],
-    now: NOW, env: publishEnv, statePath: path, fetchImpl: third.fetchImpl, logger: null
-  });
-  assert.equal(again.totals.retracted, 0, "a withdrawal happens once");
-  assert.ok(third.calls.every(call => call.messageId !== liveMessageId));
+  const stored = await loadPublicationState(path);
+  const kept = stored.channels[publishEnv.TELEGRAM_PUBLISH_CHATS].messages["TR#1"];
+  assert.equal(kept.messageId, FORBIDDEN_MESSAGE_ID, "its record is left exactly as it was");
+  assert.equal(kept.contentHash, channel.messages["TR#1"].contentHash);
 });
 
 test("the customer feed is filtered by the same gate as the channel", () => {
