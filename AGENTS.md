@@ -100,9 +100,9 @@ all came from each stage keeping its own city table, its own notion of
   MY, MV, LK, IN), 14:00-15:00 to the Middle East (AE, OM, EG) and 17:00-18:00
   to Europe (IT, CZ, RS, HU, DE). To move a country, move its code in that
   table - never add a time check anywhere else.
-  **`REGIONS` is also the allowed-country list**: a country may be published
-  exactly when some region claims it, and those fifteen codes are the whole of
-  it. A country outside the current window is reported as
+  `REGIONS` gives a country its own window. A country no region claims still
+  publishes, in the single `DEFAULT_REGION_ID` window - exactly one, never
+  all three. A country outside the current window is reported as
   `out_of_region_window`, never as a loss, and an empty region sends no message
   and leaves its window open for a later sync.
 - `scripts/charter-publication-policy.mjs` is the only gate that decides
@@ -146,15 +146,26 @@ Monitoring (added 2026-10-15, after three silent days read as `status: ok`):
 
 Rules that must not be weakened:
 
-- **Only Kazakhstan-to-allowed-country routes are published, in both
-  directions.** A flight between two foreign countries (Sharjah -> Tashkent) is
-  never published, whichever of the two countries is on the list; there is no
-  "МЕЖДУ СТРАНАМИ" section and `TICKET_CATEGORIES.FOREIGN` is not a publishable
-  category. A country no region claims is never published, in any window.
+- **Exactly one endpoint in Kazakhstan, and the other country not on the
+  block list.** A flight between two foreign countries (Sharjah -> Tashkent) is
+  never published, whichever countries they are; there is no "МЕЖДУ СТРАНАМИ"
+  section and `TICKET_CATEGORIES.FOREIGN` is not a publishable category. An
+  unresolved country is a refusal, never a publication.
+- **The country rule is a BLOCK list, not an allow list** (client decision,
+  2026-10-22: every country except Uzbekistan). `BLOCKED_COUNTRY_CODES` in
+  `telegram-schedule.mjs` is the only place a country is refused by name.
+  Uzbekistan in practice only ever appeared as Sharjah -> Tashkent, which the
+  no-Kazakhstan-endpoint rule already refuses; the block list is the belt to
+  that braces.
+- **A country publishes in exactly ONE window, never several.**
   `TELEGRAM_UNASSIGNED_COUNTRY_POLICY` and its `all-windows` default are gone
-  on purpose - that default is what put Uzbekistan and Saudi Arabia in the
-  channel - and no environment variable may bring them back. An unresolved
-  country is a refusal, never a publication.
+  on purpose - that default published a region-less country three times a day,
+  which is how Uzbekistan and Saudi Arabia filled the channel - and no
+  environment variable may bring it back. A country with no region of its own
+  falls back to `DEFAULT_REGION_ID`, one window.
+- **Turkiye is in `REGIONS` explicitly** rather than left to the fallback: it
+  carries more inventory than any other single country (572 of 1326 offers on
+  22.10.2026), so its window is a deliberate choice, not a default.
 - **Freshness is counted in `Asia/Almaty`, and a departure today is valid.**
   `localDayOffset` in `telegram-schedule.mjs` is the only day arithmetic in the
   pipeline. The `offset <= 0` guards it replaced measured against the UTC
@@ -187,10 +198,26 @@ Rules that must not be weakened:
   syncs collected until the next day, which for a departure today is never.
   Duplicate protection stays with `planMessageAction`, per digest key, content
   hash and publication date - not with the window record.
-- **A forbidden country already live in the channel is edited, never
-  reposted.** `retractForbiddenMessages` replaces the body with a withdrawal
-  notice, keeping the message id and its state record, bounded to the current
-  publication day exactly as editing is.
+- **A live message is NEVER rewritten.** An earlier build replaced the body of
+  any same-day post whose country had left the list with a withdrawal notice.
+  On 22.10.2026 the deploy landed at 11:43 Almaty, inside the morning window,
+  and the next sync rewrote the Turkiye and South Korea digests published at
+  10:06 that morning into a notice carrying a "Купить билет" button and no
+  tickets. A post already in the channel belongs to the people reading it:
+  the publisher stops producing forbidden ones and reports what is standing
+  (`forbiddenLiveMessages`). Removing a published message is a human decision.
+- **Outside a window the run continues in EDIT-ONLY mode.** A price that moves
+  at 15:00 for a country whose window was 10:00-12:00 must still reach the
+  channel the same day; editing an existing post adds no message and cannot
+  reach a country that has not been posted today. Creating a NEW post stays
+  restricted to the window, enforced both in the per-message plan
+  (`out_of_window_no_new_post`) and by leaving the window record untouched.
+- **Discovery finds channels; it must not be the only thing that reads them.**
+  A discovered source arrives with `prefetchedOffers` covering only the last
+  `TELEGRAM_DISCOVERY_RECENT_MESSAGES` messages, so taking those as the whole
+  channel left most of a busy day invisible (`pages: 0` in every production
+  log; 702 offers where the paginated feed yields ~1200). Both reads run and
+  merge on `externalId`.
 
 - A changed country digest is **edited in place within its publication day**;
   a new post is created when no confirmed message exists for that digest key

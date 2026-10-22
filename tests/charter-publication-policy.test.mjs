@@ -304,16 +304,17 @@ test("Uzbekistan never reaches a publication", () => {
   assert.equal(diagnostics[0].reason, "COUNTRY_NOT_ALLOWED");
 });
 
-test("Saudi Arabia never reaches a publication", () => {
+test("Uzbekistan is the only country refused by name", () => {
+  // The client asked for every country except Uzbekistan. Saudi Arabia, which
+  // an earlier revision banned, publishes again under that instruction.
   for (const city of ["Джидда", "Медина", "Рияд"]) {
     const verdict = evaluateOfferForPublication(offer({ from: "Алматы", to: city }));
-    assert.equal(verdict.allowed, false, city);
-    assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+    assert.equal(verdict.allowed, true, city + " is no longer refused");
     assert.equal(verdict.countryCode, "SA");
   }
   assert.equal(
     buildCountryDigests([offer({ id: "sa", from: "Алматы", to: "Джидда" })], { now: NOW }).digests.length,
-    0
+    1
   );
 });
 
@@ -329,26 +330,35 @@ test("an unknown country is never published", () => {
   }
 });
 
-test("every country outside the agreed list is refused", () => {
-  const forbidden = {
-    UZ: "Ташкент", SA: "Джидда", TR: "Анталия", KR: "Сеул", RU: "Москва",
+test("every country except Uzbekistan publishes", () => {
+  const countries = {
+    SA: "Джидда", TR: "Анталия", KR: "Сеул", RU: "Москва",
     GE: "Тбилиси", AZ: "Баку", KG: "Бишкек", QA: "Доха", JP: "Токио",
     ES: "Барселона", FR: "Париж", GB: "Лондон", AT: "Вена", PL: "Варшава"
   };
-  for (const [code, city] of Object.entries(forbidden)) {
+  for (const [code, city] of Object.entries(countries)) {
     const verdict = evaluateOfferForPublication(offer({ from: "Алматы", to: city }));
-    assert.equal(verdict.allowed, false, code + " (" + city + ") must be refused");
+    assert.equal(verdict.allowed, true, code + " (" + city + ") must publish");
+    assert.equal(verdict.countryCode, code);
+  }
+
+  for (const city of ["Ташкент", "Самарканд"]) {
+    const verdict = evaluateOfferForPublication(offer({ from: "Алматы", to: city }));
+    assert.equal(verdict.allowed, false, city + " must be refused");
     assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+    assert.equal(verdict.countryCode, "UZ");
   }
 });
 
-test("all fifteen agreed countries are publishable in both directions", () => {
+test("the catalogued countries are publishable in both directions", () => {
   const cities = {
     VN: "Фукуок", TH: "Пхукет", CN: "Санья", MY: "Куала-Лумпур", MV: "Мале",
     LK: "Коломбо", IN: "Гоа", AE: "Дубай", OM: "Маскат", EG: "Хургада",
     IT: "Милан", CZ: "Прага", RS: "Белград", HU: "Будапешт", DE: "Мюнхен"
   };
-  assert.deepEqual(Object.keys(cities).sort(), allowedCountryCodes());
+  for (const code of Object.keys(cities)) {
+    assert.ok(allowedCountryCodes().includes(code), code + " has a window of its own");
+  }
 
   for (const [code, city] of Object.entries(cities)) {
     const out = evaluateOfferForPublication(offer({ from: "Алматы", to: city }));
@@ -376,7 +386,7 @@ test("nothing forbidden is delivered to Telegram, and every refusal is reported"
     offer({ id: "bad-uz", from: "Алматы", to: "Ташкент" }),
     offer({ id: "bad-sa", from: "Алматы", to: "Джидда" }),
     offer({ id: "bad-ff", from: "Шарджа", to: "Ташкент" }),
-    offer({ id: "bad-tr", from: "Алматы", to: "Анталия" }),
+    offer({ id: "ok-tr", from: "Алматы", to: "Анталия" }),
     offer({ id: "bad-unknown", from: "Алматы", to: "Нигдеград" })
   ];
 
@@ -386,20 +396,20 @@ test("nothing forbidden is delivered to Telegram, and every refusal is reported"
     statePath: await statePath("forbidden"), fetchImpl: run.fetchImpl, logger: null
   });
 
-  assert.equal(report.totals.sent, 2, "only Vietnam and Thailand are published");
+  // Vietnam and Thailand belong to the morning window; Saudi Arabia and
+  // Turkiye are allowed now but publish in the afternoon one.
+  assert.equal(report.totals.sent, 2);
   assert.deepEqual(
     report.channels[0].diagnostics.map(item => item.id + ":" + item.reason).sort(),
     [
       "bad-ff:FOREIGN_TO_FOREIGN_ROUTE",
-      "bad-sa:COUNTRY_NOT_ALLOWED",
-      "bad-tr:COUNTRY_NOT_ALLOWED",
       "bad-unknown:UNRESOLVED_DESTINATION",
       "bad-uz:COUNTRY_NOT_ALLOWED"
     ]
   );
   assert.equal(report.channels[0].coverage.complete, true, "every offer is accounted for");
 
-  for (const word of ["Ташкент", "Джидда", "Шарджа", "Анталия", "Нигдеград", "УЗБЕКИСТАН", "ТУРЦИЯ"]) {
+  for (const word of ["Ташкент", "Шарджа", "Нигдеград", "УЗБЕКИСТАН"]) {
     assert.ok(run.calls.every(call => !call.text.includes(word)), word + " must never be sent");
   }
 });
@@ -444,11 +454,11 @@ test("a forbidden country already live is reported without any Telegram call", a
   const state = await loadPublicationState(path);
   const channel = state.channels[publishEnv.TELEGRAM_PUBLISH_CHATS];
   const FORBIDDEN_MESSAGE_ID = liveMessageId + 7;
-  channel.messages["TR#1"] = {
+  channel.messages["UZ#1"] = {
     ...channel.messages["VN#1"],
     messageId: FORBIDDEN_MESSAGE_ID,
-    country: "TR",
-    countryName: "Турция"
+    country: "UZ",
+    countryName: "Узбекистан"
   };
   await savePublicationState(path, state);
 
@@ -461,7 +471,7 @@ test("a forbidden country already live is reported without any Telegram call", a
   // Reported, and nothing was done to it.
   assert.deepEqual(
     report.channels[0].forbiddenLiveMessages.map(item => item.key + ":" + item.reason),
-    ["TR#1:COUNTRY_NOT_ALLOWED"]
+    ["UZ#1:COUNTRY_NOT_ALLOWED"]
   );
   assert.equal(report.channels[0].forbiddenLiveMessages[0].messageId, FORBIDDEN_MESSAGE_ID);
   assert.ok(
@@ -474,9 +484,9 @@ test("a forbidden country already live is reported without any Telegram call", a
   );
 
   const stored = await loadPublicationState(path);
-  const kept = stored.channels[publishEnv.TELEGRAM_PUBLISH_CHATS].messages["TR#1"];
+  const kept = stored.channels[publishEnv.TELEGRAM_PUBLISH_CHATS].messages["UZ#1"];
   assert.equal(kept.messageId, FORBIDDEN_MESSAGE_ID, "its record is left exactly as it was");
-  assert.equal(kept.contentHash, channel.messages["TR#1"].contentHash);
+  assert.equal(kept.contentHash, channel.messages["UZ#1"].contentHash);
 });
 
 test("the customer feed is filtered by the same gate as the channel", () => {
@@ -485,15 +495,15 @@ test("the customer feed is filtered by the same gate as the channel", () => {
     offer({ id: "ok-2", from: "Нячанг", to: "Алматы" }),
     offer({ id: "no-1", from: "Алматы", to: "Ташкент" }),
     offer({ id: "no-2", from: "Шарджа", to: "Ташкент" }),
-    offer({ id: "no-3", from: "Алматы", to: "Джидда" })
+    offer({ id: "ok-3", from: "Алматы", to: "Джидда" })
   ]);
 
-  assert.deepEqual(allowed.map(item => item.id), ["ok-1", "ok-2"]);
+  assert.deepEqual(allowed.map(item => item.id), ["ok-1", "ok-2", "ok-3"]);
   assert.deepEqual(
     refused.map(item => item.id + ":" + item.reason),
-    ["no-1:COUNTRY_NOT_ALLOWED", "no-2:FOREIGN_TO_FOREIGN_ROUTE", "no-3:COUNTRY_NOT_ALLOWED"]
+    ["no-1:COUNTRY_NOT_ALLOWED", "no-2:FOREIGN_TO_FOREIGN_ROUTE"]
   );
-  assert.equal(allowedCountries.length, 15);
+  assert.ok(allowedCountries.includes("TR"));
 });
 
 test("one country still produces exactly one publication", () => {
@@ -537,10 +547,9 @@ test("a route heading with a trailing month marker still resolves", () => {
     { from: "Астана", to: "Фукуок", trip: "OW" }
   );
 
-  // The refusal now names the real reason.
+  // And the route is publishable: Turkiye is not on the block list.
   const verdict = evaluateOfferForPublication(offer({ from: "Анталия", to: "Шымкент" }));
-  assert.equal(verdict.allowed, false);
-  assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+  assert.equal(verdict.allowed, true);
   assert.equal(verdict.countryCode, "TR");
 });
 
@@ -561,17 +570,15 @@ test("a comma form naming two cities is refused, never guessed", () => {
   assert.equal(resolveCity("Фукуок, Нячанг"), null);
 });
 
-test("a Russian city resolves so its refusal names the country, not a parse failure", () => {
+test("a Russian city resolves instead of reading as a broken route", () => {
   // Krasnoyarsk was absent from the table, so twelve real offers were reported
-  // as unreadable routes. Russia is not on the allowed list; the refusal must
-  // say that.
+  // as unreadable routes rather than resolved to Russia.
   assert.equal(resolveCity("Красноярск")?.name, "Красноярск");
   assert.equal(resolveCity("Красноярска")?.name, "Красноярск");
 
   for (const [from, to] of [["Шымкент", "Красноярск"], ["Красноярск", "Шымкент"]]) {
     const verdict = evaluateOfferForPublication(offer({ from, to }));
-    assert.equal(verdict.allowed, false, from + " -> " + to);
-    assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
+    assert.equal(verdict.allowed, true, from + " -> " + to);
     assert.equal(verdict.countryCode, "RU");
   }
 });

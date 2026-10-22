@@ -17,7 +17,7 @@ export const PUBLICATION_TIME_ZONE = "Asia/Almaty";
  */
 export const REGIONS = [
   { id: "asia", name: "Азия", countries: ["VN", "TH", "CN", "MY", "MV", "LK", "IN"] },
-  { id: "middle-east", name: "Ближний Восток", countries: ["AE", "OM", "EG"] },
+  { id: "middle-east", name: "Ближний Восток", countries: ["AE", "OM", "EG", "TR"] },
   { id: "europe", name: "Европа", countries: ["IT", "CZ", "RS", "HU", "DE"] }
 ];
 
@@ -42,25 +42,46 @@ export function regionForCountry(code) {
 }
 
 /**
- * The allowed-country list IS the region table above: a country may be
- * published exactly when some region claims it.
+ * Countries that are never published, by name.
  *
- * There used to be a `TELEGRAM_UNASSIGNED_COUNTRY_POLICY` knob whose default,
- * `all-windows`, published any country no region claimed - in every window.
- * That is what put Uzbekistan and Saudi Arabia into the channel. The knob is
- * gone on purpose: a country outside this table is never published, and no
- * environment variable can re-enable it. To allow a country, add its code to
- * a region here and nowhere else.
+ * The rule is a BLOCK list, not an allow list: the client asked for every
+ * country except Uzbekistan. Uzbekistan in practice only appeared as a flight
+ * between two foreign countries (Sharjah -> Tashkent), which is refused anyway
+ * for having no Kazakhstan endpoint - this is the belt to that braces, because
+ * a Kazakhstan-to-Tashkent charter would otherwise be publishable.
+ *
+ * To stop publishing a country, add its code here and nowhere else.
  */
+export const BLOCKED_COUNTRY_CODES = ["UZ"];
+
+const BLOCKED = new Set(BLOCKED_COUNTRY_CODES);
+
+/**
+ * The window a country with no region of its own publishes in.
+ *
+ * Exactly ONE window, never several. The `all-windows` default this replaces
+ * is what published Uzbekistan and Saudi Arabia three times a day, in every
+ * window, and no environment variable may bring that behaviour back.
+ */
+const DEFAULT_REGION_ID = "middle-east";
+
+/** Countries a region claims explicitly, each with its own window. */
 export function allowedCountryCodes() {
   return [...REGION_BY_COUNTRY.keys()].sort();
 }
 
-/** True when the client agreed to publish this country at all. */
+/** True unless the country is on the block list above. */
 export function isPublishableCountry(code) {
-  return REGION_BY_COUNTRY.has(String(code || "").toUpperCase());
+  const normalized = String(code || "").toUpperCase();
+  return Boolean(normalized) && !BLOCKED.has(normalized);
 }
 
+/** True when the country is refused by name. */
+export function isBlockedCountry(code) {
+  return BLOCKED.has(String(code || "").toUpperCase());
+}
+
+/** The region a window publishes, or null. */
 export function regionForWindow(windowId) {
   const window = PUBLICATION_WINDOWS.find(item => item.id === windowId);
   return window ? REGION_BY_ID.get(window.region) || null : null;
@@ -77,10 +98,16 @@ export function regionForWindow(windowId) {
  * refusal, not a loss - the country is not ours to publish at all.
  */
 export function isCountryAllowedInWindow(code, windowId) {
-  const region = regionForCountry(code);
+  if (isBlockedCountry(code)) {
+    return { allowed: false, reason: "COUNTRY_NOT_ALLOWED", region: null };
+  }
+
+  // A country no region claims still gets exactly ONE window, never all of
+  // them. Move it into REGIONS above to give it a window of its own.
+  const region = regionForCountry(code) || REGION_BY_ID.get(DEFAULT_REGION_ID) || null;
 
   if (!region) {
-    return { allowed: false, reason: "COUNTRY_NOT_ALLOWED", region: null };
+    return { allowed: false, reason: "NO_REGION_CONFIGURED", region: null };
   }
 
   const window = PUBLICATION_WINDOWS.find(item => item.region === region.id);
@@ -93,10 +120,10 @@ export function isCountryAllowedInWindow(code, windowId) {
       };
 }
 
-/** Countries present in the data that are not on the allowed list. */
+/** Countries present in the data that are refused by name. */
 export function disallowedCountries(codes) {
   return [...new Set((Array.isArray(codes) ? codes : []).map(code => String(code || "").toUpperCase()))]
-    .filter(code => code && !REGION_BY_COUNTRY.has(code))
+    .filter(code => code && BLOCKED.has(code))
     .sort();
 }
 

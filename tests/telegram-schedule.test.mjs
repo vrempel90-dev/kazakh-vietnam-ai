@@ -6,8 +6,10 @@ import {
   REGIONS,
   allowedCountryCodes,
   disallowedCountries,
+  BLOCKED_COUNTRY_CODES,
   isCountryAllowedInWindow,
   isPublishableCountry,
+  regionForCountry,
   localClock,
   localDayOffset,
   resolvePublicationWindow,
@@ -94,7 +96,7 @@ test("each window owns exactly one commercial region", () => {
     REGIONS.map(region => [region.id, region.countries]),
     [
       ["asia", ["VN", "TH", "CN", "MY", "MV", "LK", "IN"]],
-      ["middle-east", ["AE", "OM", "EG"]],
+      ["middle-east", ["AE", "OM", "EG", "TR"]],
       ["europe", ["IT", "CZ", "RS", "HU", "DE"]]
     ]
   );
@@ -123,32 +125,39 @@ test("a country is publishable only in its own region window", () => {
   }
 });
 
-test("a country no region claims is never published, in any window", () => {
-  assert.deepEqual(
-    disallowedCountries(["VN", "TR", "KR", "HU", "KG", "UZ", "SA"]),
-    ["KG", "KR", "SA", "TR", "UZ"]
-  );
+test("Uzbekistan is the one country refused by name, in every window", () => {
+  assert.deepEqual(BLOCKED_COUNTRY_CODES, ["UZ"]);
+  assert.deepEqual(disallowedCountries(["VN", "TR", "KR", "HU", "UZ", "SA"]), ["UZ"]);
 
-  // The `all-windows` default used to publish every one of these, in every
-  // window. That is what put Uzbekistan and Saudi Arabia in the channel.
-  for (const code of ["UZ", "SA", "TR", "KR", "KG", "RU", "GE", "ZZ"]) {
-    assert.equal(isPublishableCountry(code), false, code + " must not be publishable");
-    for (const windowId of ["morning", "afternoon", "evening"]) {
-      const verdict = isCountryAllowedInWindow(code, windowId);
-      assert.equal(verdict.allowed, false, code + " must not publish in " + windowId);
-      assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
-    }
+  assert.equal(isPublishableCountry("UZ"), false);
+  for (const windowId of ["morning", "afternoon", "evening"]) {
+    const verdict = isCountryAllowedInWindow("UZ", windowId);
+    assert.equal(verdict.allowed, false, "UZ must not publish in " + windowId);
+    assert.equal(verdict.reason, "COUNTRY_NOT_ALLOWED");
   }
 });
 
-test("the allowed list is exactly the fifteen agreed countries", () => {
-  assert.deepEqual(allowedCountryCodes(), [
-    "AE", "CN", "CZ", "DE", "EG", "HU", "IN", "IT",
-    "LK", "MV", "MY", "OM", "RS", "TH", "VN"
-  ]);
-  for (const code of allowedCountryCodes()) {
+test("every other country publishes, and in exactly one window", () => {
+  // The client asked for everything except Uzbekistan. The rule that must hold
+  // is not "which countries" but "one window each": the `all-windows` default
+  // this replaced published a region-less country three times a day.
+  for (const code of ["TR", "KR", "SA", "RU", "GE", "KG", "AZ", "QA", "JP", "ES"]) {
     assert.equal(isPublishableCountry(code), true, code + " must be publishable");
+    const windows = PUBLICATION_WINDOWS
+      .map(item => item.id)
+      .filter(id => isCountryAllowedInWindow(code, id).allowed);
+    assert.equal(windows.length, 1, code + " must own exactly one window, got " + windows.join(","));
   }
+});
+
+test("Turkiye has a window of its own, not the catch-all default", () => {
+  // It carries more inventory than any other single country, so it is in the
+  // table rather than left to the fallback.
+  const region = regionForCountry("TR");
+  assert.ok(region, "Turkiye must be claimed by a region");
+  assert.equal(region.id, "middle-east");
+  assert.equal(isCountryAllowedInWindow("TR", "afternoon").allowed, true);
+  assert.equal(isCountryAllowedInWindow("TR", "morning").allowed, false);
 });
 
 test("there is no environment variable that can publish a country off the list", () => {

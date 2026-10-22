@@ -110,28 +110,28 @@ test("scenario 5: data from two countries is never mixed into one message", () =
     { id: "th1", from: "Алматы", to: "Пхукет", trip: "OW", departureDate: "2026-11-03", price: 150000, airlineCode: "S" },
     { id: "cn1", from: "Алматы", to: "Санья", trip: "OW", departureDate: "2026-11-04", price: 160000 },
     { id: "in1", from: "Алматы", to: "Гоа", trip: "OW", departureDate: "2026-11-06", price: 170000 },
-    // South Korea and Turkiye carry a large share of the live inventory, but
-    // the client did not include them: they are refused, not rendered.
+    // Every country publishes now except Uzbekistan, which is refused by name.
     { id: "kr1", from: "Алматы", to: "Seoul", trip: "OW", departureDate: "2026-11-02", price: 190000, airlineCode: "A" },
-    { id: "tr1", from: "Астана", to: "Анталия", trip: "OW", departureDate: "2026-11-05", price: 95000, airlineCode: "P" }
+    { id: "tr1", from: "Астана", to: "Анталия", trip: "OW", departureDate: "2026-11-05", price: 95000, airlineCode: "P" },
+    { id: "uz1", from: "Алматы", to: "Ташкент", trip: "OW", departureDate: "2026-11-07", price: 60000 }
   ], { now: NOW });
 
-  assert.equal(digests.length, 4);
-  const names = ["ВЬЕТНАМ", "ТАИЛАНД", "КИТАЙ", "ИНДИЯ"];
+  assert.equal(digests.length, 6);
+  const names = ["ВЬЕТНАМ", "ТАИЛАНД", "КИТАЙ", "ИНДИЯ", "ЮЖНАЯ КОРЕЯ", "ТУРЦИЯ"];
   for (const digest of digests) {
     const text = plain(digest.text);
     const present = names.filter(name => text.includes(name));
     assert.equal(present.length, 1, "each message names exactly one country: " + present.join(","));
   }
-  assert.equal(new Set(digests.map(d => d.country)).size, 4);
+  assert.equal(new Set(digests.map(d => d.country)).size, 6);
 
   assert.deepEqual(
-    diagnostics.map(item => item.id + ":" + item.reason).sort(),
-    ["kr1:COUNTRY_NOT_ALLOWED", "tr1:COUNTRY_NOT_ALLOWED"]
+    diagnostics.map(item => item.id + ":" + item.reason),
+    ["uz1:COUNTRY_NOT_ALLOWED"]
   );
   const rendered = plain(digests.map(digest => digest.text).join("\n"));
-  assert.ok(!rendered.includes("КОРЕЯ"));
-  assert.ok(!rendered.includes("ТУРЦИЯ"));
+  assert.ok(!rendered.includes("УЗБЕКИСТАН"));
+  assert.ok(!rendered.includes("Ташкент"));
 });
 
 test("scenario 6: the same offer is never repeated inside a digest", () => {

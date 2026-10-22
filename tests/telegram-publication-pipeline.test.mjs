@@ -91,8 +91,9 @@ const MIRRORED_POST = [
 ].join("\n");
 
 /**
- * Countries the client did not agree to, plus a route between two foreign
- * countries. None of this may reach the channel or the customer feed.
+ * Uzbekistan, refused by name, and a route between two foreign countries,
+ * refused for having no Kazakhstan endpoint. Neither may reach the channel or
+ * the customer feed.
  */
 const FORBIDDEN_POST = [
   "🇺🇿 УЗБЕКИСТАН",
@@ -102,10 +103,7 @@ const FORBIDDEN_POST = [
   "C 22.10 — 60 000 ₸ (4)",
   "",
   "Шарджа → Ташкент",
-  "22.10 — 70 000 ₸ (3)",
-  "",
-  "Алматы → Джидда",
-  "23.10 — 180 000 ₸ (2)"
+  "22.10 — 70 000 ₸ (3)"
 ].join("\n");
 
 const DISPUTED_POST = [
@@ -238,14 +236,13 @@ test("scenario 14: stale and unconfirmed offers never reach the renderer", () =>
     ["COUNTRY_NOT_ALLOWED", "FOREIGN_TO_FOREIGN_ROUTE"]
   );
   assert.ok(!publishable.some(flight => flight.to === "Ташкент" || flight.from === "Ташкент"));
-  assert.ok(!publishable.some(flight => flight.to === "Джидда"));
 
   // Stage 6 - none of it appears in a published message.
   const { digests } = buildCountryDigests(publishable, { now: NOW });
   const allText = digests.map(digest => digest.text).join("\n");
   assert.ok(!allText.includes("01.09"));
   assert.ok(!allText.includes("Пхукет - Алматы"));
-  for (const word of ["УЗБЕКИСТАН", "САУДОВСКАЯ", "Ташкент", "Джидда", "Шарджа"]) {
+  for (const word of ["УЗБЕКИСТАН", "Ташкент", "Шарджа"]) {
     assert.ok(!allText.includes(word), word + " must never be rendered");
   }
 });

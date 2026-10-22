@@ -49,7 +49,6 @@ const china = [
 // appear, in any window, under any configuration.
 const forbidden = [
   { id: "uz-out-1", from: "Алматы", to: "Ташкент", trip: "OW", departureDate: "2026-10-25", price: 60000, airlineCode: "C" },
-  { id: "sa-out-1", from: "Алматы", to: "Джидда", trip: "OW", departureDate: "2026-10-26", price: 180000 },
   { id: "ff-1", from: "Шарджа", to: "Ташкент", trip: "OW", departureDate: "2026-10-27", price: 70000 }
 ];
 // Hungary owns the 17:00-18:00 Europe window.
@@ -815,7 +814,7 @@ test("an empty region sends nothing and does not burn its window", async () => {
   assert.equal(stored.channels[CHAT].windows["2026-10-20:afternoon"].status, "completed");
 });
 
-test("a country outside the allowed list never reaches the channel, in any window", async () => {
+test("Uzbekistan never reaches the channel, in any window", async () => {
   for (const [hour, minute] of [[10, 5], [14, 10], [17, 5]]) {
     const path = await statePath("not-allowed-" + hour);
     const run = recorder();
@@ -828,19 +827,19 @@ test("a country outside the allowed list never reaches the channel, in any windo
     // message entry to block - it is reported in diagnostics instead.
     assert.deepEqual(
       report.channels[0].diagnostics.map(item => item.id + ":" + item.reason).sort(),
-      ["ff-1:FOREIGN_TO_FOREIGN_ROUTE", "sa-out-1:COUNTRY_NOT_ALLOWED", "uz-out-1:COUNTRY_NOT_ALLOWED"]
+      ["ff-1:FOREIGN_TO_FOREIGN_ROUTE", "uz-out-1:COUNTRY_NOT_ALLOWED"]
     );
     assert.ok(
-      report.channels[0].messages.every(message => !["UZ#1", "SA#1"].includes(message.key)),
+      report.channels[0].messages.every(message => message.key !== "UZ#1"),
       "no forbidden country produces a message record"
     );
-    for (const word of ["УЗБЕКИСТАН", "САУДОВСКАЯ", "Ташкент", "Джидда", "Шарджа"]) {
+    for (const word of ["УЗБЕКИСТАН", "Ташкент", "Шарджа"]) {
       assert.ok(run.calls.every(call => !call.text.includes(word)), word + " must never be sent");
     }
   }
 });
 
-test("the allowed-country list is reported on every run", async () => {
+test("the country/window table is reported on every run", async () => {
   const path = await statePath("allowed-list");
   const run = recorder();
   const report = await runTelegramPublication({
@@ -849,7 +848,7 @@ test("the allowed-country list is reported on every run", async () => {
   });
   assert.deepEqual(report.allowedCountries, [
     "AE", "CN", "CZ", "DE", "EG", "HU", "IN", "IT",
-    "LK", "MV", "MY", "OM", "RS", "TH", "VN"
+    "LK", "MV", "MY", "OM", "RS", "TH", "TR", "VN"
   ]);
 });
 
