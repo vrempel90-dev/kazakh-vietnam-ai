@@ -160,7 +160,15 @@ function mergeSourceReads({ source, paginated, prefetchedOffers }) {
 }
 
 async function syncTelegramSource(source, now, pricingConfig) {
-  const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 24;
+  // How old a SOURCE POST may be, not how far ahead the flight is.
+  //
+  // A day was tuned for the Asian channels, which post constantly. European
+  // charters are posted far less often, so 24h left the evening window with
+  // Hungary alone: at 24h the sources yield 5 European offers, at 48h they
+  // yield 140 - Italy 27, Serbia 47, Hungary 56, Germany 5. Going further
+  // keeps adding (276 at 72h) but a post that old is more likely to quote a
+  // price that has already moved.
+  const ttlHours = envNumber("TELEGRAM_SOURCE_TTL_HOURS") || 48;
   // 6 pages was roughly 120 posts, which does not cover a full day on a busy
   // channel: the page walk stops early on its own once it reaches posts older
   // than the TTL, so a higher ceiling costs nothing on a quiet channel and
@@ -340,8 +348,20 @@ function dedupeFlights(flights) {
     const currentStamp = Date.parse(current.sourcePostedAt || current.updatedAt || "") || 0;
     const newer = flightStamp > currentStamp;
 
+    // The NEWEST observation wins, not the cheapest.
+    //
+    // The key above is route + dates + trip + carrier, so these are the same
+    // offer seen twice, and for one offer the current price is whatever the
+    // source said last. Preferring the cheaper copy meant an old post could
+    // hold a price that had already moved - harmless while the source TTL was
+    // a day, actively wrong once it covers several. Equal timestamps fall back
+    // to the cheaper one, which is the across-channels case the old rule was
+    // really for.
+    const sameMoment =
+      Date.parse(flight.sourcePostedAt || flight.updatedAt || "") ===
+      Date.parse(current.sourcePostedAt || current.updatedAt || "");
     const winner =
-      flight.price < current.price || (flight.price === current.price && newer)
+      newer || (sameMoment && flight.price < current.price)
         ? { ...flight }
         : { ...current };
 
