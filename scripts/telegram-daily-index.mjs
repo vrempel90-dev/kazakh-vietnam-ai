@@ -5,6 +5,7 @@
  * publication date is not represented as the date of any particular flight.
  */
 import { createHash } from "node:crypto";
+import { resolveCity } from "./charter-geo.mjs";
 
 export const DAILY_INDEX_KEY = "DAILY_INDEX#1";
 
@@ -24,13 +25,27 @@ export function telegramMessageLink(chatId, messageId) {
   return null;
 }
 
-export function buildDailyIndexDigest(records, { chatId, localDate } = {}) {
+function nextDate(iso) {
+  const day = new Date(iso + "T12:00:00Z");
+  day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
+function shortDate(iso) {
+  return iso.slice(8, 10) + "." + iso.slice(5, 7);
+}
+
+export function buildDailyIndexDigest(records, { chatId, localDate, flights = [] } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(localDate || ""))) return null;
   const countries = new Map();
+  const deliveredOffers = new Map();
   for (const record of Array.isArray(records) ? records : []) {
     if (!record?.country || record?.status !== "sent" || record?.localDate !== localDate) continue;
     const link = telegramMessageLink(chatId, record.messageId);
     if (!link) continue;
+    for (const offerId of record.offerIds || []) {
+      if (!deliveredOffers.has(offerId)) deliveredOffers.set(offerId, link);
+    }
     const countryCode = String(record.country);
     const current = countries.get(countryCode);
     if (!current) {
@@ -60,14 +75,56 @@ export function buildDailyIndexDigest(records, { chatId, localDate } = {}) {
     lines.push("• <a href=\"" + country.link + "\">" + esc(country.name) + "</a>"
       + (country.parts > 1 ? " (частей: " + country.parts + ")" : ""));
   }
-  lines.push(
+  // Quick navigation for the traveler's "from Almaty tomorrow" use case:
+  // only show an exact flight date/direction when that offer is already
+  // included in a confirmed published message from today.
+  const tomorrow = nextDate(localDate);
+  const urgent = new Map();
+  for (const flight of Array.isArray(flights) ? flights : []) {
+    const link = deliveredOffers.get(flight?.id);
+    if (!link || ![localDate, tomorrow].includes(flight?.departureDate)) continue;
+    const from = resolveCity(flight?.from);
+    const to = resolveCity(flight?.to);
+    if (from?.country?.code !== "KZ" || !to || to.country.code === "KZ") continue;
+    const key = flight.departureDate + "|" + from.id + "|" + to.id;
+    if (!urgent.has(key)) urgent.set(key, {
+      date: flight.departureDate,
+      from: from.name,
+      to: to.name,
+      link,
+      count: 0
+    });
+    urgent.get(key).count += 1;
+  }
+
+  const suffix = [
     "",
     "Дата " + date + " — дата публикации подборки, не дата вылета.",
     "Проверяйте город отправления и дату в каждом предложении.",
     "Точное время вылета, стоимость и наличие подтверждаются при бронировании."
+  ];
+  const quick = ["", "<b>🛫 БЛИЖАЙШИЕ ВЫЛЕТЫ ИЗ КАЗАХСТАНА</b>"];
+  const byDate = [...urgent.values()].sort((a, b) =>
+    a.date.localeCompare(b.date)
+    || a.from.localeCompare(b.from, "ru")
+    || a.to.localeCompare(b.to, "ru")
   );
+  if (!byDate.length) {
+    quick.push("В опубликованных сегодня подборках пока нет вылетов из Казахстана на сегодня или завтра.");
+  } else {
+    let omitted = 0;
+    for (const item of byDate) {
+      const row = "• " + shortDate(item.date) + ": " + esc(item.from)
+        + " → " + esc(item.to) + " — <a href=\"" + item.link + "\">посмотреть</a>";
+      const budget = 4096 - suffix.join("\n").length - lines.join("\n").length - 110;
+      if ([...quick, row].join("\n").length <= budget) quick.push(row);
+      else omitted += 1;
+    }
+    if (omitted) quick.push("Другие ближайшие направления смотрите в подборках по странам выше.");
+  }
+  lines.push(...quick, ...suffix);
   const text = lines.join("\n");
-  // Never silently truncate the index and hide some of the countries.
+  // Never silently truncate the country index: it is the navigation source.
   if (text.length > 4096) return null;
   return {
     key: DAILY_INDEX_KEY,
