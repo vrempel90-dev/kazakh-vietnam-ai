@@ -145,6 +145,7 @@ export function publicationFingerprint(flight) {
     airlineCode: String(flight?.airlineCode || ""),
     seats: String(flight?.seats || ""),
     departureDate: String(flight?.departureDate || ""),
+    departureTime: String(flight?.departureTime || ""),
     returnDate: String(flight?.returnDate || "")
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 32);
