@@ -539,7 +539,7 @@ export function parseOfferLine(line, now) {
   return {
     departureDate,
     returnDate,
-    departureTime: departureTimeFromText(text) || undefined,
+    ...(departureTimeFromText(text) ? { departureTime: departureTimeFromText(text) } : {}),
     price,
     hot: /🔥/u.test(text),
     seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется",
