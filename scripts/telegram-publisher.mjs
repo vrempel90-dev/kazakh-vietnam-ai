@@ -214,3 +214,18 @@ export async function editDigestMessage({
 }
 
 export { AUTO_MARKER };
+
+/** Pin the daily navigation post without creating a notification for subscribers. */
+export async function pinDigestMessage({
+  token,
+  chatId,
+  messageId,
+  fetchImpl = fetch
+}) {
+  await telegramApi(token, "pinChatMessage", {
+    chat_id: chatId,
+    message_id: Number(messageId),
+    disable_notification: true
+  }, { fetchImpl });
+  return true;
+}

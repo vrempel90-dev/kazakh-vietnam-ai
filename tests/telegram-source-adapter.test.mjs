@@ -292,7 +292,7 @@ test("scopes entry requirements to the destination country instead of leaking po
   assert.equal(offers[3].notice, "❗ Health Declaration обязательно");
 });
 
-test("canonicalizes Kazakhstan round trips to start and end in Kazakhstan", () => {
+test("preserves the actual first leg for inbound round trips", () => {
   const offers = parseTelegramPost([
     "Нячанг -> Шымкент -> Нячанг",
     "10.10 - 17.10 = 220 000 ₸"
@@ -305,8 +305,8 @@ test("canonicalizes Kazakhstan round trips to start and end in Kazakhstan", () =
 
   assert.equal(offers.length, 1);
   assert.equal(offers[0].trip, "RT");
-  assert.equal(offers[0].from, "Шымкент");
-  assert.equal(offers[0].to, "Нячанг");
+  assert.equal(offers[0].from, "Нячанг");
+  assert.equal(offers[0].to, "Шымкент");
   assert.equal(offers[0].notice, "❗ Arrival Card обязательно");
 });
 
@@ -467,4 +467,37 @@ test("a full Step2Travel post yields every one-way, inbound and round-trip fare"
   assert.equal(roundTrip.departureDate, "2026-10-25");
   assert.equal(roundTrip.returnDate, "2026-11-01");
   assert.equal(roundTrip.sourcePrice, 396000);
+});
+
+test("a broken route heading cannot attach a cheap fare to the preceding route", () => {
+  const dropped = [];
+  const offers = parseTelegramPost([
+    "Алматы -> Пхукет",
+    "29.10 - 144 000 ₸",
+    "Неизвестныйгород -> Другаядеревня",
+    "29.10 - 33 000 ₸",
+    "Пхукет -> Алматы",
+    "30.10 - 195 000 ₸"
+  ].join("\n"), {
+    sourceId: "telegram:broken-route",
+    postId: 12345,
+    now: new Date("2026-10-28T06:00:00Z"),
+    dropped
+  });
+  assert.deepEqual(offers.map(f => [f.from, f.to, f.sourcePrice]), [
+    ["Алматы", "Пхукет", 144000],
+    ["Пхукет", "Алматы", 195000]
+  ]);
+  assert.ok(dropped.some(item => item.reason === "OFFER_WITHOUT_ROUTE" && item.price === 33000));
+});
+
+test("publishes a departure clock only when the supplier explicitly labels it", () => {
+  const now = new Date("2026-10-28T06:00:00Z");
+  const known = parseOfferLine("30.10 - 144 000 ₸, вылет в 23:40", now);
+  assert.equal(known.departureTime, "23:40");
+  assert.equal(parseOfferLine("30.10 - 144 000 ₸, запись 23:40", now).departureTime, undefined);
+  const offers = parseTelegramPost("Алматы -> Пхукет\n30.10 - 144 000 ₸, вылет в 23:40", {
+    sourceId: "telegram:time", postId: 200, now
+  });
+  assert.equal(offers[0].departureTime, "23:40");
 });

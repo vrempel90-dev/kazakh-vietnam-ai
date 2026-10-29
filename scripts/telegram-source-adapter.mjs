@@ -223,13 +223,8 @@ function entryRequirementForRoute(from, to) {
   return undefined;
 }
 
-function canonicalizeRoundTripRoute(route, trip) {
-  if (!route || trip !== "RT") return route;
-  if (!isKazakhstanCity(route.from) && isKazakhstanCity(route.to)) {
-    return { ...route, from: route.to, to: route.from, trip: "RT" };
-  }
-  return route;
-}
+// Never reverse an RT itinerary: the first city and departure date describe
+// the actual first leg, even when the journey starts outside Kazakhstan.
 
 function isRouteNoise(value) {
   return /^(?:OW|RT|туда|обратно|туда[- ]?обратно|в одну сторону|эконом|бизнес|багаж|вылет|последн)/iu.test(value);
@@ -478,6 +473,15 @@ function detectBaggage(value) {
  * one-character match dropped the carrier from every such row. "OW" and "RT"
  * are trip markers, never carriers.
  */
+function departureTimeFromText(value) {
+  // Only an explicitly labelled departure time is trustworthy. Bare HH:MM
+  // values may refer to a deadline, publication time or transfer instead.
+  const match = String(value || "").match(
+    /(?:вылет(?:ает)?|отправлени[ея]|departure|depart|dep)\s*(?::|в\s*)?\s*([01]?\d|2[0-3]):([0-5]\d)(?!\d)/iu
+  );
+  return match ? match[1].padStart(2, "0") + ":" + match[2] : null;
+}
+
 function detectOfferAirlineCode(value) {
   const match = String(value || "").trim().match(/^([A-Z*]{1,2})\s+(?=\d{1,2}[./]\d{1,2})/u);
   if (!match) return null;
@@ -535,6 +539,7 @@ export function parseOfferLine(line, now) {
   return {
     departureDate,
     returnDate,
+    ...(departureTimeFromText(text) ? { departureTime: departureTimeFromText(text) } : {}),
     price,
     hot: /🔥/u.test(text),
     seats: lastSeat ? "Последнее место" : count > 0 ? count + " мест" : "Наличие уточняется",
@@ -679,7 +684,7 @@ export function parseTelegramPost(text, {
     }
 
     const effectiveTrip = parsed.returnDate ? "RT" : tripHint;
-    const effectiveRoute = canonicalizeRoundTripRoute(route, effectiveTrip);
+    const effectiveRoute = route;
     const inlineCode = parsed.airlineCode || null;
     const routeCode = airlineCodeFromName(routeAirline);
     const airlineCode = inlineCode || routeCode || null;
@@ -694,6 +699,7 @@ export function parseTelegramPost(text, {
       from: effectiveRoute.from,
       to: effectiveRoute.to,
       departureDate: parsed.departureDate,
+      departureTime: parsed.departureTime || undefined,
       returnDate: parsed.returnDate || null,
       trip: effectiveTrip,
       airline: airline || undefined,
@@ -731,6 +737,20 @@ export function parseTelegramPost(text, {
       continue;
     }
 
+    // A route-looking but unresolved heading must not lend its prices to
+    // the preceding route. Hold those rows for review instead of inventing
+    // a Phuket → Almaty (or reverse) offer using an earlier heading.
+    if (!maybeRoute
+      && /(?:->|→|⟶|➡|➔|⇄|⇆|↔|»)|\s+[—–-]\s+/u.test(line)
+      && !/\d|₸|тенге|багаж|ручн(?:ая|ой)\s+клад|airline/iu.test(line)) {
+      route = null;
+      tripHint = "OW";
+      pendingDeparture = null;
+      pendingReturn = null;
+      routeOfferCount = 0;
+      continue;
+    }
+
     const foundAirline = detectAirline(line);
     const foundBaggage = detectBaggage(line);
 
@@ -748,8 +768,9 @@ export function parseTelegramPost(text, {
     if (/\b(?:OW|в одну сторону)\b/iu.test(line)) tripHint = "OW";
 
     const parsed = parseOfferLine(line, now);
-    if (parsed && route) {
-      appendOffer(parsed);
+    if (parsed) {
+      if (route) appendOffer(parsed);
+      else note("OFFER_WITHOUT_ROUTE", parsed);
       pendingDeparture = null;
       pendingReturn = null;
       continue;

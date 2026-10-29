@@ -291,3 +291,17 @@ test("the content hash changes only when the rendered text changes", () => {
   ).digests[0];
   assert.notEqual(first.contentHash, changed.contentHash);
 });
+
+test("an inbound round trip retains its actual origin and a verified departure clock", () => {
+  const { digests } = buildCountryDigests([{
+    id: "rt-inbound",
+    from: "Пхукет", to: "Алматы", trip: "RT",
+    departureDate: "2026-10-29", returnDate: "2026-11-05",
+    departureTime: "21:15", price: 240000
+  }], { now: new Date("2026-10-28T05:00:00Z") });
+  const text = plain(digests[0].text);
+  assert.match(text, /Пхукет - Алматы - Пхукет/);
+  assert.doesNotMatch(text, /Алматы - Пхукет - Алматы/);
+  assert.match(text, /вылет 21:15/);
+  assert.match(text, /29\.10/);
+});

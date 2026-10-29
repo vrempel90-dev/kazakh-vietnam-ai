@@ -250,3 +250,19 @@ cannot be read as a past date.
 Use `npm run publish:dry-run` to inspect the plan against real data without
 touching Telegram, and `npm run publish:test-chat` to deliver to
 `TELEGRAM_TEST_CHAT_ID` only.
+
+## Customer feedback follow-up (2026-10-29)
+
+- NEVER reverse the first leg of an RT itinerary merely to make its origin
+  Kazakhstan. The supplier's origin is the actual origin for departure date
+  and published route. Preserve it through parser and public feed.
+- When the source has an unresolved route heading, hold subsequent fare
+  rows as `OFFER_WITHOUT_ROUTE`; never attach them to the previous route.
+- Publish a clock time only when the supplier explicitly labels departure
+  time. An unlabeled HH:MM is not enough evidence.
+- The optional daily navigation index (`TELEGRAM_DAILY_PIN_ENABLED=true`)
+  is based ONLY on today's confirmed country messages in persistent state.
+  It must use Telegram deep links, distinguish publication date from flight
+  dates, keep its one-per-day send and same-day edit semantics, and silently
+  pin with failure reporting. It must never post a NEW index outside a
+  publication window or blindly retry an unconfirmed send.

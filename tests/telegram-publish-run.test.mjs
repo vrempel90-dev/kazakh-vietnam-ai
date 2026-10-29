@@ -982,3 +982,56 @@ test("adding a second channel later delivers one package to it and nothing extra
   });
   assert.equal(again.calls.length, 0, "no duplicates after the window closed");
 });
+
+test("opt-in daily navigation publishes once, pins quietly, then edits without reposting", async () => {
+  const path = await statePath("daily-index");
+  const env = baseEnv({ TELEGRAM_DAILY_PIN_ENABLED: "true" });
+  const first = recorder();
+  const morning = await runTelegramPublication({
+    flights: [...vietnam, ...thailand], now: MORNING, env, statePath: path,
+    fetchImpl: first.fetchImpl, logger: null
+  });
+  assert.equal(first.calls.filter(c => c.method === "sendMessage").length, 3);
+  assert.equal(first.calls.filter(c => c.method === "pinChatMessage").length, 1);
+  assert.equal(morning.channels[0].dailyIndex.pin, "pinned");
+  const index = (await loadPublicationState(path)).channels[CHAT].messages["DAILY_INDEX#1"];
+  assert.equal(index.localDate, "2026-10-12");
+  assert.equal(index.status, "sent");
+  assert.equal(index.messageId, index.pinnedMessageId);
+
+  const unchanged = recorder();
+  await runTelegramPublication({
+    flights: [...vietnam, ...thailand], now: MORNING_LATER, env, statePath: path,
+    fetchImpl: unchanged.fetchImpl, logger: null
+  });
+  assert.equal(unchanged.calls.length, 0, "no repeat post, edit or pin for unchanged inventory");
+
+  const changed = recorder();
+  const later = await runTelegramPublication({
+    flights: [...vietnam, ...thailand, ...china], now: MORNING_LAST, env, statePath: path,
+    fetchImpl: changed.fetchImpl, logger: null
+  });
+  assert.equal(changed.calls.filter(c => c.method === "sendMessage").length, 1, "new country only");
+  assert.equal(changed.calls.filter(c => c.method === "editMessageText").length, 1, "index edited in place");
+  assert.equal(changed.calls.filter(c => c.method === "pinChatMessage").length, 0, "same index remains pinned");
+  assert.equal(later.channels[0].dailyIndex.action, "edited");
+});
+
+test("pin permission failure preserves the index and retries pin without a duplicate post", async () => {
+  const path = await statePath("pin-rights");
+  const env = baseEnv({ TELEGRAM_DAILY_PIN_ENABLED: "true" });
+  const first = recorder({ fail: ({ method }) => method === "pinChatMessage" ? "not enough rights" : null });
+  const initial = await runTelegramPublication({
+    flights: vietnam, now: MORNING, env, statePath: path,
+    fetchImpl: first.fetchImpl, logger: null
+  });
+  assert.equal(initial.channels[0].dailyIndex.pin, "failed");
+
+  const retry = recorder();
+  const again = await runTelegramPublication({
+    flights: vietnam, now: MORNING_LATER, env, statePath: path,
+    fetchImpl: retry.fetchImpl, logger: null
+  });
+  assert.deepEqual(retry.calls.map(c => c.method), ["pinChatMessage"]);
+  assert.equal(again.channels[0].dailyIndex.pin, "pinned");
+});
