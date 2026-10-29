@@ -768,8 +768,9 @@ export function parseTelegramPost(text, {
     if (/\b(?:OW|в одну сторону)\b/iu.test(line)) tripHint = "OW";
 
     const parsed = parseOfferLine(line, now);
-    if (parsed && route) {
-      appendOffer(parsed);
+    if (parsed) {
+      if (route) appendOffer(parsed);
+      else note("OFFER_WITHOUT_ROUTE", parsed);
       pendingDeparture = null;
       pendingReturn = null;
       continue;
