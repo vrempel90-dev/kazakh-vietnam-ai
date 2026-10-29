@@ -163,6 +163,13 @@ function routeTitle(entry) {
     : esc(from + " - " + to);
 }
 
+function departureTimeSuffix(flight) {
+  const time = String(flight?.departureTime || "");
+  return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)
+    ? " · вылет " + time
+    : "";
+}
+
 function offerLine(entry, dates = null) {
   const { flight, classification, code } = entry;
   const prefix = code
@@ -180,6 +187,7 @@ function offerLine(entry, dates = null) {
       + dateRange
       + " - " + formatPrice(flight.price) + " ₸"
       + nightsSuffix(classification.nights)
+      + departureTimeSuffix(flight)
       + urgencySuffix(flight.departureDate, dates);
   }
 
@@ -187,6 +195,7 @@ function offerLine(entry, dates = null) {
     + departure
     + " - " + formatPrice(flight.price) + " ₸"
     + seatsSuffix(flight)
+    + departureTimeSuffix(flight)
     + urgencySuffix(flight.departureDate, dates);
 }
 
@@ -198,6 +207,7 @@ function offerSignature(entry) {
     entry.classification.toCity.id,
     String(entry.flight.departureDate || ""),
     String(entry.flight.returnDate || ""),
+    String(entry.flight.departureTime || ""),
     Math.round(Number(entry.flight.price) || 0),
     entry.code || normalizeAirlineText(entry.flight.airline),
     String(entry.flight.seats || "")
