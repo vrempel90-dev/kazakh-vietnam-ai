@@ -44,3 +44,23 @@ test("index is deterministic and changes only when a country link changes", () =
   const c = buildDailyIndexDigest([{ ...records[0], messageId: 124 }], { chatId, localDate: date });
   assert.notEqual(a.contentHash, c.contentHash);
 });
+
+test("traveler can jump straight to a confirmed Almaty departure tomorrow", () => {
+  const index = buildDailyIndexDigest([
+    {
+      country: "TH", countryName: "Таиланд", part: 1, status: "sent",
+      localDate: date, messageId: 700, offerIds: ["almaty-phuket"]
+    }
+  ], {
+    chatId, localDate: date,
+    flights: [
+      { id: "almaty-phuket", from: "Алматы", to: "Пхукет", departureDate: "2026-10-30" },
+      { id: "unpublished", from: "Алматы", to: "Пхукет", departureDate: "2026-10-29" },
+      { id: "phuket-almaty", from: "Пхукет", to: "Алматы", departureDate: "2026-10-30" }
+    ]
+  });
+  assert.match(index.text, /30\.10: Алматы → Пхукет/);
+  assert.match(index.text, /t\.me\/c\/2106608923\/700/);
+  assert.doesNotMatch(index.text, /29\.10: Алматы → Пхукет/);
+  assert.doesNotMatch(index.text, /Пхукет → Алматы/);
+});
