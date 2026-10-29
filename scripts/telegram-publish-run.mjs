@@ -515,6 +515,7 @@ export async function runTelegramPublication({
         try {
           const pinReport = await updateDailyIndex({
             state, statePath, chatId, localDate: schedule.localDate,
+            flights: eligible,
             token, fetchImpl, editOnly, retryUnconfirmed,
             maySend: delivered < maxMessagesPerWindow
           });
@@ -616,6 +617,7 @@ export async function runTelegramPublication({
         status: report.publicationStatus,
         counts: report.counts,
         coverage: report.coverage,
+        dailyIndex: report.dailyIndex || null,
         messages: report.messages.map(message =>
           message.key + ":" + message.action + (message.messageId ? "#" + message.messageId : "")
         )
@@ -631,10 +633,10 @@ export async function runTelegramPublication({
  * machine as country digests. A timed-out send is NEVER blindly retried.
  */
 async function updateDailyIndex({
-  state, statePath, chatId, localDate, token, fetchImpl,
+  state, statePath, chatId, localDate, flights, token, fetchImpl,
   editOnly, retryUnconfirmed, maySend
 }) {
-  const index = buildDailyIndexDigest(listMessageRecords(state, chatId), { chatId, localDate });
+  const index = buildDailyIndexDigest(listMessageRecords(state, chatId), { chatId, localDate, flights });
   if (!index) return { action: "no_confirmed_country_posts" };
 
   const plan = planMessageAction(state, chatId, index, { localDate, retryUnconfirmed });
@@ -656,6 +658,14 @@ async function updateDailyIndex({
       messageId: previousMessageId,
       now: new Date()
     });
+    if (plan.action === "send") {
+      // A previous day's pinned id cannot stand in for the new day's post.
+      const record = state.channels?.[chatId]?.messages?.[index.key];
+      if (record) {
+        record.pinnedMessageId = null;
+        record.pinnedAt = null;
+      }
+    }
     await savePublicationState(statePath, state);
     try {
       const messageId = await deliver({
