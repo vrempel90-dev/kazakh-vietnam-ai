@@ -12,6 +12,7 @@
 
 import { randomUUID } from "node:crypto";
 import { buildCountryDigests, TELEGRAM_TEXT_LIMIT } from "./telegram-digest.mjs";
+import { buildDailyIndexDigest } from "./telegram-daily-index.mjs";
 import {
   allowedCountryCodes,
   describeSchedule,
@@ -28,6 +29,7 @@ import {
   filterFlightsForTarget,
   isPublishingEnvironmentAllowed,
   parsePublishTargets,
+  pinDigestMessage,
   sendDigestMessage
 } from "./telegram-publisher.mjs";
 import {
@@ -505,6 +507,27 @@ export async function runTelegramPublication({
         }
       }
 
+      // The daily index links to confirmed messages only. It is one new post
+      // per publication day and is edited as more regional windows publish.
+      // Opt-in prevents a production bot lacking pin rights from changing
+      // channel behaviour until the rollout has been verified in a test chat.
+      if (!dryRun && String(env?.TELEGRAM_DAILY_PIN_ENABLED || "").toLowerCase() === "true") {
+        try {
+          const pinReport = await updateDailyIndex({
+            state, statePath, chatId, localDate: schedule.localDate,
+            token, fetchImpl, editOnly, retryUnconfirmed,
+            maySend: delivered < maxMessagesPerWindow
+          });
+          report.dailyIndex = pinReport;
+          if (pinReport.action === "sent") delivered += 1;
+        } catch (error) {
+          report.dailyIndex = {
+            action: "error",
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+
       if (!dryRun && !editOnly) {
         const incomplete = report.counts.failed > 0
           || report.counts.held > 0
@@ -601,6 +624,86 @@ export async function runTelegramPublication({
   }
 
   return result;
+}
+
+/**
+ * Daily navigation index: its record uses the same durable send/edit state
+ * machine as country digests. A timed-out send is NEVER blindly retried.
+ */
+async function updateDailyIndex({
+  state, statePath, chatId, localDate, token, fetchImpl,
+  editOnly, retryUnconfirmed, maySend
+}) {
+  const index = buildDailyIndexDigest(listMessageRecords(state, chatId), { chatId, localDate });
+  if (!index) return { action: "no_confirmed_country_posts" };
+
+  const plan = planMessageAction(state, chatId, index, { localDate, retryUnconfirmed });
+  if (plan.action === "hold") return { action: "held", reason: plan.reason };
+  if (plan.action === "send" && (editOnly || !maySend)) {
+    return { action: "deferred", reason: editOnly ? "OUTSIDE_WINDOW" : "MESSAGE_BUDGET_REACHED" };
+  }
+
+  let action = "unchanged";
+  if (plan.action === "send" || plan.action === "edit") {
+    const previousMessageId = plan.action === "edit" ? Number(plan.record?.messageId) : null;
+    recordMessageIntent(state, chatId, index.key, {
+      country: null, countryName: null, part: 1, parts: 1,
+      contentHash: index.contentHash,
+      offerIds: [],
+      localDate,
+      window: "daily-index",
+      action: plan.action,
+      messageId: previousMessageId,
+      now: new Date()
+    });
+    await savePublicationState(statePath, state);
+    try {
+      const messageId = await deliver({
+        action: plan.action, token, chatId,
+        messageId: previousMessageId,
+        text: index.text,
+        // The index contains only direct links; it is not a fare offer.
+        managerPhone: "", publicAppUrl: "", fetchImpl
+      });
+      recordMessageSent(state, chatId, index.key, { messageId, now: new Date() });
+      await savePublicationState(statePath, state);
+      action = plan.action === "send" ? "sent" : "edited";
+    } catch (error) {
+      const apiError = error instanceof TelegramApiError
+        ? error : new TelegramApiError(String(error?.message || error), { definitive: false });
+      recordMessageFailure(state, chatId, index.key, {
+        error: apiError.message, definitive: apiError.definitive, now: new Date()
+      });
+      await savePublicationState(statePath, state);
+      return { action: apiError.definitive ? "failed" : "unconfirmed", error: apiError.message };
+    }
+  }
+
+  const record = state.channels?.[chatId]?.messages?.[index.key];
+  if (record?.status !== MESSAGE_STATUS.SENT || !Number(record.messageId)) {
+    return { action, pin: "awaiting_delivery" };
+  }
+
+  // Retry a previously failed pin without duplicating the index itself.
+  if (Number(record.pinnedMessageId) === Number(record.messageId)) {
+    return { action, pin: "already_pinned", messageId: record.messageId };
+  }
+  try {
+    await pinDigestMessage({ token, chatId, messageId: record.messageId, fetchImpl });
+    record.pinnedMessageId = record.messageId;
+    record.pinnedAt = new Date().toISOString();
+    await savePublicationState(statePath, state);
+    return { action, pin: "pinned", messageId: record.messageId };
+  } catch (error) {
+    // Existing country publications and index remain intact if a channel
+    // administrator has not granted the bot the pin-message permission.
+    return {
+      action,
+      pin: "failed",
+      messageId: record.messageId,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
 }
 
 /**
