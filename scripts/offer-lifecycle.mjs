@@ -6,6 +6,7 @@ export function hasMaterialChange(previous, current) {
     || previous.baggage !== current.baggage
     || previous.departureDate !== current.departureDate
     || previous.returnDate !== current.returnDate
+    || previous.departureTime !== current.departureTime
     || previous.trip !== current.trip;
 }
 
